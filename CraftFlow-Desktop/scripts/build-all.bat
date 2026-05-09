@@ -29,18 +29,6 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Check PyInstaller
-where pyinstaller >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [INFO] PyInstaller not found. Installing...
-    pip install pyinstaller
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install PyInstaller
-        pause
-        exit /b 1
-    )
-)
-
 :: Get script directory
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_DIR=%SCRIPT_DIR%.."
@@ -95,7 +83,8 @@ echo.
 
 echo [4/6] Building backend...
 cd backend
-python -m PyInstaller craftflow.spec --distpath dist --workpath build --clean
+uv sync --extra build
+uv run python -m PyInstaller craftflow.spec --distpath dist --workpath build --clean
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to build backend
     pause

@@ -68,7 +68,7 @@ const backendSrc = path.join(ROOT_DIR, 'craftflow-backend');
 const backendDest = path.join(TARGET_DIR, 'backend');
 
 // Desktop 独有文件/目录（保留）
-const backendKeepList = ['desktop_config.py'];
+const backendKeepList = ['desktop_config.py', '.venv'];
 
 // 删除副本中不在保留列表中的文件
 console.log('  清理 backend/...');
