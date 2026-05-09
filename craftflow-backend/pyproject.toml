@@ -2,7 +2,7 @@
 name = "craftflow-backend"
 version = "0.1.0"
 description = "CraftFlow - 智能长文织造与多阶审校平台后端服务"
-authors = [{name = "CraftFlow Team"}]
+authors = [{name = "Renhao-Wan"}]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -39,6 +39,9 @@ dev = [
     "httpx>=0.28.1",
     "black>=24.10.0",
     "ruff>=0.8.4",
+]
+build = [
+    "pyinstaller>=6.0.0",
 ]
 
 [build-system]

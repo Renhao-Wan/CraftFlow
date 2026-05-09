@@ -12,84 +12,319 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      width: 400px;
+      height: 300px;
+      overflow: hidden;
+      background: #FAFAF8;
+      color: #2C2C2C;
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
       display: flex;
-      justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      border-radius: 12px;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* ---- Radial warmth (top-right) ---- */
+    .bg-glow {
+      position: absolute;
+      top: -60px;
+      right: -80px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(200, 85, 61, 0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ---- Container ---- */
+    .splash {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 32px;
+    }
+
+    /* ---- Logo ---- */
+    .logo {
+      font-family: Georgia, 'Songti SC', 'SimSun', serif;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 42px;
+      letter-spacing: -0.02em;
+      color: #2C2C2C;
+      line-height: 1;
+      animation: logoIn 0.6s ease-out both;
+    }
+
+    @keyframes logoIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ---- Tagline ---- */
+    .tagline {
+      font-size: 13px;
+      font-weight: 400;
+      color: #8A8A8A;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 8px;
+      animation: taglineIn 0.5s 0.25s ease-out both;
+    }
+
+    @keyframes taglineIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ---- Separator ---- */
+    .sep {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0 18px;
+      animation: fadeIn 0.4s 0.45s ease-out both;
+    }
+
+    .sep-line {
+      width: 28px;
+      height: 1px;
+      background: #E8E6E1;
+    }
+
+    .sep-diamond {
+      width: 4px;
+      height: 4px;
+      background: #C8553D;
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ---- Status text ---- */
+    .status {
+      font-size: 12px;
+      font-weight: 400;
+      color: #8A8A8A;
+      letter-spacing: 0.04em;
+      animation: fadeIn 0.4s 0.6s ease-out both;
+    }
+
+    .status-dots {
+      display: inline-block;
+      width: 16px;
+      text-align: left;
+    }
+
+    .status-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%  { content: ''; }
+      25% { content: '.'; }
+      50% { content: '..'; }
+      75% { content: '...'; }
+    }
+
+    /* ---- Quill (decorative) ---- */
+    .quill-wrap {
+      position: absolute;
+      right: 40px;
+      top: 50%;
+      transform: translateY(-50%) rotate(-10deg);
+      opacity: 0;
+      animation: quillAppear 0.8s 0.35s ease-out forwards;
+    }
+
+    @keyframes quillAppear {
+      0% {
+        opacity: 0;
+        transform: translateY(-50%) rotate(-10deg) scale(0.92);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(-50%) rotate(-10deg) scale(1);
+      }
+    }
+
+    .quill-float {
+      animation: quillFloat 4.5s ease-in-out infinite;
+    }
+
+    @keyframes quillFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-3px) rotate(0.8deg); }
+    }
+
+    /* ---- Bottom bar ---- */
+    .bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #E8E6E1;
       overflow: hidden;
     }
 
-    .container {
-      text-align: center;
-      padding: 40px;
+    .bar-fill {
+      width: 100%;
+      height: 100%;
+      background: #C8553D;
+      transform-origin: left;
+      animation: barGrow 3s 0.5s ease-out forwards;
     }
 
-    .logo {
-      font-size: 48px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    @keyframes barGrow {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
     }
 
-    .subtitle {
-      font-size: 16px;
-      opacity: 0.9;
-      margin-bottom: 32px;
-    }
-
-    .loading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      background: white;
+    /* ---- Ink particles ---- */
+    .ink-dot {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #C8553D;
       border-radius: 50%;
-      animation: bounce 1.4s infinite ease-in-out both;
+      opacity: 0;
     }
 
-    .dot:nth-child(1) {
-      animation-delay: -0.32s;
-    }
+    .ink-dot:nth-child(1) { left: 15%; bottom: 40%; animation: inkFloat 5.0s 0.8s ease-in-out infinite; }
+    .ink-dot:nth-child(2) { left: 75%; bottom: 30%; animation: inkFloat 6.0s 1.4s ease-in-out infinite; }
+    .ink-dot:nth-child(3) { left: 40%; bottom: 55%; animation: inkFloat 5.5s 2.0s ease-in-out infinite; }
+    .ink-dot:nth-child(4) { left: 85%; bottom: 50%; animation: inkFloat 4.8s 0.5s ease-in-out infinite; }
+    .ink-dot:nth-child(5) { left: 25%; bottom: 35%; animation: inkFloat 5.2s 1.8s ease-in-out infinite; }
+    .ink-dot:nth-child(6) { left: 60%; bottom: 60%; animation: inkFloat 6.2s 1.0s ease-in-out infinite; }
 
-    .dot:nth-child(2) {
-      animation-delay: -0.16s;
-    }
-
-    @keyframes bounce {
-      0%, 80%, 100% {
-        transform: scale(0);
+    @keyframes inkFloat {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.5);
       }
-      40% {
-        transform: scale(1);
+      20% {
+        opacity: 0.18;
+        transform: translateY(-10px) scale(1);
       }
-    }
-
-    .status {
-      margin-top: 24px;
-      font-size: 14px;
-      opacity: 0.8;
+      80% {
+        opacity: 0.12;
+        transform: translateY(-35px) scale(0.8);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.4);
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">CraftFlow</div>
-    <div class="subtitle">智能长文创作平台</div>
-    <div class="loading">
-      <div class="dot"></div>
-      <div class="dot"></div>
-      <div class="dot"></div>
+  <!-- Background glow -->
+  <div class="bg-glow"></div>
+
+  <!-- Ink particles -->
+  <div class="ink-dot"></div>
+  <div class="ink-dot"></div>
+  <div class="ink-dot"></div>
+  <div class="ink-dot"></div>
+  <div class="ink-dot"></div>
+  <div class="ink-dot"></div>
+
+  <!-- Decorative quill -->
+  <div class="quill-wrap">
+    <div class="quill-float">
+      <svg width="52" height="130" viewBox="0 0 52 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Feather vane (left) -->
+        <path d="M26 8 C20 16, 8 26, 6 48 C4 62, 10 76, 20 82 L26 70 Z"
+              fill="#E8DDD5" opacity="0.5"/>
+        <!-- Feather vane (right) -->
+        <path d="M26 8 C30 14, 38 22, 42 36 C46 50, 42 68, 32 78 L26 70 Z"
+              fill="#D4C8BC" opacity="0.4"/>
+        <!-- Quill shaft -->
+        <path d="M26 8 L26 100"
+              stroke="#8B7355" stroke-width="1.2" opacity="0.7"
+              stroke-dasharray="92" stroke-dashoffset="92">
+          <animate attributeName="stroke-dashoffset"
+                   from="92" to="0" dur="0.8s" begin="0.6s" fill="freeze"/>
+        </path>
+        <!-- Feather barbs -->
+        <path d="M26 16 L18 24" stroke="#B0A090" stroke-width="0.6" opacity="0.5"
+              stroke-dasharray="12" stroke-dashoffset="12">
+          <animate attributeName="stroke-dashoffset"
+                   from="12" to="0" dur="0.3s" begin="0.8s" fill="freeze"/>
+        </path>
+        <path d="M26 24 L14 36" stroke="#B0A090" stroke-width="0.6" opacity="0.5"
+              stroke-dasharray="18" stroke-dashoffset="18">
+          <animate attributeName="stroke-dashoffset"
+                   from="18" to="0" dur="0.3s" begin="0.9s" fill="freeze"/>
+        </path>
+        <path d="M26 32 L16 44" stroke="#B0A090" stroke-width="0.6" opacity="0.5"
+              stroke-dasharray="16" stroke-dashoffset="16">
+          <animate attributeName="stroke-dashoffset"
+                   from="16" to="0" dur="0.3s" begin="1.0s" fill="freeze"/>
+        </path>
+        <path d="M26 18 L32 24" stroke="#B0A090" stroke-width="0.6" opacity="0.5"
+              stroke-dasharray="8" stroke-dashoffset="8">
+          <animate attributeName="stroke-dashoffset"
+                   from="8" to="0" dur="0.25s" begin="0.85s" fill="freeze"/>
+        </path>
+        <path d="M26 28 L36 38" stroke="#B0A090" stroke-width="0.6" opacity="0.5"
+              stroke-dasharray="14" stroke-dashoffset="14">
+          <animate attributeName="stroke-dashoffset"
+                   from="14" to="0" dur="0.3s" begin="0.95s" fill="freeze"/>
+        </path>
+        <!-- Nib -->
+        <path d="M26 100 L23 114 L26 126 L29 114 Z"
+              fill="#8B7355" opacity="0.85"
+              stroke-dasharray="36" stroke-dashoffset="36">
+          <animate attributeName="stroke-dashoffset"
+                   from="36" to="0" dur="0.4s" begin="1.1s" fill="freeze"/>
+        </path>
+        <!-- Ink drop -->
+        <circle cx="26" cy="126" r="1.5" fill="#C8553D" opacity="0">
+          <animate attributeName="opacity"
+                   from="0" to="0.7" dur="0.3s" begin="1.5s" fill="freeze"/>
+          <animate attributeName="cy"
+                   from="126" to="128" dur="2s" begin="1.5s" fill="freeze"/>
+        </circle>
+      </svg>
     </div>
-    <div class="status">正在启动服务...</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="splash">
+    <div class="logo">CraftFlow</div>
+    <div class="tagline">智能长文创作平台</div>
+    <div class="sep">
+      <div class="sep-line"></div>
+      <div class="sep-diamond"></div>
+      <div class="sep-line"></div>
+    </div>
+    <div class="status">
+      正在启动服务<span class="status-dots"></span>
+    </div>
+  </div>
+
+  <!-- Bottom progress bar -->
+  <div class="bottom-bar">
+    <div class="bar-fill"></div>
   </div>
 </body>
 </html>

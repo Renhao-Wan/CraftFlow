@@ -132,6 +132,11 @@ function createSplashWindow() {
 
   splashWindow.loadFile(path.join(__dirname, 'splash.html'));
   splashWindow.center();
+
+  // 安全兜底：如果主窗口 10 秒内未就绪，强制关闭 splash
+  setTimeout(() => {
+    closeSplash();
+  }, 10000);
 }
 
 /**
@@ -164,10 +169,13 @@ function createMainWindow() {
 
   // 页面加载完成后显示
   mainWindow.once('ready-to-show', () => {
-    if (splashWindow) {
-      splashWindow.close();
-      splashWindow = null;
-    }
+    closeSplash();
+    mainWindow.show();
+  });
+
+  // 加载失败时也要关闭 splash
+  mainWindow.webContents.on('did-fail-load', () => {
+    closeSplash();
     mainWindow.show();
   });
 
@@ -178,9 +186,20 @@ function createMainWindow() {
 }
 
 /**
+ * 关闭启动画面
+ */
+function closeSplash() {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.close();
+    splashWindow = null;
+  }
+}
+
+/**
  * 显示错误对话框
  */
 function showErrorDialog(title, message) {
+  closeSplash();
   dialog.showErrorBox(title, message);
   app.quit();
 }
