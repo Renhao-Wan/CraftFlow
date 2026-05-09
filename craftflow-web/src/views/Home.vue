@@ -21,7 +21,7 @@ const recentTasks = ref<RecentTask[]>([])
 
 async function loadRecent(): Promise<void> {
   await taskStore.fetchTaskList()
-  recentTasks.value = taskStore.taskList.slice(0, 5).map((t: import('@/api/types/task').TaskStatusResponse) => {
+  recentTasks.value = taskStore.taskList.slice(0, 2).map((t: import('@/api/types/task').TaskStatusResponse) => {
     const type = inferTaskType(t)
     return {
       taskId: t.task_id,
@@ -113,8 +113,8 @@ onMounted(loadRecent)
 .home-page {
   max-width: 640px;
   margin: 0 auto;
-  padding-top: var(--space-2xl);
-  padding-bottom: var(--space-xl);
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-lg);
 }
 
 /* Hero */
@@ -125,11 +125,11 @@ onMounted(loadRecent)
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: 42px;
+  font-size: 38px;
   font-weight: 700;
   font-style: italic;
   color: var(--color-text);
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   letter-spacing: -0.02em;
 }
 
@@ -137,7 +137,7 @@ onMounted(loadRecent)
   width: 48px;
   height: 2px;
   background: var(--color-accent);
-  margin: 0 auto 16px;
+  margin: 0 auto 12px;
 }
 
 .hero-subtitle {
@@ -152,14 +152,14 @@ onMounted(loadRecent)
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-xl);
 }
 
 .action-card {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: 20px 24px;
+  padding: 18px 22px;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -175,8 +175,8 @@ onMounted(loadRecent)
 
 .action-icon {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,7 +227,7 @@ onMounted(loadRecent)
 /* 最近任务 */
 .recent-section {
   border-top: 1px solid var(--color-rule);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-md);
 }
 
 .recent-header {
@@ -272,7 +272,7 @@ onMounted(loadRecent)
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 11px 15px;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -321,15 +321,15 @@ onMounted(loadRecent)
 
 @media (max-width: 768px) {
   .home-page {
-    padding-top: var(--space-lg);
+    padding-top: var(--space-md);
   }
 
   .hero-title {
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .action-card {
-    padding: 16px;
+    padding: 14px;
   }
 
   .recent-item {
