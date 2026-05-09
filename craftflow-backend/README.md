@@ -26,7 +26,7 @@
 ### 环境要求
 
 - Python 3.11+
-- Poetry (推荐) 或 pip
+- uv (推荐) 或 pip
 - PostgreSQL 14+ (生产环境)
 - Redis (可选，用于限流)
 
@@ -35,22 +35,17 @@
 1. **克隆项目**
 
 ```bash
-git clone https://github.com/your-org/craftflow-backend.git
-cd craftflow-backend
+git clone https://github.com/Renhao-Wan/CraftFlow.git
+cd CraftFlow/craftflow-backend
 ```
 
 2. **安装依赖**
 
-使用 Poetry（推荐）：
+使用 uv（推荐）：
 
 ```bash
-poetry install
-```
-
-或使用 pip：
-
-```bash
-pip install -r requirements.txt
+uv sync
+uv sync --extra dev        # 含 pytest, black, ruff
 ```
 
 3. **配置环境变量**
@@ -68,7 +63,7 @@ cp .env.example .env.dev
 4. **启动开发服务器**
 
 ```bash
-poetry run uvicorn app.main:app --reload --env-file .env.dev
+uv run uvicorn app.main:app --reload --env-file .env.dev --host 127.0.0.1 --port 8000
 ```
 
 或：
@@ -184,23 +179,23 @@ Content-Type: application/json
 
 ```bash
 # 运行所有测试
-poetry run pytest
+uv run pytest
 
 # 运行特定测试文件
-poetry run pytest tests/test_graph/test_creation_graph.py
+uv run pytest tests/test_graph/test_creation_graph.py
 
 # 查看覆盖率
-poetry run pytest --cov=app --cov-report=html
+uv run pytest --cov=app --cov-report=html
 ```
 
 ### 代码格式化
 
 ```bash
 # 使用 black 格式化
-poetry run black app/ tests/
+uv run black app/ tests/
 
 # 使用 ruff 检查
-poetry run ruff check app/ tests/
+uv run ruff check app/ tests/
 ```
 
 ## 部署
@@ -223,12 +218,9 @@ gunicorn app.main:app \
   --env-file .env
 ```
 
-### Docker 部署（待完善）
+### Docker 部署（计划中）
 
-```bash
-docker build -t craftflow-backend .
-docker run -p 8000:8000 --env-file .env craftflow-backend
-```
+Docker 支持尚在规划中，敬请期待。
 
 ## 架构设计
 
@@ -257,12 +249,12 @@ docker run -p 8000:8000 --env-file .env craftflow-backend
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+本项目采用 Apache-2.0 许可证 - 详见 [LICENSE](../../LICENSE) 文件
 
 ## 联系方式
 
-- 项目主页: https://github.com/Renhao-Wan/craftflow-backend
-- 问题反馈: https://github.com/Renhao-Wan/craftflow-backend/issues
+- 项目主页: https://github.com/Renhao-Wan/CraftFlow
+- 问题反馈: https://github.com/Renhao-Wan/CraftFlow/issues
 
 ---
 

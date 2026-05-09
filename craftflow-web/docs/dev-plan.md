@@ -76,15 +76,15 @@ interface ErrorResponse {
 ### 业务流程
 
 **Creation 流程（HITL）**：
-1. 用户提交主题 → `POST /creation` → 获取 `task_id`，状态 `running` 或 `interrupted`
-2. 轮询 `GET /tasks/{task_id}` 等待状态变为 `interrupted`（`awaiting: "outline_confirmation"`）
-3. 用户确认/修改大纲 → `POST /tasks/{task_id}/resume`（action: `confirm_outline` 或 `update_outline`）
-4. 继续轮询等待 `completed` 或 `failed`
+1. 用户提交主题 → WebSocket `create_creation` → 获取 `task_id`，状态 `running` 或 `interrupted`
+2. 通过 WebSocket `task_update` 消息实时接收状态变更，等待 `interrupted`（`awaiting: "outline_confirmation"`）
+3. 用户确认/修改大纲 → WebSocket `resume_task`（action: `confirm_outline` 或 `update_outline`）
+4. 继续通过 WebSocket 接收 `completed` 或 `failed` 状态
 
 **Polishing 流程（无人值守）**：
-1. 用户提交内容+模式 → `POST /polishing` → 获取 `task_id`
-2. 轮询 `GET /tasks/{task_id}` 等待 `completed` 或 `failed`
-3. 从 `result` 字段获取润色后内容
+1. 用户提交内容+模式 → WebSocket `create_polishing` → 获取 `task_id`
+2. 通过 WebSocket `task_update` 消息实时接收状态变更，等待 `completed` 或 `failed`
+3. 从 `task_result` 消息获取润色后内容
 
 ---
 
@@ -133,7 +133,7 @@ interface ErrorResponse {
 
 ### Phase 2: 状态管理与核心逻辑
 
-> Pinia store、轮询机制、任务生命周期管理
+> Pinia store、WebSocket 通信、任务生命周期管理
 
 #### Task 2.1: 任务 Store
 
@@ -145,25 +145,25 @@ interface ErrorResponse {
   - getters: `isRunning`, `isInterrupted`, `isCompleted`, `isFailed`
 - [ ] 任务历史持久化到 `localStorage`（最多 20 条）
 
-#### Task 2.2: 轮询 Composable
+#### Task 2.2: WebSocket 客户端
 
-通用轮询 Hook，支持启动/停止/错误重试/指数退避。
+WebSocket 单例客户端，支持自动重连、心跳检测、请求-响应配对。
 
-- [ ] 创建 `src/composables/usePolling.ts`
-  - 参数：`pollFn: () => Promise<T>`, `interval: number`, `shouldStop: (result) => boolean`
-  - 返回：`start()`, `stop()`, `isActive`, `lastResult`, `error`
-  - 特性：组件卸载自动清理、指数退避（失败时 2s→4s→8s→最大 30s）、最大重试 5 次
-  - `shouldStop` 回调：当 `status` 为 `completed` / `failed` 时自动停止
+- [ ] 创建 `src/api/wsClient.ts`
+  - 指数退避重连（1s-30s, 最多 6 次）
+  - 30s 心跳检测
+  - requestId 请求-响应配对
+  - 断连消息缓存
 
 #### Task 2.3: 任务生命周期 Composable
 
-封装完整的任务提交→轮询→中断→恢复流程。
+封装完整的任务提交→WebSocket 通信→中断→恢复流程。
 
 - [ ] 创建 `src/composables/useTaskLifecycle.ts`
-  - `submitCreation(topic, description)` — 提交创作任务，自动开始轮询
-  - `submitPolishing(content, mode)` — 提交润色任务，自动开始轮询
-  - `resumeTask(taskId, action, data)` — HITL 恢复，重启轮询
-  - 内部调用 `usePolling`，组件只需关心 UI 展示
+  - `submitCreation(topic, description)` — 提交创作任务，通过 WebSocket 接收实时状态
+  - `submitPolishing(content, mode)` — 提交润色任务，通过 WebSocket 接收实时状态
+  - `resumeTask(taskId, action, data)` — HITL 恢复，通过 WebSocket 发送
+  - 内部调用 WebSocket 客户端，组件只需关心 UI 展示
 
 ### Phase 3: 布局与通用组件
 
@@ -296,7 +296,7 @@ src/
 │       ├── resume.ts           # 恢复请求类型
 │       └── errors.ts           # API 错误类型
 ├── composables/
-│   ├── usePolling.ts           # 轮询 Hook
+│   ├── useWebSocket.ts         # WebSocket 连接 Hook
 │   └── useTaskLifecycle.ts     # 任务生命周期 Hook
 ├── stores/
 │   ├── counter.ts              # (已有，待移除)

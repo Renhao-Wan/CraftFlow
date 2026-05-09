@@ -47,7 +47,7 @@
 | `app/graph/tools/search.py`     | TavilySearch 工具封装（互联网搜索）            | `langchain-community`, `tavily-python` |
 | `app/graph/tools/sandbox.py`    | E2B CodeInterpreter 沙箱封装（代码执行与验证）   | `e2b-code-interpreter`                 |
 | `app/graph/tools/validators.py` | 纯 Python 工具（链接验证、可读性计算、Markdown 解析） | `requests`, `beautifulsoup4`           |
-| `app/graph/tools/retriever.py`  | 本地知识库检索工具（对接 pgvector 或 Milvus）     | `langchain-postgres`, `langchain-core` |
+| `app/graph/tools/retriever.py`  | 本地知识库检索工具（对接 pgvector 或 Chroma）     | `langchain-postgres`, `langchain-core` |
 
 ### 6. app/graph/creation/ - Creation Graph 模块
 
@@ -243,25 +243,25 @@ app/graph/
 ## 五、核心依赖库清单
 
 ```toml
-[tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.115.0"
-uvicorn = {extras = ["standard"], version = "^0.32.0"}
-pydantic = "^2.10.0"
-pydantic-settings = "^2.7.0"
-langgraph = "^0.2.60"
-langgraph-checkpoint = "^2.0.10"
-langgraph-checkpoint-postgres = "^2.0.14"
-langchain = "^0.3.14"
-langchain-core = "^0.3.28"
-langchain-openai = "^0.2.14"
-langchain-anthropic = "^0.3.3"
-langchain-community = "^0.3.13"
-tavily-python = "^0.5.0"
-e2b-code-interpreter = "^1.0.4"
-requests = "^2.32.3"
-beautifulsoup4 = "^4.12.3"
-loguru = "^0.7.3"
+[project]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "langgraph>=0.2.60",
+    "langgraph-checkpoint>=2.0.10",
+    "langchain>=0.3.14",
+    "langchain-core>=0.3.28",
+    "langchain-openai>=0.2.14",
+    "langchain-community>=0.3.13",
+    "tavily-python>=0.5.0",
+    "e2b-code-interpreter>=1.0.4",
+    "requests>=2.32.3",
+    "beautifulsoup4>=4.12.3",
+    "loguru>=0.7.3",
+]
 python-dotenv = "^1.0.1"
 asyncpg = "^0.30.0"
 
