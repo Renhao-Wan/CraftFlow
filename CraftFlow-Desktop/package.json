@@ -1,0 +1,26 @@
+{
+  "name": "craftflow-desktop",
+  "version": "0.1.0",
+  "description": "CraftFlow 智能长文创作平台 - 桌面版",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && pyinstaller craftflow.spec --distpath dist --workpath build --clean",
+    "build:electron": "electron-builder --win --x64",
+    "build": "npm run build:frontend && npm run build:backend && npm run build:electron",
+    "dev": "electron . --dev"
+  },
+  "keywords": [
+    "craftflow",
+    "electron",
+    "langgraph",
+    "ai-writing"
+  ],
+  "author": "CraftFlow Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
