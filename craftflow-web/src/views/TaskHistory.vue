@@ -172,7 +172,11 @@ onMounted(() => loadHistory())
 <style scoped>
 .history-page {
   max-width: 720px;
+  width: 100%;
   margin: 0 auto;
+  height: calc(100vh - var(--space-xl) * 2);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   padding-top: var(--space-lg);
   padding-bottom: var(--space-xl);
 }
@@ -265,6 +269,12 @@ onMounted(() => loadHistory())
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.history-list::-webkit-scrollbar {
+  display: none;
 }
 
 .history-item {
