@@ -10,6 +10,7 @@ import ProgressBar from '@/components/common/ProgressBar.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
+import BackToTop from '@/components/common/BackToTop.vue'
 
 const props = defineProps<{ taskId: string }>()
 
@@ -260,6 +261,8 @@ onUnmounted(() => {
         <ErrorAlert :message="error" :retryable="true" @retry="onRetry" />
       </div>
     </template>
+
+    <BackToTop />
   </div>
 </template>
 

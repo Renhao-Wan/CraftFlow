@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import OutlineEditor from '@/components/creation/OutlineEditor.vue'
+import BackToTop from '@/components/common/BackToTop.vue'
 import type { OutlineItem } from '@/components/creation/OutlineEditor.vue'
 
 const props = defineProps<{ taskId: string }>()
@@ -187,6 +188,8 @@ onUnmounted(() => {
         />
       </div>
     </template>
+
+    <BackToTop />
   </div>
 </template>
 
