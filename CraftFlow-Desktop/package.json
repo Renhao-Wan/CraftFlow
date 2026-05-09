@@ -17,7 +17,7 @@
     "langgraph",
     "ai-writing"
   ],
-  "author": "CraftFlow Team",
+  "author": "Renhao-Wan",
   "license": "MIT",
   "devDependencies": {
     "electron": "^33.0.0",
