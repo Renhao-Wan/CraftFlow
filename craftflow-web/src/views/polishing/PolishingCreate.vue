@@ -164,7 +164,7 @@ function onRetry(): void {
 }
 
 .required {
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .form-textarea {
@@ -190,11 +190,11 @@ function onRetry(): void {
 }
 
 .form-textarea.input-error {
-  border-color: #b91c1c;
+  border-color: var(--color-error);
 }
 
 .form-textarea:disabled {
-  background: #f9fafb;
+  background: var(--color-bg);
   cursor: not-allowed;
 }
 
@@ -207,7 +207,7 @@ function onRetry(): void {
 
 .error-text {
   font-size: 13px;
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .char-count {
@@ -217,7 +217,7 @@ function onRetry(): void {
 }
 
 .char-count.count-over {
-  color: #b91c1c;
+  color: var(--color-error);
   font-weight: 500;
 }
 
@@ -298,7 +298,7 @@ function onRetry(): void {
 .mode-extra {
   font-size: 12px;
   color: var(--color-text-muted);
-  background: #f3f4f6;
+  background: var(--color-bg);
   padding: 1px 8px;
   border-radius: 9999px;
   white-space: nowrap;

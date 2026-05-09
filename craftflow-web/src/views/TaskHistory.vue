@@ -210,16 +210,18 @@ onMounted(() => loadHistory())
 .clear-btn {
   padding: 6px 14px;
   font-size: 13px;
-  color: #b91c1c;
+  color: var(--color-error);
   background: transparent;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
+  opacity: 0.8;
 }
 
 .clear-btn:hover {
-  background: #fef2f2;
+  opacity: 1;
+  background: var(--color-error-bg);
 }
 
 /* 通用 */
@@ -320,8 +322,8 @@ onMounted(() => loadHistory())
 }
 
 .type-polishing {
-  color: #7c3aed;
-  background: #ede9fe;
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .item-topic {
@@ -361,8 +363,8 @@ onMounted(() => loadHistory())
 }
 
 .remove-btn:hover {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 
 /* 分页 */

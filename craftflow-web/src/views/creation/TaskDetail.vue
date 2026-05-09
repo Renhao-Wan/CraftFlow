@@ -336,7 +336,8 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background: #eaddd7;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
 }
 
 .action-btn:disabled {
@@ -357,8 +358,8 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-xl);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-lg);
 }
 

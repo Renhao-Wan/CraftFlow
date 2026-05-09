@@ -164,27 +164,27 @@ function onUpdate(): void {
 
 <style scoped>
 .outline-editor {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--color-bg-surface);
   overflow: hidden;
 }
 
 .outline-header {
   padding: 20px 24px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .outline-title {
   font-size: 18px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
   margin: 0 0 4px;
 }
 
 .outline-hint {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -195,7 +195,7 @@ function onUpdate(): void {
 }
 
 .outline-item {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .outline-item:last-child {
@@ -209,11 +209,11 @@ function onUpdate(): void {
   gap: 12px;
   padding: 16px 24px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
 }
 
 .item-view:hover {
-  background: #f9fafb;
+  background: var(--color-bg);
 }
 
 .item-number {
@@ -223,8 +223,8 @@ function onUpdate(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--color-info-bg);
+  color: var(--color-info);
   border-radius: 50%;
   font-size: 13px;
   font-weight: 600;
@@ -239,13 +239,13 @@ function onUpdate(): void {
 .item-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text);
   margin: 0 0 4px;
 }
 
 .item-summary {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -256,7 +256,7 @@ function onUpdate(): void {
   gap: 4px;
   flex-shrink: 0;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-fast);
 }
 
 .item-view:hover .item-actions {
@@ -265,7 +265,7 @@ function onUpdate(): void {
 
 .edit-icon {
   font-size: 16px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   padding-top: 2px;
 }
 
@@ -275,7 +275,7 @@ function onUpdate(): void {
   align-items: flex-start;
   gap: 12px;
   padding: 16px 24px;
-  background: #f9fafb;
+  background: var(--color-bg);
 }
 
 .edit-fields {
@@ -291,9 +291,9 @@ function onUpdate(): void {
   padding: 8px 12px;
   font-size: 14px;
   line-height: 1.5;
-  color: #1f2937;
-  background: #fff;
-  border: 1px solid #d1d5db;
+  color: var(--color-text);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   outline: none;
   box-sizing: border-box;
@@ -302,8 +302,8 @@ function onUpdate(): void {
 
 .edit-input:focus,
 .edit-textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .edit-textarea {
@@ -323,40 +323,40 @@ function onUpdate(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-bg-surface);
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
 }
 
 .btn-save {
-  color: #15803d;
-  border-color: #bbf7d0;
+  color: var(--color-success);
+  border-color: var(--color-success);
 }
 
 .btn-save:hover {
-  background: #f0fdf4;
+  background: var(--color-success-bg);
 }
 
 .btn-cancel {
-  color: #b91c1c;
-  border-color: #fecaca;
+  color: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .btn-cancel:hover {
-  background: #fef2f2;
+  background: var(--color-error-bg);
 }
 
 .btn-delete {
-  color: #b91c1c;
-  border-color: #fecaca;
+  color: var(--color-error);
+  border-color: var(--color-error);
   opacity: 1;
 }
 
 .btn-delete:hover {
-  background: #fef2f2;
+  background: var(--color-error-bg);
 }
 
 /* 底部按钮 */
@@ -364,8 +364,8 @@ function onUpdate(): void {
   display: flex;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid #f3f4f6;
-  background: #f9fafb;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 
 .btn {
@@ -375,7 +375,7 @@ function onUpdate(): void {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
+  transition: background var(--transition-normal), opacity var(--transition-fast);
 }
 
 .btn:disabled {
@@ -384,21 +384,21 @@ function onUpdate(): void {
 }
 
 .btn-primary {
-  background: #2563eb;
+  background: var(--color-accent);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--color-accent-hover);
 }
 
 .btn-secondary {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--color-bg);
 }
 </style>
