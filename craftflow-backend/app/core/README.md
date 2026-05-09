@@ -271,9 +271,8 @@ python tests/test_exceptions.py
 
 ## 🔗 相关文档
 
-- [开发计划](../../../docs/plan/dev_plan.md)
-- [Task 2 完成报告](../../../docs/plan/task_completion/task2_completion_report.md)
-- [架构设计方案](../../../docs/CraftFlow%20架构设计方案.md)
+- [开发计划](../../../docs/plan/dev-plan.md)
+- [系统架构设计](../../../../docs/architecture.md)
 
 ---
 

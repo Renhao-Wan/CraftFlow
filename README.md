@@ -38,7 +38,6 @@ CraftFlow/
 ├── craftflow-web/           # Vue 3 前端（TypeScript + Pinia + Vite）
 ├── CraftFlow-Desktop/       # Electron 桌面版（打包后端+前端）
 ├── scripts/                 # 构建辅助脚本
-├── CLAUDE.md                # Claude Code 项目指引
 └── README.md                # 本文件
 ```
 
@@ -55,7 +54,7 @@ uv sync --extra dev        # 含 pytest, black, ruff
 
 # 配置环境变量
 cp .env.example .env.dev
-# 编辑 .env.dev，填写 OPENAI_API_KEY 等必要配置
+# 编辑 .env.dev，填写 LLM_API_KEY 等必要配置
 
 # 启动开发服务器
 uv run uvicorn app.main:app --reload --env-file .env.dev --host 127.0.0.1 --port 8000
@@ -84,17 +83,16 @@ Node 要求：`^20.19.0 || >=22.12.0`
 ```bash
 cd CraftFlow-Desktop
 
-# 安装依赖
-npm install
+# 一键构建（同步源码 → 安装依赖 → 构建前端 → 构建后端 → 打包 Electron）
+scripts\build-all.bat
+```
 
-# 开发模式（启动 Electron + 后端 + 前端）
+构建产物输出到 `CraftFlow-Desktop/release/` 目录。
+
+开发模式：
+
+```bash
 npm run dev
-
-# 构建桌面应用
-npm run build
-
-# 打包为可执行文件
-npm run dist
 ```
 
 ## 技术栈
@@ -113,9 +111,9 @@ npm run dist
 - [后端 README](craftflow-backend/README.md) — 后端项目详细文档
 - [前端 README](craftflow-web/README.md) — 前端项目详细文档
 - [桌面版 README](CraftFlow-Desktop/README.md) — 桌面版详细文档
-- [后端架构设计](craftflow-backend/docs/CraftFlow%20架构设计方案.md) — 整体架构设计
-- [Creation Graph 流程](craftflow-backend/docs/Creation%20Graph%20创作流程详解.md) — 创作图详细流程
-- [Polishing Graph 流程](craftflow-backend/docs/Polishing%20Graph%20润色流程详解.md) — 润色图详细流程
+- [系统架构设计](docs/architecture.md) — 整体架构设计
+- [Creation Graph 流程](craftflow-backend/docs/creation-graph.md) — 创作图详细流程
+- [Polishing Graph 流程](craftflow-backend/docs/polishing-graph.md) — 润色图详细流程
 
 ## 许可证
 
