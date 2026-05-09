@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
+import { useNavigationStore } from '@/stores/navigation'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import { inferTaskType, formatTime, taskRouteName } from '@/utils/taskHelpers'
 import type { TaskStatus } from '@/api/types/task'
@@ -16,6 +17,7 @@ interface RecentTask {
 
 const router = useRouter()
 const taskStore = useTaskStore()
+const navStore = useNavigationStore()
 
 const recentTasks = ref<RecentTask[]>([])
 
@@ -34,6 +36,7 @@ async function loadRecent(): Promise<void> {
 }
 
 function goToTask(item: RecentTask): void {
+  navStore.setDetailSource('history')
   router.push({ name: taskRouteName(item.type), params: { taskId: item.taskId } })
 }
 

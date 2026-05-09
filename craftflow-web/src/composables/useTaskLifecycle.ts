@@ -10,6 +10,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
+import { useNavigationStore } from '@/stores/navigation'
 import { wsClient, type WsMessage } from '@/api/wsClient'
 import type { TaskStatus } from '@/api/types/task'
 import type { ResumeAction } from '@/api/types/resume'
@@ -79,6 +80,7 @@ export interface UseTaskLifecycleReturn {
 export function useTaskLifecycle(): UseTaskLifecycleReturn {
   const router = useRouter()
   const taskStore = useTaskStore()
+  const navStore = useNavigationStore()
 
   const submitting = ref(false)
   const submitError = ref<string | null>(null)
@@ -97,6 +99,7 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     taskType.value = type
     subscribeTask(taskId)
 
+    navStore.setDetailSource(type)
     if (type === 'creation') {
       await router.push({ name: 'task-detail', params: { taskId } })
     } else {

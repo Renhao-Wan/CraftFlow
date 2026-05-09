@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
+import { useNavigationStore } from '@/stores/navigation'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
@@ -18,6 +19,7 @@ interface HistoryItem {
 
 const router = useRouter()
 const taskStore = useTaskStore()
+const navStore = useNavigationStore()
 
 const items = ref<HistoryItem[]>([])
 const loading = ref(false)
@@ -50,6 +52,7 @@ async function loadHistory(page = 1): Promise<void> {
 }
 
 function goToDetail(item: HistoryItem): void {
+  navStore.setDetailSource('history')
   router.push({ name: taskRouteName(item.type), params: { taskId: item.taskId } })
 }
 

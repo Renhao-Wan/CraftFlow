@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useNavigationStore } from '@/stores/navigation'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -41,6 +42,15 @@ const router = createRouter({
       component: () => import('@/views/NotFound.vue'),
     },
   ],
+})
+
+const detailRouteNames = new Set(['task-detail', 'polishing-result'])
+
+router.afterEach((to) => {
+  if (!detailRouteNames.has(to.name as string)) {
+    const navStore = useNavigationStore()
+    navStore.clearDetailSource()
+  }
 })
 
 export default router

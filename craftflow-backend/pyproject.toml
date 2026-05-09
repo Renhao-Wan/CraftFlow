@@ -28,6 +28,8 @@ dependencies = [
     "asyncpg>=0.30.0",
     "aiosqlite>=0.20.0",
     "langchain-tavily>=0.2.18",
+    "chromadb==1.5.8",
+    "langchain-chroma>=0.1.0"
 ]
 
 [project.optional-dependencies]
@@ -37,10 +39,6 @@ dev = [
     "httpx>=0.28.1",
     "black>=24.10.0",
     "ruff>=0.8.4",
-]
-vector-db = [
-    "chromadb==1.5.8",
-    "langchain-chroma>=0.1.0",
 ]
 
 [build-system]

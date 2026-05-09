@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useNavigationStore } from '@/stores/navigation'
 
 const route = useRoute()
 const router = useRouter()
+const navStore = useNavigationStore()
 const sidebarOpen = ref(false)
 
 const navItems = [
@@ -14,7 +16,16 @@ const navItems = [
 
 const currentPath = computed(() => route.path)
 
+const pathToSource: Record<string, string> = {
+  '/creation': 'creation',
+  '/polishing': 'polishing',
+  '/history': 'history',
+}
+
 function isActive(path: string): boolean {
+  if (navStore.detailSource) {
+    return pathToSource[path] === navStore.detailSource
+  }
   return currentPath.value === path || currentPath.value.startsWith(path + '/')
 }
 
