@@ -136,7 +136,7 @@
 
 ## 三、Prompt 管理策略
 
-详细内容请参见 [Prompt 管理策略](./supplementar/prompt_management_strategy.md)。
+详细内容请参见 [Prompt 管理策略](./supplementary/prompt-strategy.md)。
 
 ### 设计原则
 

@@ -40,14 +40,14 @@ import { computed } from 'vue'
 
 .progress-track {
   flex: 1;
-  background: #e5e7eb;
+  background: var(--color-border);
   border-radius: 9999px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #2563eb;
+  background: var(--color-accent);
   border-radius: 9999px;
   transition: width 0.3s ease;
 }
@@ -55,7 +55,7 @@ import { computed } from 'vue'
 .progress-text {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
   min-width: 40px;
   text-align: right;
 }

@@ -22,7 +22,7 @@ const html = computed(() => {
 .markdown-body {
   font-size: 15px;
   line-height: 1.75;
-  color: #1f2937;
+  color: var(--color-text);
 }
 
 .markdown-body :deep(h1) {
@@ -30,7 +30,7 @@ const html = computed(() => {
   font-weight: 700;
   margin: 24px 0 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .markdown-body :deep(h2) {
@@ -62,14 +62,14 @@ const html = computed(() => {
 .markdown-body :deep(blockquote) {
   margin: 0 0 12px;
   padding: 8px 16px;
-  border-left: 4px solid #d1d5db;
-  background: #f9fafb;
-  color: #6b7280;
+  border-left: 4px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
 }
 
 .markdown-body :deep(code) {
   padding: 2px 6px;
-  background: #f3f4f6;
+  background: var(--color-bg);
   border-radius: 4px;
   font-size: 14px;
   font-family: ui-monospace, monospace;
@@ -78,19 +78,19 @@ const html = computed(() => {
 .markdown-body :deep(pre) {
   margin: 0 0 12px;
   padding: 16px;
-  background: #1f2937;
+  background: var(--color-text);
   border-radius: 8px;
   overflow-x: auto;
 }
 
 .markdown-body :deep(pre code) {
   background: transparent;
-  color: #e5e7eb;
+  color: var(--color-bg);
   padding: 0;
 }
 
 .markdown-body :deep(a) {
-  color: #2563eb;
+  color: var(--color-accent);
   text-decoration: none;
 }
 
@@ -107,19 +107,19 @@ const html = computed(() => {
 .markdown-body :deep(th),
 .markdown-body :deep(td) {
   padding: 8px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   text-align: left;
 }
 
 .markdown-body :deep(th) {
-  background: #f9fafb;
+  background: var(--color-bg);
   font-weight: 600;
 }
 
 .markdown-body :deep(hr) {
   margin: 24px 0;
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .markdown-body :deep(img) {

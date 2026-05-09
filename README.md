@@ -1,6 +1,21 @@
 # CraftFlow
 
-> 基于 LangGraph 的智能长文创作与多阶审校平台
+<div align="center">
+
+![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-20.x_|_22.x-339933.svg?logo=node.js&logoColor=white)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.5-4FC08D.svg?logo=vue.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-1A1A1A.svg?logo=langchain&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-33-47848F.svg?logo=electron&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF.svg?logo=vite&logoColor=white)
+![Pinia](https://img.shields.io/badge/Pinia-3-FAD136.svg?logo=pinia&logoColor=white)
+
+**基于 LangGraph 的智能长文创作与多阶审校平台**
+
+</div>
 
 ## 项目简介
 
@@ -37,10 +52,20 @@ CraftFlow/
 ├── craftflow-backend/       # Python 后端（FastAPI + LangGraph）
 ├── craftflow-web/           # Vue 3 前端（TypeScript + Pinia + Vite）
 ├── CraftFlow-Desktop/       # Electron 桌面版（打包后端+前端）
+├── docs/                    # 项目文档
 ├── scripts/                 # 构建辅助脚本
-├── CLAUDE.md                # Claude Code 项目指引
+├── LICENSE                  # Apache-2.0 许可证
 └── README.md                # 本文件
 ```
+
+## 前置要求
+
+| 工具 | 版本要求 | 用途 |
+|------|----------|------|
+| Python | >= 3.11 | 后端运行 |
+| Node.js | ^20.19.0 或 >= 22.12.0 | 前端/桌面版构建 |
+| uv | 最新版 | Python 包管理 |
+| Git |任意版本 | 版本控制 |
 
 ## 快速开始
 
@@ -55,7 +80,7 @@ uv sync --extra dev        # 含 pytest, black, ruff
 
 # 配置环境变量
 cp .env.example .env.dev
-# 编辑 .env.dev，填写 OPENAI_API_KEY 等必要配置
+# 编辑 .env.dev，填写 LLM_API_KEY 等必要配置
 
 # 启动开发服务器
 uv run uvicorn app.main:app --reload --env-file .env.dev --host 127.0.0.1 --port 8000
@@ -77,24 +102,21 @@ npm install
 npm run dev
 ```
 
-Node 要求：`^20.19.0 || >=22.12.0`
-
 ### 桌面版 (CraftFlow-Desktop)
 
 ```bash
 cd CraftFlow-Desktop
 
-# 安装依赖
-npm install
+# 一键构建（同步源码 → 安装依赖 → 构建前端 → 构建后端 → 打包 Electron）
+scripts\build-all.bat
+```
 
-# 开发模式（启动 Electron + 后端 + 前端）
+构建产物输出到 `CraftFlow-Desktop/release/` 目录。
+
+开发模式：
+
+```bash
 npm run dev
-
-# 构建桌面应用
-npm run build
-
-# 打包为可执行文件
-npm run dist
 ```
 
 ## 技术栈
@@ -110,13 +132,50 @@ npm run dist
 
 ## 相关文档
 
+### 子项目文档
+
 - [后端 README](craftflow-backend/README.md) — 后端项目详细文档
 - [前端 README](craftflow-web/README.md) — 前端项目详细文档
 - [桌面版 README](CraftFlow-Desktop/README.md) — 桌面版详细文档
-- [后端架构设计](craftflow-backend/docs/CraftFlow%20架构设计方案.md) — 整体架构设计
-- [Creation Graph 流程](craftflow-backend/docs/Creation%20Graph%20创作流程详解.md) — 创作图详细流程
-- [Polishing Graph 流程](craftflow-backend/docs/Polishing%20Graph%20润色流程详解.md) — 润色图详细流程
+
+### 架构设计
+
+- [系统架构设计](docs/architecture.md) — 整体架构设计
+- [接口流程图解](docs/api-flow.md) — API 接口流程图
+- [设计补充文档](docs/design-notes.md) — 设计补充说明
+- [未来拓展路线图](docs/roadmap.md) — 项目功能规划
+
+### 后端技术文档
+
+- [Creation Graph 流程](craftflow-backend/docs/creation-graph.md) — 创作图详细流程
+- [Polishing Graph 流程](craftflow-backend/docs/polishing-graph.md) — 润色图详细流程
+- [核心开发蓝图](craftflow-backend/docs/core-dev-guide.md) — 核心开发规范
+- [工具调用说明](craftflow-backend/docs/tool-calling.md) — 工具链调用说明
+
+## 贡献指南
+
+欢迎贡献代码、报告问题或提出改进建议。
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+### 提交规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+- `feat:` 新功能
+- `fix:` 修复问题
+- `docs:` 文档更新
+- `style:` 代码格式调整
+- `refactor:` 重构
+- `test:` 测试相关
+- `chore:` 构建/工具链更新
 
 ## 许可证
 
 本项目采用 Apache-2.0 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+Copyright 2026 Renhao-Wan

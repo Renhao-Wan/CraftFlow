@@ -192,8 +192,8 @@ onMounted(loadRecent)
 }
 
 .action-icon-polishing {
-  background: #f0ead6;
-  color: #92730a;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .action-info {
@@ -302,8 +302,8 @@ onMounted(loadRecent)
 }
 
 .type-polishing {
-  color: #7c3aed;
-  background: #ede9fe;
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .recent-topic {

@@ -226,9 +226,9 @@ Docker 支持尚在规划中，敬请期待。
 
 详细架构文档请参考：
 
-- [架构设计方案](docs/CraftFlow%20架构设计方案.md)
-- [核心开发蓝图](docs/CraftFlow%20核心开发蓝图与架构规范.md)
-- [开发计划](docs/plan/dev_plan.md)
+- [系统架构设计](../../docs/architecture.md) — 整体架构设计
+- [核心开发蓝图](docs/core-dev-guide.md)
+- [开发计划](docs/plan/dev-plan.md)
 
 ### 核心设计理念
 

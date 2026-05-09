@@ -152,7 +152,7 @@ function onRetry(): void {
 }
 
 .required {
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .optional {
@@ -183,12 +183,12 @@ function onRetry(): void {
 }
 
 .form-input.input-error {
-  border-color: #b91c1c;
+  border-color: var(--color-error);
 }
 
 .form-input:disabled,
 .form-textarea:disabled {
-  background: #f9fafb;
+  background: var(--color-bg);
   cursor: not-allowed;
 }
 
@@ -207,7 +207,7 @@ function onRetry(): void {
 
 .error-text {
   font-size: 13px;
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .char-count {
@@ -217,7 +217,7 @@ function onRetry(): void {
 }
 
 .char-count.count-over {
-  color: #b91c1c;
+  color: var(--color-error);
   font-weight: 500;
 }
 

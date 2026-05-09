@@ -32,30 +32,42 @@ npm install
 npm run dev
 ```
 
-### 构建打包
+### 一键构建（推荐）
+
+使用构建脚本自动完成全部流程（同步源码 → 安装依赖 → 构建前端 → 构建后端 → 打包 Electron）：
 
 ```bash
-# 全量构建（前端 + 后端 + Electron）
-npm run build
-
-# 打包为可执行文件（Windows NSIS 安装程序）
-npm run dist
+scripts\build-all.bat
 ```
 
-也可以分步构建：
-
-```bash
-# 1. 构建前端
-npm run build:frontend
-
-# 2. 构建后端（PyInstaller）
-npm run build:backend
-
-# 3. 打包 Electron 应用
-npm run build:electron
-```
+脚本会自动：
+1. 从 `craftflow-backend/` 和 `craftflow-web/` 同步最新源码
+2. 安装所有依赖
+3. 构建前端（Vite）和后端（PyInstaller）
+4. 打包为 Windows NSIS 安装程序
 
 构建产物输出到 `release/` 目录。
+
+### 分步构建
+
+也可以手动分步执行：
+
+```bash
+# 1. 同步源文件
+node scripts/prepare.js
+
+# 2. 安装依赖
+npm install
+
+# 3. 构建前端
+npm run build:frontend
+
+# 4. 构建后端（PyInstaller）
+npm run build:backend
+
+# 5. 打包 Electron 应用
+npm run build:electron
+```
 
 ## 架构说明
 
