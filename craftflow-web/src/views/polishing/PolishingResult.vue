@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import BackToTop from '@/components/common/BackToTop.vue'
+import { usePdfExport } from '@/composables/usePdfExport'
 
 const props = defineProps<{ taskId: string }>()
 
@@ -20,6 +21,8 @@ const { loadTask, stop } = useTaskLifecycle()
 
 const copied = ref(false)
 const viewMode = ref<'result' | 'compare' | 'factCheck'>('result')
+const resultBodyRef = ref<HTMLElement | null>(null)
+const { exporting, exportToPdf } = usePdfExport()
 
 const task = computed(() => taskStore.currentTask)
 const isNotFound = computed(
@@ -99,6 +102,12 @@ async function onCopy(): Promise<void> {
   } catch {
     // clipboard API not available
   }
+}
+
+async function onExport(): Promise<void> {
+  if (!resultBodyRef.value || !task.value) return
+  const filename = task.value.topic || '润色结果'
+  await exportToPdf(resultBodyRef.value, filename)
 }
 
 function onBack(): void {
@@ -210,6 +219,9 @@ onUnmounted(() => {
             <button class="copy-btn" @click="onCopy">
               {{ copied ? '已复制' : '复制全文' }}
             </button>
+            <button class="copy-btn" :disabled="exporting || viewMode !== 'result'" @click="onExport">
+              {{ exporting ? '导出中...' : '导出 PDF' }}
+            </button>
           </div>
         </div>
 
@@ -223,7 +235,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 单栏结果 -->
-        <div v-if="viewMode === 'result'" class="result-body">
+        <div v-if="viewMode === 'result'" ref="resultBodyRef" class="result-body">
           <MarkdownRenderer v-if="result" :content="result" />
           <p v-else class="empty-hint">暂无润色结果</p>
         </div>
@@ -416,6 +428,11 @@ onUnmounted(() => {
 
 .copy-btn:hover {
   background: #eaddd7;
+}
+
+.copy-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .result-body {

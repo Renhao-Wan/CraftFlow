@@ -10,6 +10,7 @@ import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import OutlineEditor from '@/components/creation/OutlineEditor.vue'
 import BackToTop from '@/components/common/BackToTop.vue'
+import { usePdfExport } from '@/composables/usePdfExport'
 import type { OutlineItem } from '@/components/creation/OutlineEditor.vue'
 
 const props = defineProps<{ taskId: string }>()
@@ -19,6 +20,8 @@ const taskStore = useTaskStore()
 const { resumeTask, loadTask, stop, submitting, submitError } = useTaskLifecycle()
 
 const copied = ref(false)
+const resultBodyRef = ref<HTMLElement | null>(null)
+const { exporting, exportToPdf } = usePdfExport()
 
 const task = computed(() => taskStore.currentTask)
 const isNotFound = computed(
@@ -58,6 +61,12 @@ async function onCopy(): Promise<void> {
   } catch {
     // fallback
   }
+}
+
+async function onExport(): Promise<void> {
+  if (!resultBodyRef.value || !task.value) return
+  const filename = task.value.topic || '创作结果'
+  await exportToPdf(resultBodyRef.value, filename)
 }
 
 function onBack(): void {
@@ -168,11 +177,16 @@ onUnmounted(() => {
       <div v-else-if="status === 'completed'" class="state-completed">
         <div class="result-header">
           <h2 class="state-title">创作完成</h2>
-          <button class="copy-btn" @click="onCopy">
-            {{ copied ? '已复制' : '复制全文' }}
-          </button>
+          <div class="result-actions">
+            <button class="action-btn" @click="onCopy">
+              {{ copied ? '已复制' : '复制全文' }}
+            </button>
+            <button class="action-btn" :disabled="exporting" @click="onExport">
+              {{ exporting ? '导出中...' : '导出 PDF' }}
+            </button>
+          </div>
         </div>
-        <div class="result-body">
+        <div ref="resultBodyRef" class="result-body">
           <MarkdownRenderer v-if="result" :content="result" />
           <p v-else class="empty-hint">暂无结果内容</p>
         </div>
@@ -303,7 +317,13 @@ onUnmounted(() => {
   justify-content: space-between;
 }
 
-.copy-btn {
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
   padding: 6px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -315,8 +335,13 @@ onUnmounted(() => {
   transition: all var(--transition-fast);
 }
 
-.copy-btn:hover {
+.action-btn:hover {
   background: #eaddd7;
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .result-body {
