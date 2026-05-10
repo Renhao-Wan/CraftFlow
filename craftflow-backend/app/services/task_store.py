@@ -1,4 +1,4 @@
-"""SQLite 任务持久化存储
+"""SQLite 任务持久化存储  TODO 抽象接口，支持多种存储实现（SQLite / PostgreSQL）
 
 使用 aiosqlite 将终态任务（completed / failed）和中断任务（interrupted）持久化到 SQLite。
 运行中任务（running）继续用 _tasks dict 内存管理。

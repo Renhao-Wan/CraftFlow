@@ -76,13 +76,13 @@ export const useTaskStore = defineStore('task', () => {
   /** 总页数 */
   const totalPages = computed(() => Math.ceil(taskTotal.value / pageSize.value))
 
-  /** 删除任务（REST） */
+  /** 删除任务（REST），成功后重新拉取当前页以保持状态一致 */
   async function deleteTask(taskId: string): Promise<void> {
     await apiDeleteTask(taskId)
-    taskList.value = taskList.value.filter((t) => t.task_id !== taskId)
     if (currentTask.value?.task_id === taskId) {
       currentTask.value = null
     }
+    await fetchTaskList(currentPage.value)
   }
 
   /** 处理 WS task_update 推送 */
