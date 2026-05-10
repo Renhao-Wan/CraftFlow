@@ -79,9 +79,6 @@ class Settings(BaseSettings):
 
     # LLM 温度参数
     default_temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="默认温度参数")
-    editor_node_temperature: float = Field(
-        default=0.2, ge=0.0, le=2.0, description="编辑节点温度参数（更保守）"
-    )
 
     # ============================================
     # 状态持久化配置

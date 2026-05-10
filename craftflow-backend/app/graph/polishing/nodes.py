@@ -16,7 +16,7 @@ from typing import Any, Callable, Awaitable
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm
+from app.graph.common.llm_factory import get_default_llm, get_factchecker_llm
 from app.graph.polishing.prompts import (
     FACT_CHECKER_HUMAN_PROMPT,
     FACT_CHECKER_SYSTEM_PROMPT,
@@ -248,7 +248,7 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     await _report_progress(task_id, "fact_checker", "事实核查", fc_start)
 
     try:
-        llm = get_default_llm()
+        llm = get_factchecker_llm()
         llm_with_tools = llm.bind_tools(SEARCH_TOOLS)
 
         human_message = FACT_CHECKER_HUMAN_PROMPT.format(content=content)

@@ -16,7 +16,15 @@ sys.path.insert(0, str(project_root))
 
 from app.core.config import settings
 from app.core.logger import logger
-from app.graph.common import get_custom_llm, get_default_llm, get_editor_llm, LLMFactory
+from app.graph.common import (
+    get_custom_llm,
+    get_default_llm,
+    get_editor_llm,
+    get_factchecker_llm,
+    get_planner_llm,
+    get_writer_llm,
+    LLMFactory,
+)
 
 
 async def test_llm_creation():
@@ -40,6 +48,19 @@ async def test_llm_creation():
         logger.info("创建自定义参数 LLM 实例...")
         custom_llm = get_custom_llm(temperature=0.5, max_tokens=2000)
         logger.info(f"✅ 自定义 LLM: {type(custom_llm).__name__}")
+
+        # 测试节点专用 LLM
+        logger.info("创建 Planner LLM 实例...")
+        planner_llm = get_planner_llm()
+        logger.info(f"✅ Planner LLM: {type(planner_llm).__name__}")
+
+        logger.info("创建 Writer LLM 实例...")
+        writer_llm = get_writer_llm()
+        logger.info(f"✅ Writer LLM: {type(writer_llm).__name__}")
+
+        logger.info("创建 FactChecker LLM 实例...")
+        factchecker_llm = get_factchecker_llm()
+        logger.info(f"✅ FactChecker LLM: {type(factchecker_llm).__name__}")
 
     except Exception as e:
         logger.error(f"❌ LLM 创建失败: {e}")
@@ -144,7 +165,8 @@ async def main():
     logger.info(f"当前配置:")
     logger.info(f"  - LLM Model: {settings.llm_model}")
     logger.info(f"  - Default Temperature: {settings.default_temperature}")
-    logger.info(f"  - Editor Temperature: {settings.editor_node_temperature}")
+    from app.graph.common.llm_factory import EDITOR_NODE_TEMPERATURE
+    logger.info(f"  - Editor Temperature: {EDITOR_NODE_TEMPERATURE}")
     logger.info(f"  - Max Tokens: {settings.max_tokens}")
     logger.info(f"  - API Key 已配置: {'是' if settings.llm_api_key else '否'}")
 

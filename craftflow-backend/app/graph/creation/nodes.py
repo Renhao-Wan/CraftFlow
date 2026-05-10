@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_custom_llm
+from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
 from app.graph.creation.prompts import (
     PLANNER_HUMAN_PROMPT,
     PLANNER_SYSTEM_PROMPT,
@@ -136,7 +136,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例（大纲生成需要更大的 max_tokens 以容纳完整 JSON）
-        llm = get_custom_llm(max_tokens=8192)
+        llm = get_planner_llm()
 
         # 构建 Prompt
         description = state.get("description", "")
@@ -232,7 +232,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
-        llm = get_default_llm()
+        llm = get_writer_llm()
 
         # 构建 Prompt
         human_message = WRITER_HUMAN_PROMPT.format(

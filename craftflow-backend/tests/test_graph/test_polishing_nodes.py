@@ -296,7 +296,7 @@ class TestFactCheckerNode:
         # 模拟 llm.ainvoke 也返回相同的响应
         mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
-        with patch("app.graph.polishing.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.nodes.get_factchecker_llm", return_value=mock_llm):
             state: PolishingState = {
                 "content": "测试内容",
                 "mode": 3,

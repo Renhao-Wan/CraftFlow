@@ -262,13 +262,10 @@ class TestCreationGraphIntegration:
         mock_response = MagicMock()
         mock_response.content = '{"outline": [{"title": "引言", "summary": "介绍"}, {"title": "总结", "summary": "归纳"}]}'
 
-        mock_llm_with_tools = AsyncMock()
-        mock_llm_with_tools.ainvoke.return_value = mock_response
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke.return_value = mock_response
 
-        mock_llm = MagicMock()
-        mock_llm.bind_tools.return_value = mock_llm_with_tools
-
-        with patch("app.graph.creation.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.creation.nodes.get_planner_llm", return_value=mock_llm):
             graph = get_creation_graph()
 
             # 初始状态
