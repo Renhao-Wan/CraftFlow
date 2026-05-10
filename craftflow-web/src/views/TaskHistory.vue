@@ -7,11 +7,12 @@ import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import { inferTaskType, formatTime, taskRouteName } from '@/utils/taskHelpers'
+import type { TaskStatus } from '@/api/types/task'
 
 interface HistoryItem {
   taskId: string
   topic: string
-  status: string
+  status: TaskStatus
   createdAt: string
   type: 'creation' | 'polishing'
 }
