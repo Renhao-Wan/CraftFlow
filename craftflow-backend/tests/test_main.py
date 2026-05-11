@@ -3,9 +3,9 @@
 测试 FastAPI 应用的创建、中间件、异常处理器、路由注册和生命周期。
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app

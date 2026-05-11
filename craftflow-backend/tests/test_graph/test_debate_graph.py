@@ -4,9 +4,9 @@
 使用 mock 隔离 LLM 调用，验证子图的结构和状态流转行为。
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from langchain_core.messages import AIMessage
 
 from app.graph.polishing.debate import nodes as _debate_nodes_module
@@ -16,7 +16,6 @@ from app.graph.polishing.debate.nodes import (
     increment_iteration_node,
 )
 from app.graph.polishing.debate.state import DebateState
-
 
 # ============================================
 # 辅助函数

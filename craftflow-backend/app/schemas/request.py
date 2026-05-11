@@ -5,14 +5,15 @@ API 请求模型定义
 使用 Pydantic 进行数据校验和序列化。
 """
 
-from typing import Optional, Any
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
 class CreationRequest(BaseModel):
     """
     创作任务请求模型
-    
+
     用于 POST /api/v1/creation 接口
     """
     topic: str = Field(
@@ -22,14 +23,14 @@ class CreationRequest(BaseModel):
         description="文章主题，必填",
         examples=["微服务架构演进"]
     )
-    
+
     description: Optional[str] = Field(
         default="",
         max_length=2000,
         description="补充描述或需求说明，可选",
         examples=["请重点关注容器化部署和服务治理"]
     )
-    
+
     @field_validator("topic")
     @classmethod
     def validate_topic(cls, v: str) -> str:
@@ -37,7 +38,7 @@ class CreationRequest(BaseModel):
         if not v.strip():
             raise ValueError("主题不能为空白字符")
         return v.strip()
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -50,7 +51,7 @@ class CreationRequest(BaseModel):
 class PolishingRequest(BaseModel):
     """
     润色任务请求模型
-    
+
     用于 POST /api/v1/polishing 接口
     """
     content: str = Field(
@@ -59,7 +60,7 @@ class PolishingRequest(BaseModel):
         description="待润色的文章内容（Markdown 格式）",
         examples=["# 标题\n\n正文内容..."]
     )
-    
+
     mode: int = Field(
         default=2,
         ge=1,
@@ -67,7 +68,7 @@ class PolishingRequest(BaseModel):
         description="润色模式：1=极速格式化, 2=专家对抗审查, 3=事实核查",
         examples=[2]
     )
-    
+
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: str) -> str:
@@ -75,7 +76,7 @@ class PolishingRequest(BaseModel):
         if not v.strip():
             raise ValueError("内容不能为空白字符")
         return v.strip()
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -88,7 +89,7 @@ class PolishingRequest(BaseModel):
 class ResumeRequest(BaseModel):
     """
     任务恢复请求模型
-    
+
     用于 POST /api/v1/tasks/{task_id}/resume 接口
     用于在 interrupt 断点处注入人工修改的数据并恢复图执行
     """
@@ -97,13 +98,13 @@ class ResumeRequest(BaseModel):
         description="恢复动作类型",
         examples=["confirm_outline", "update_outline"]
     )
-    
+
     data: Optional[dict[str, Any]] = Field(
         default=None,
         description="注入的数据（如修改后的大纲）",
         examples=[{"outline": [{"title": "第一章", "summary": "概述"}]}]
     )
-    
+
     @field_validator("action")
     @classmethod
     def validate_action(cls, v: str) -> str:
@@ -117,7 +118,7 @@ class ResumeRequest(BaseModel):
         if v not in allowed_actions:
             raise ValueError(f"不支持的动作类型: {v}，允许的值: {allowed_actions}")
         return v
-    
+
     class Config:
         json_schema_extra = {
             "example": {

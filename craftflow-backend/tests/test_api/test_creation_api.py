@@ -5,11 +5,11 @@
 mock 服务层以隔离 Graph 执行。
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock
 
-from httpx import AsyncClient, ASGITransport
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies import get_creation_service, get_polishing_service, get_task_store
 from app.api.v1.creation import router as creation_router
@@ -45,6 +45,7 @@ def mock_task_store():
 def app(mock_service, mock_polishing_service, mock_task_store):
     """创建测试用 FastAPI 应用，覆盖所有服务依赖"""
     from fastapi import FastAPI
+
     from app.core.exceptions import register_exception_handlers
 
     application = FastAPI()

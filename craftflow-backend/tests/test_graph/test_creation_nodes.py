@@ -4,10 +4,9 @@
 使用 mock 隔离 LLM 调用，验证节点的状态更新行为。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage
+import pytest
 
 from app.graph.creation.nodes import (
     _extract_json_from_response,
@@ -16,7 +15,6 @@ from app.graph.creation.nodes import (
     writer_node,
 )
 from app.graph.creation.state import CreationState
-
 
 # ============================================
 # 辅助函数测试

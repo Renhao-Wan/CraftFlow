@@ -4,16 +4,15 @@
 使用 mock 隔离 LLM 调用和子图调用，验证图的状态流转。
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from langchain_core.messages import AIMessage
 
 from app.graph.polishing import builder as _builder_module
 from app.graph.polishing import nodes as _nodes_module
 from app.graph.polishing.builder import get_polishing_graph
 from app.graph.polishing.state import PolishingState
-
 
 # ============================================
 # 辅助函数

@@ -9,11 +9,10 @@ from app.schemas.request import (
     PolishingRequest,
     ResumeRequest,
 )
-
 from app.schemas.response import (
+    ErrorResponse,
     TaskResponse,
     TaskStatusResponse,
-    ErrorResponse,
 )
 
 __all__ = [

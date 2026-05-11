@@ -3,8 +3,8 @@
 定义业务异常类型，并提供 FastAPI 全局异常处理器。
 """
 
-from typing import Any
 from datetime import datetime
+from typing import Any
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
@@ -166,7 +166,7 @@ async def craftflow_exception_handler(request: Request, exc: CraftFlowException)
         JSON 格式的错误响应
     """
     from app.schemas.response import ErrorResponse
-    
+
     logger.error(
         f"业务异常 | 路径: {request.url.path} | "
         f"错误码: {exc.error_code} | 消息: {exc.message} | "
@@ -254,7 +254,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
         JSON 格式的错误响应
     """
     from app.schemas.response import ErrorResponse
-    
+
     logger.exception(
         f"未捕获异常 | 路径: {request.url.path} | 类型: {type(exc).__name__} | " f"消息: {str(exc)}"
     )

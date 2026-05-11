@@ -6,13 +6,12 @@
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
+from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.state import (
     DebateRound,
     PolishingState,
     ScoreDetail,
 )
-from app.graph.polishing.debate.state import DebateState
-
 
 # ============================================
 # 辅助类型测试

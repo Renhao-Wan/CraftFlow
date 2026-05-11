@@ -211,4 +211,4 @@ class TaskStore:
 def _row_to_dict(cursor: aiosqlite.Cursor, row: aiosqlite.Row) -> dict[str, Any]:
     """将数据库行转换为字典"""
     columns = [desc[0] for desc in cursor.description]
-    return dict(zip(columns, row))
+    return dict(zip(columns, row, strict=False))

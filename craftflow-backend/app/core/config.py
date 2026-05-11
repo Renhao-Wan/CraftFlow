@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     vector_collection_name: str = Field(
         default="craftflow_docs", description="向量数据库集合名称"
     )
-    
+
     # 向量模型配置
     embedding_model: str = Field(
         default="text-embedding-3-small", description="Embedding 模型名称"

@@ -11,7 +11,7 @@ AuthorNode、EditorNode 等对抗循环节点位于 debate/nodes.py。
 import asyncio
 import json
 import re
-from typing import Any, Callable, Awaitable
+from typing import Any, Awaitable, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
@@ -237,7 +237,6 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     """
     content = state.get("content", "")
     task_id = state.get("task_id", "")
-    mode = state.get("mode", 3)
 
     logger.info("FactCheckerNode 开始执行")
 

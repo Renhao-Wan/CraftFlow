@@ -4,11 +4,16 @@
 使用 mock 隔离 LLM 调用，验证节点的状态更新行为。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage
+import pytest
 
+from app.graph.polishing.debate.nodes import (
+    author_node,
+    editor_node,
+    should_continue_debate,
+)
+from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.nodes import (
     _extract_json_from_response,
     fact_checker_node,
@@ -16,14 +21,7 @@ from app.graph.polishing.nodes import (
     route_by_mode,
     router_node,
 )
-from app.graph.polishing.debate.nodes import (
-    author_node,
-    editor_node,
-    should_continue_debate,
-)
-from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.state import PolishingState
-
 
 # ============================================
 # 辅助函数测试

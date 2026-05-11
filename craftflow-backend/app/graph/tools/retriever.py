@@ -139,7 +139,7 @@ def search_knowledge_base(query: str, top_k: int = 5) -> list[dict[str, Any]]:
         if not settings.enable_rag:
             logger.info("RAG 功能未启用，返回空结果")
             return []
-        
+
         logger.info(f"开始知识库搜索: query='{query}', top_k={top_k}")
 
         # 检查知识库是否已初始化
@@ -209,7 +209,7 @@ def search_knowledge_with_filter(
         if not settings.enable_rag:
             logger.info("RAG 功能未启用，返回空结果")
             return []
-        
+
         logger.info(
             f"开始带过滤的知识库搜索: query='{query}', filters={filters}, top_k={top_k}"
         )
@@ -296,7 +296,7 @@ def add_documents_to_knowledge_base(
                 "failed_count": len(documents),
                 "errors": ["RAG 功能未启用（ENABLE_RAG=false）"],
             }
-        
+
         logger.info(f"开始向知识库添加 {len(documents)} 个文档")
 
         # 检查知识库是否已初始化
@@ -518,7 +518,7 @@ def initialize_knowledge_base(
     """
     try:
         logger.info(f"开始初始化知识库，首选后端: {prefer_backend}")
-        
+
         # 检查 RAG 是否启用
         if not settings.enable_rag:
             logger.info("RAG 功能未启用（ENABLE_RAG=false），跳过知识库初始化")

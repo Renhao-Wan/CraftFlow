@@ -4,8 +4,9 @@
 使用 mock 隔离 Graph 执行和 Checkpointer。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from app.core.exceptions import GraphExecutionError, TaskNotFoundError
 from app.schemas.response import TaskResponse, TaskStatusResponse

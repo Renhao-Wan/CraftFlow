@@ -6,8 +6,8 @@
 
 from typing import Any
 
-from langchain_tavily import TavilySearch
 from langchain_core.tools import tool
+from langchain_tavily import TavilySearch
 
 from app.core.config import settings
 from app.core.exceptions import ToolExecutionError

@@ -4,21 +4,19 @@
 使用 mock 隔离 LLM 调用，验证图结构和流转逻辑。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage
+import pytest
 
 from app.graph.creation.builder import (
-    build_creation_graph,
-    get_creation_graph,
     _fan_out_writers,
     _route_after_planner,
-    _route_after_writing,
     _route_after_reducer,
+    _route_after_writing,
+    build_creation_graph,
+    get_creation_graph,
 )
 from app.graph.creation.state import CreationState
-
 
 # ============================================
 # 路由函数测试

@@ -16,6 +16,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
+
 from app.core.exceptions import GraphExecutionError, TaskNotFoundError
 from app.core.logger import get_logger
 from app.graph.polishing.builder import get_polishing_graph
@@ -469,7 +470,6 @@ class PolishingService:
             logger.info(f"润色任务流式启动 - task_id: {task_id}, mode: {mode} ({mode_name})")
 
             # 使用 astream_events 监听所有层级的节点事件（包括子图）
-            final_state: dict = {}
             async for event in graph.astream_events(initial_state, config, version="v2"):
                 kind = event.get("event", "")
                 data = event.get("data", {})
@@ -483,7 +483,6 @@ class PolishingService:
 
                     # 跳过顶层图结束事件
                     if node_name == "LangGraph":
-                        final_state = output
                         continue
 
                     # 获取节点标签和进度

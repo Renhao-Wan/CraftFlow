@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from langchain_core.tools import tool
+
 from app.core.exceptions import ToolExecutionError
 from app.core.logger import logger
 
@@ -361,7 +362,7 @@ def validate_markdown(content: str) -> dict[str, Any]:
 
         # 检查代码块闭合
         code_block_open = False
-        for i, line in enumerate(lines, 1):
+        for _, line in enumerate(lines, 1):
             if line.strip().startswith('```'):
                 code_block_open = not code_block_open
                 if not code_block_open:

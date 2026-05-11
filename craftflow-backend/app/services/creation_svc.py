@@ -263,7 +263,7 @@ class CreationService:
                 created_at=created_at,
             )
 
-        except GraphInterrupt as e:
+        except GraphInterrupt:
             # 图在 outline_confirmation 中断点暂停（不清理，等待恢复）
             self._update_task(task_id, status="interrupted")
             await self._persist_interrupted(task_id)
@@ -549,7 +549,6 @@ class CreationService:
         try:
             logger.info(f"创作任务流式启动 - task_id: {task_id}, topic: {topic}")
 
-            final_state: dict = {}
             total_sections = len(initial_state.get("outline", []))
             completed_writers = 0
 
@@ -557,7 +556,6 @@ class CreationService:
                 # node_output: {"node_name": {节点输出的增量字典}}
                 for node_name, partial in node_output.items():
                     if node_name == "__end__":
-                        final_state = partial if isinstance(partial, dict) else {}
                         continue
 
                     if not isinstance(partial, dict):
@@ -731,13 +729,11 @@ class CreationService:
             pre_state = pre_snapshot.values if pre_snapshot else {}
             total_sections = len(pre_state.get("outline", []))
 
-            final_state: dict = {}
             completed_writers = 0
 
             async for node_output in graph.astream(Command(resume=True), config):
                 for node_name, partial in node_output.items():
                     if node_name == "__end__":
-                        final_state = partial if isinstance(partial, dict) else {}
                         continue
 
                     if not isinstance(partial, dict):
