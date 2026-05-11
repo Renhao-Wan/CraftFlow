@@ -249,17 +249,21 @@ class TestDebateGraphE2E:
     @pytest.mark.asyncio
     async def test_debate_passes_on_high_score(self):
         """测试高分通过时循环结束"""
-        mock_author = AsyncMock(return_value={
-            "author_output": "高质量润色内容",
-            "messages": [AIMessage(content="重写完成")],
-        })
-        mock_editor = AsyncMock(return_value={
-            "editor_feedback": "优秀",
-            "editor_score": 95,
-            "debate_history": [],
-            "is_passed": True,
-            "messages": [AIMessage(content="评分 95/100")],
-        })
+        mock_author = AsyncMock(
+            return_value={
+                "author_output": "高质量润色内容",
+                "messages": [AIMessage(content="重写完成")],
+            }
+        )
+        mock_editor = AsyncMock(
+            return_value={
+                "editor_feedback": "优秀",
+                "editor_score": 95,
+                "debate_history": [],
+                "is_passed": True,
+                "messages": [AIMessage(content="评分 95/100")],
+            }
+        )
 
         graph = _rebuild_graph_with_mocks(mock_author, mock_editor)
         result = await graph.ainvoke(_build_initial_state())

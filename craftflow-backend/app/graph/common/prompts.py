@@ -183,9 +183,7 @@ def create_base_system_prompt(
     return "\n".join(prompt_parts)
 
 
-def create_chat_prompt_template(
-    system_prompt: str, human_prompt: str
-) -> ChatPromptTemplate:
+def create_chat_prompt_template(system_prompt: str, human_prompt: str) -> ChatPromptTemplate:
     """创建 ChatPromptTemplate
 
     Args:

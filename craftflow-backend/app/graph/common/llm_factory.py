@@ -15,18 +15,20 @@ from app.core.logger import logger
 # ============================================
 
 # 网络配置常量
-DEFAULT_REQUEST_TIMEOUT: int = 60   # 请求超时时间（秒），LangChain 默认 600s
-DEFAULT_MAX_RETRIES: int = 3        # 最大重试次数，LangChain 默认 2
-DEFAULT_STREAMING: bool = True      # 启用流式输出，支持 astream_events
+DEFAULT_REQUEST_TIMEOUT: int = 60  # 请求超时时间（秒），LangChain 默认 600s
+DEFAULT_MAX_RETRIES: int = 3  # 最大重试次数，LangChain 默认 2
+DEFAULT_STREAMING: bool = True  # 启用流式输出，支持 astream_events
 
 # 节点专用温度常量
 EDITOR_NODE_TEMPERATURE: float = 0.2  # 编辑节点：低温度，输出更保守确定
 
 # 节点专用 max_tokens 常量
-PLANNER_MAX_TOKENS: int = 8192        # PlannerNode: 大纲生成需要较大输出空间
-WRITER_MAX_TOKENS: int = 2048         # WriterNode: 目标 800-1500 字，2048 留出余量
-EDITOR_MAX_TOKENS: int = 2048         # EditorNode: JSON 评分 ~300-500 token，2048 留出充足余量
-FACTCHECKER_MAX_TOKENS: int = 4096    # FactCheckerNode: 核查报告 JSON ~300-650 token，4096 留出充足余量
+PLANNER_MAX_TOKENS: int = 8192  # PlannerNode: 大纲生成需要较大输出空间
+WRITER_MAX_TOKENS: int = 2048  # WriterNode: 目标 800-1500 字，2048 留出余量
+EDITOR_MAX_TOKENS: int = 2048  # EditorNode: JSON 评分 ~300-500 token，2048 留出充足余量
+FACTCHECKER_MAX_TOKENS: int = (
+    4096  # FactCheckerNode: 核查报告 JSON ~300-650 token，4096 留出充足余量
+)
 
 
 class LLMFactory:
@@ -78,8 +80,7 @@ class LLMFactory:
 
         # 生成缓存 key（包含所有可区分参数）
         cache_key = (
-            f"{model}_{temperature}_{max_tokens}"
-            f"_{request_timeout}_{max_retries}_{streaming}"
+            f"{model}_{temperature}_{max_tokens}" f"_{request_timeout}_{max_retries}_{streaming}"
         )
 
         # 检查缓存

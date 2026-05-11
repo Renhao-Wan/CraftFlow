@@ -57,8 +57,7 @@ def _setup_graph_mocks(mock_graph, invoke_result, state_values=None):
         state_values: aget_state 返回的状态值，默认使用 invoke_result
     """
     if isinstance(invoke_result, Exception) or (
-        hasattr(invoke_result, "__class__")
-        and issubclass(invoke_result.__class__, BaseException)
+        hasattr(invoke_result, "__class__") and issubclass(invoke_result.__class__, BaseException)
     ):
         mock_graph.ainvoke.side_effect = invoke_result
     else:
@@ -82,10 +81,13 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_task_returns_task_response(self, service, mock_graph):
         """测试创建任务返回 TaskResponse"""
-        _setup_graph_mocks(mock_graph, {
-            "current_node": "outline_confirmation",
-            "outline": [],
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "current_node": "outline_confirmation",
+                "outline": [],
+            },
+        )
 
         result = await service.start_task(topic="人工智能", description="讨论 AI 发展")
 
@@ -207,7 +209,7 @@ class TestResumeTask:
         resume_result = await service.resume_task(
             task_id=create_result.task_id,
             action="update_outline",
-            data={"outline": new_outline },
+            data={"outline": new_outline},
         )
 
         assert resume_result.status == "completed"
@@ -288,7 +290,9 @@ class TestGetTaskStatus:
         assert status.awaiting == "outline_confirmation"
 
     @pytest.mark.asyncio
-    async def test_get_status_completed_task_with_result(self, service, mock_graph, mock_task_store):
+    async def test_get_status_completed_task_with_result(
+        self, service, mock_graph, mock_task_store
+    ):
         """测试查询已完成任务的状态包含结果（从 TaskStore 查询）"""
         _setup_graph_mocks(
             mock_graph,
@@ -330,7 +334,9 @@ class TestGetTaskStatus:
             "sections": [],
             "messages": [],
         }
-        _setup_graph_mocks(mock_graph, GraphInterrupt("outline_confirmation"), state_values=state_values)
+        _setup_graph_mocks(
+            mock_graph, GraphInterrupt("outline_confirmation"), state_values=state_values
+        )
 
         create_result = await service.start_task(topic="测试")
         status = await service.get_task_status(
@@ -391,12 +397,10 @@ class TestProgressCalculation:
             "reducer": 80.0,
         }
         for node, expected in nodes.items():
-            assert CreationService._calculate_progress(
-                {"current_node": node}, "running"
-            ) == expected
+            assert (
+                CreationService._calculate_progress({"current_node": node}, "running") == expected
+            )
 
     def test_progress_unknown_node(self):
         """测试未知节点返回默认进度"""
-        assert CreationService._calculate_progress(
-            {"current_node": "unknown"}, "running"
-        ) == 10.0
+        assert CreationService._calculate_progress({"current_node": "unknown"}, "running") == 10.0

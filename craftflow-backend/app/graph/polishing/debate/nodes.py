@@ -127,9 +127,7 @@ async def author_node(state: DebateState) -> dict[str, Any]:
         fact_check_context = ""
         if fact_check_result:
             issues_only = _extract_issues_from_fact_check(fact_check_result)
-            fact_check_context = (
-                f"**核查发现的问题**（请优先修正）：\n{issues_only}"
-            )
+            fact_check_context = f"**核查发现的问题**（请优先修正）：\n{issues_only}"
 
         human_message = AUTHOR_HUMAN_PROMPT.format(
             content=content,
@@ -144,7 +142,9 @@ async def author_node(state: DebateState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        author_output = response.content if isinstance(response.content, str) else str(response.content)
+        author_output = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         logger.info("AuthorNode 重写完成")
 
@@ -197,7 +197,9 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        response_content = response.content if isinstance(response.content, str) else str(response.content)
+        response_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         # 解析评估结果
         result = _extract_json_from_response(response_content)
@@ -220,7 +222,9 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
                 "editor_score": total_score,
                 "debate_history": [debate_round],
                 "is_passed": total_score >= state.get("pass_score", 90),
-                "messages": [AIMessage(content=f"第 {current_iteration} 轮评估完成，评分: {total_score}/100")],
+                "messages": [
+                    AIMessage(content=f"第 {current_iteration} 轮评估完成，评分: {total_score}/100")
+                ],
             }
         else:
             logger.warning("评估结果解析失败，使用默认分数")

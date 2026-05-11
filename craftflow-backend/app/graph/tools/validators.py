@@ -177,9 +177,7 @@ def batch_validate_urls(urls: list[str], timeout: int = 10) -> dict[str, Any]:
         "results": results,
     }
 
-    logger.info(
-        f"批量验证完成: {accessible_count}/{len(urls)} 个 URL 可访问"
-    )
+    logger.info(f"批量验证完成: {accessible_count}/{len(urls)} 个 URL 可访问")
 
     return summary
 
@@ -224,20 +222,20 @@ def calculate_readability(text: str) -> dict[str, Any]:
             raise ValueError("文本不能为空")
 
         # 分句（简单实现，支持中英文）
-        sentences = re.split(r'[。！？.!?]+', text)
+        sentences = re.split(r"[。！？.!?]+", text)
         sentences = [s.strip() for s in sentences if s.strip()]
         sentence_count = len(sentences)
 
         # 分词（简单实现）
         # 中文：按字符计数
         # 英文：按空格分词
-        if re.search(r'[\u4e00-\u9fff]', text):  # 包含中文
+        if re.search(r"[\u4e00-\u9fff]", text):  # 包含中文
             # 中文文本：去除标点后计数
-            clean_text = re.sub(r'[^\u4e00-\u9fff\w\s]', '', text)
-            word_count = len(clean_text.replace(' ', ''))
-            words = list(clean_text.replace(' ', ''))
+            clean_text = re.sub(r"[^\u4e00-\u9fff\w\s]", "", text)
+            word_count = len(clean_text.replace(" ", ""))
+            words = list(clean_text.replace(" ", ""))
         else:  # 英文文本
-            words = re.findall(r'\b\w+\b', text.lower())
+            words = re.findall(r"\b\w+\b", text.lower())
             word_count = len(words)
 
         if sentence_count == 0 or word_count == 0:
@@ -250,7 +248,7 @@ def calculate_readability(text: str) -> dict[str, Any]:
         avg_word_length = sum(len(w) for w in words) / len(words)
 
         # 计算复杂词汇比例（英文：>3 音节，中文：>4 字）
-        if re.search(r'[\u4e00-\u9fff]', text):
+        if re.search(r"[\u4e00-\u9fff]", text):
             # 中文：长度 > 4 的词组视为复杂
             complex_words = [w for w in words if len(w) > 4]
         else:
@@ -339,13 +337,13 @@ def validate_markdown(content: str) -> dict[str, Any]:
             "list_count": 0,
         }
 
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # 检查标题层级
         headings = []
         for line in lines:
-            if line.strip().startswith('#'):
-                match = re.match(r'^(#{1,6})\s+(.+)$', line.strip())
+            if line.strip().startswith("#"):
+                match = re.match(r"^(#{1,6})\s+(.+)$", line.strip())
                 if match:
                     level = len(match.group(1))
                     headings.append(level)
@@ -356,14 +354,12 @@ def validate_markdown(content: str) -> dict[str, Any]:
         # 检查标题层级跳跃
         for i in range(1, len(headings)):
             if headings[i] - headings[i - 1] > 1:
-                issues.append(
-                    f"标题层级跳跃: 从 H{headings[i-1]} 直接跳到 H{headings[i]}"
-                )
+                issues.append(f"标题层级跳跃: 从 H{headings[i-1]} 直接跳到 H{headings[i]}")
 
         # 检查代码块闭合
         code_block_open = False
         for _, line in enumerate(lines, 1):
-            if line.strip().startswith('```'):
+            if line.strip().startswith("```"):
                 code_block_open = not code_block_open
                 if not code_block_open:
                     structure["code_block_count"] += 1
@@ -372,7 +368,7 @@ def validate_markdown(content: str) -> dict[str, Any]:
             issues.append("代码块未闭合（缺少结束的 ```）")
 
         # 检查链接格式
-        link_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+        link_pattern = r"\[([^\]]+)\]\(([^)]+)\)"
         links = re.findall(link_pattern, content)
         structure["link_count"] = len(links)
 
@@ -381,7 +377,7 @@ def validate_markdown(content: str) -> dict[str, Any]:
                 issues.append(f"链接 URL 为空: [{text}]()")
 
         # 检查列表格式
-        list_pattern = r'^\s*[-*+]\s+.+$'
+        list_pattern = r"^\s*[-*+]\s+.+$"
         for line in lines:
             if re.match(list_pattern, line):
                 structure["list_count"] += 1
@@ -439,11 +435,11 @@ def extract_markdown_structure(content: str) -> dict[str, Any]:
             "images": [],
         }
 
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # 提取标题
         for line in lines:
-            match = re.match(r'^(#{1,6})\s+(.+)$', line.strip())
+            match = re.match(r"^(#{1,6})\s+(.+)$", line.strip())
             if match:
                 structure["headings"].append(
                     {"level": len(match.group(1)), "text": match.group(2).strip()}
@@ -454,7 +450,7 @@ def extract_markdown_structure(content: str) -> dict[str, Any]:
         current_code_block = {"language": "", "content": []}
 
         for line in lines:
-            if line.strip().startswith('```'):
+            if line.strip().startswith("```"):
                 if not in_code_block:
                     # 开始代码块
                     in_code_block = True
@@ -463,18 +459,18 @@ def extract_markdown_structure(content: str) -> dict[str, Any]:
                 else:
                     # 结束代码块
                     in_code_block = False
-                    current_code_block["content"] = '\n'.join(current_code_block["content"])
+                    current_code_block["content"] = "\n".join(current_code_block["content"])
                     structure["code_blocks"].append(current_code_block)
             elif in_code_block:
                 current_code_block["content"].append(line)
 
         # 提取链接
-        link_pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+        link_pattern = r"\[([^\]]+)\]\(([^)]+)\)"
         for match in re.finditer(link_pattern, content):
             structure["links"].append({"text": match.group(1), "url": match.group(2)})
 
         # 提取图片
-        image_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+        image_pattern = r"!\[([^\]]*)\]\(([^)]+)\)"
         for match in re.finditer(image_pattern, content):
             structure["images"].append({"alt": match.group(1), "url": match.group(2)})
 
@@ -489,9 +485,7 @@ def extract_markdown_structure(content: str) -> dict[str, Any]:
     except Exception as e:
         error_msg = f"Markdown 结构提取失败: {str(e)}"
         logger.error(error_msg)
-        raise ToolExecutionError(
-            tool_name="extract_markdown_structure", message=error_msg
-        ) from e
+        raise ToolExecutionError(tool_name="extract_markdown_structure", message=error_msg) from e
 
 
 # 导出工具列表（供 LangGraph 节点绑定）

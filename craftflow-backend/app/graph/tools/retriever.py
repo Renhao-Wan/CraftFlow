@@ -74,7 +74,12 @@ class KnowledgeRetriever:
         return cls._instance
 
     @classmethod
-    def initialize(cls, embeddings: Embeddings, vector_store: VectorStore, backend: Literal["pgvector", "chroma", "none"]) -> None:
+    def initialize(
+        cls,
+        embeddings: Embeddings,
+        vector_store: VectorStore,
+        backend: Literal["pgvector", "chroma", "none"],
+    ) -> None:
         """初始化知识库检索器
 
         Args:
@@ -210,9 +215,7 @@ def search_knowledge_with_filter(
             logger.info("RAG 功能未启用，返回空结果")
             return []
 
-        logger.info(
-            f"开始带过滤的知识库搜索: query='{query}', filters={filters}, top_k={top_k}"
-        )
+        logger.info(f"开始带过滤的知识库搜索: query='{query}', filters={filters}, top_k={top_k}")
 
         # 检查知识库是否已初始化
         if not KnowledgeRetriever.is_initialized():
@@ -225,9 +228,7 @@ def search_knowledge_with_filter(
         # 执行带过滤的相似度搜索
         # 注意：不同的向量数据库对过滤的支持方式不同
         # 这里使用通用接口，具体实现取决于后端
-        docs_with_scores = vector_store.similarity_search_with_score(
-            query, k=top_k, filter=filters
-        )
+        docs_with_scores = vector_store.similarity_search_with_score(query, k=top_k, filter=filters)
 
         # 格式化结果
         results = []
@@ -246,15 +247,11 @@ def search_knowledge_with_filter(
     except Exception as e:
         error_msg = f"带过滤的知识库搜索失败: {str(e)}"
         logger.error(error_msg)
-        raise ToolExecutionError(
-            tool_name="search_knowledge_with_filter", message=error_msg
-        ) from e
+        raise ToolExecutionError(tool_name="search_knowledge_with_filter", message=error_msg) from e
 
 
 @tool
-def add_documents_to_knowledge_base(
-    documents: list[dict[str, Any]]
-) -> dict[str, Any]:
+def add_documents_to_knowledge_base(documents: list[dict[str, Any]]) -> dict[str, Any]:
     """向知识库添加文档
 
     将新文档向量化并存储到知识库中。
@@ -411,7 +408,9 @@ def create_embeddings() -> Embeddings | None:
         return None
 
 
-def create_pgvector_store(embeddings: Embeddings, collection_name: str = "craftflow_docs") -> VectorStore | None:
+def create_pgvector_store(
+    embeddings: Embeddings, collection_name: str = "craftflow_docs"
+) -> VectorStore | None:
     """创建 PGVector 向量存储实例
 
     Args:

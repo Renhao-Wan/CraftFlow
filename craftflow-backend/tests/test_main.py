@@ -156,9 +156,7 @@ class TestLifespan:
             patch("app.main.init_services", new_callable=AsyncMock),
             patch("app.main.setup_logger"),
             patch("app.main.close_services", new_callable=AsyncMock) as mock_close_svc,
-            patch(
-                "app.main.close_checkpointer", new_callable=AsyncMock
-            ) as mock_close_cp,
+            patch("app.main.close_checkpointer", new_callable=AsyncMock) as mock_close_cp,
         ):
             # 触发 lifespan startup + shutdown
             async with app.router.lifespan_context(app):

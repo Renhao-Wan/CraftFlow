@@ -197,7 +197,6 @@ def format_outline_for_display(outline: list[dict]) -> str:
     formatted_parts = []
     for idx, item in enumerate(outline, 1):
         formatted_parts.append(
-            f"{idx}. **{item.get('title', '未命名')}**\n"
-            f"   {item.get('summary', '无摘要')}"
+            f"{idx}. **{item.get('title', '未命名')}**\n" f"   {item.get('summary', '无摘要')}"
         )
     return "\n".join(formatted_parts)

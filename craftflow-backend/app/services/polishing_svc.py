@@ -227,7 +227,10 @@ class PolishingService:
 
                 # 持久化 + 清理 + 释放内存
                 await self._persist_and_cleanup(
-                    task_id, thread_id, "failed", error=error,
+                    task_id,
+                    thread_id,
+                    "failed",
+                    error=error,
                 )
 
                 raise GraphExecutionError(
@@ -245,7 +248,9 @@ class PolishingService:
 
             # 持久化 + 清理 + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "completed",
+                task_id,
+                thread_id,
+                "completed",
                 result=final_result,
                 fact_check_result=fact_check_result,
             )
@@ -266,7 +271,10 @@ class PolishingService:
 
             # 持久化 + 清理 + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             raise GraphExecutionError(
@@ -526,13 +534,17 @@ class PolishingService:
 
             # 持久化到 SQLite + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "completed",
+                task_id,
+                thread_id,
+                "completed",
                 result=result or "",
                 fact_check_result=fact_check_result,
             )
 
             await broadcaster.broadcast_result(
-                task_id, result or "", created_at,
+                task_id,
+                result or "",
+                created_at,
                 fact_check_result=fact_check_result,
             )
 
@@ -542,7 +554,10 @@ class PolishingService:
 
             # 持久化到 SQLite + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             await broadcaster.broadcast_error(task_id, str(e))
@@ -609,7 +624,9 @@ class PolishingService:
 
     @staticmethod
     def _calculate_debate_progress(
-        node_name: str, iteration: int, mode: int,
+        node_name: str,
+        iteration: int,
+        mode: int,
     ) -> float:
         """计算 Debate 子图节点的进度
 
@@ -691,9 +708,11 @@ class PolishingService:
                 serialized[key] = [
                     {
                         "round_number": r.round_number,
-                        "author_content": r.author_content[:200] + "..."
-                        if len(r.author_content) > 200
-                        else r.author_content,
+                        "author_content": (
+                            r.author_content[:200] + "..."
+                            if len(r.author_content) > 200
+                            else r.author_content
+                        ),
                         "editor_feedback": r.editor_feedback,
                         "editor_score": r.editor_score,
                     }
@@ -717,10 +736,12 @@ class PolishingService:
         history = []
         try:
             async for checkpoint in self.checkpointer.alist(config):
-                history.append({
-                    "checkpoint_id": getattr(checkpoint, "id", None),
-                    "ts": getattr(checkpoint, "ts", None),
-                })
+                history.append(
+                    {
+                        "checkpoint_id": getattr(checkpoint, "id", None),
+                        "ts": getattr(checkpoint, "ts", None),
+                    }
+                )
         except Exception as e:
             logger.warning(f"获取执行历史失败: {str(e)}")
         return history

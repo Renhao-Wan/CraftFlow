@@ -41,6 +41,7 @@ async def test_craftflow_exception_handler():
 
     # 验证响应格式符合 ErrorResponse
     import json
+
     data = json.loads(content)
     assert "error" in data
     assert "message" in data
@@ -62,10 +63,12 @@ async def test_validation_exception_handler():
 
     try:
         from app.schemas import CreationRequest
+
         CreationRequest(topic="")  # 触发验证错误
     except PydanticValidationError as exc:
         # 转换为 RequestValidationError
         from fastapi.exceptions import RequestValidationError
+
         validation_exc = RequestValidationError(errors=exc.errors())
 
         # 调用处理器
@@ -79,6 +82,7 @@ async def test_validation_exception_handler():
 
         # 验证响应格式
         import json
+
         data = json.loads(content)
         assert data["error"] == "REQUEST_VALIDATION_ERROR"
         assert "errors" in data["detail"]
@@ -107,6 +111,7 @@ async def test_generic_exception_handler():
 
     # 验证响应格式
     import json
+
     data = json.loads(content)
     assert data["error"] == "INTERNAL_SERVER_ERROR"
     assert data["detail"]["exception_type"] == "ValueError"

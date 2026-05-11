@@ -151,7 +151,9 @@ def format_editor_feedback(feedback_data: dict) -> str:
     if scores:
         parts.append("\n**维度评分**：")
         for score in scores:
-            parts.append(f"- {score.get('dimension', '未知')}：{score.get('score', 0)} 分 - {score.get('comment', '')}")
+            parts.append(
+                f"- {score.get('dimension', '未知')}：{score.get('score', 0)} 分 - {score.get('comment', '')}"
+            )
 
     # 亮点
     highlights = feedback_data.get("highlights", [])

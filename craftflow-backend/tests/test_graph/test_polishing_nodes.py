@@ -360,7 +360,7 @@ class TestEditorNode:
     async def test_editor_success(self):
         """测试成功评估"""
         mock_response = MagicMock()
-        mock_response.content = '''{
+        mock_response.content = """{
             "scores": [
                 {"dimension": "逻辑性", "score": 22, "comment": "逻辑清晰"},
                 {"dimension": "可读性", "score": 20, "comment": "语言流畅"},
@@ -371,7 +371,7 @@ class TestEditorNode:
             "feedback": "整体质量良好",
             "highlights": ["论证充分"],
             "improvements": ["段落可更精炼"]
-        }'''
+        }"""
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response

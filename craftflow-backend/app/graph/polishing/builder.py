@@ -78,8 +78,7 @@ async def debate_node(state: PolishingState) -> dict:
     }
 
     logger.info(
-        f"Debate 子图启动 - 最大迭代: {DEFAULT_MAX_ITERATIONS}, "
-        f"通过分数: {DEFAULT_PASS_SCORE}"
+        f"Debate 子图启动 - 最大迭代: {DEFAULT_MAX_ITERATIONS}, " f"通过分数: {DEFAULT_PASS_SCORE}"
     )
 
     try:
@@ -102,9 +101,7 @@ async def debate_node(state: PolishingState) -> dict:
             "debate_history": result.get("debate_history", []),
             "overall_score": result.get("editor_score"),
             "current_node": "debate",
-            "messages": new_messages if new_messages else [
-                AIMessage(content="对抗审查完成")
-            ],
+            "messages": new_messages if new_messages else [AIMessage(content="对抗审查完成")],
         }
 
     except Exception as e:
@@ -194,8 +191,7 @@ def get_polishing_graph(
         CompiledStateGraph: 编译后的 Polishing Graph
     """
     logger.info(
-        f"编译 Polishing Graph - "
-        f"checkpointer: {'已注入' if checkpointer else '未注入'}"
+        f"编译 Polishing Graph - " f"checkpointer: {'已注入' if checkpointer else '未注入'}"
     )
     graph = _build_polishing_graph()
     return graph.compile(checkpointer=checkpointer)

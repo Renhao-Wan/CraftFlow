@@ -44,10 +44,7 @@ def test_polishing_request():
     print("\n=== 测试 PolishingRequest ===")
 
     # 正常情况
-    req = PolishingRequest(
-        content="# 标题\n\n正文内容",
-        mode=2
-    )
+    req = PolishingRequest(content="# 标题\n\n正文内容", mode=2)
     print(f"✓ 正常创建: mode={req.mode}")
 
     # 测试模式范围验证
@@ -68,8 +65,7 @@ def test_resume_request():
 
     # 正常情况
     req = ResumeRequest(
-        action="update_outline",
-        data={"outline": [{"title": "第一章", "summary": "概述"}]}
+        action="update_outline", data={"outline": [{"title": "第一章", "summary": "概述"}]}
     )
     print(f"✓ 正常创建: action={req.action}")
 
@@ -86,9 +82,7 @@ def test_task_response():
     print("\n=== 测试 TaskResponse ===")
 
     resp = TaskResponse(
-        task_id="c-550e8400-e29b-41d4-a716-446655440000",
-        status="running",
-        message="任务已创建"
+        task_id="c-550e8400-e29b-41d4-a716-446655440000", status="running", message="任务已创建"
     )
     print(f"✓ 正常创建: task_id={resp.task_id}, status={resp.status}")
 
@@ -103,10 +97,7 @@ def test_task_status_response():
 
     # 运行中状态
     resp1 = TaskStatusResponse(
-        task_id="test-123",
-        status="running",
-        current_node="WriterNode",
-        progress=45.5
+        task_id="test-123", status="running", current_node="WriterNode", progress=45.5
     )
     print(f"✓ 运行中状态: node={resp1.current_node}, progress={resp1.progress}%")
 
@@ -115,16 +106,13 @@ def test_task_status_response():
         task_id="test-123",
         status="interrupted",
         awaiting="outline_confirmation",
-        data={"outline": [{"title": "第一章"}]}
+        data={"outline": [{"title": "第一章"}]},
     )
     print(f"✓ 中断状态: awaiting={resp2.awaiting}")
 
     # 完成状态
     resp3 = TaskStatusResponse(
-        task_id="test-123",
-        status="completed",
-        result="# 完整文章内容",
-        progress=100.0
+        task_id="test-123", status="completed", result="# 完整文章内容", progress=100.0
     )
     print(f"✓ 完成状态: progress={resp3.progress}%")
 
@@ -137,7 +125,7 @@ def test_error_response():
         error="ValidationError",
         message="主题不能为空",
         detail={"field": "topic"},
-        path="/api/v1/creation"
+        path="/api/v1/creation",
     )
     print(f"✓ 错误响应: error={err.error}, message={err.message}")
 

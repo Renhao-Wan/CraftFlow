@@ -23,11 +23,7 @@ class TestScoreDetail:
 
     def test_score_detail_creation(self):
         """测试创建 ScoreDetail"""
-        score: ScoreDetail = {
-            "dimension": "逻辑性",
-            "score": 85.0,
-            "comment": "逻辑清晰，论证充分"
-        }
+        score: ScoreDetail = {"dimension": "逻辑性", "score": 85.0, "comment": "逻辑清晰，论证充分"}
 
         assert score["dimension"] == "逻辑性"
         assert score["score"] == 85.0
@@ -35,11 +31,7 @@ class TestScoreDetail:
 
     def test_score_detail_fields(self):
         """测试 ScoreDetail 字段类型"""
-        score: ScoreDetail = {
-            "dimension": "可读性",
-            "score": 90.5,
-            "comment": "语言流畅"
-        }
+        score: ScoreDetail = {"dimension": "可读性", "score": 90.5, "comment": "语言流畅"}
 
         assert isinstance(score["dimension"], str)
         assert isinstance(score["score"], float)
@@ -55,7 +47,7 @@ class TestDebateRound:
             "round_number": 1,
             "author_content": "重写后的内容...",
             "editor_feedback": "需要改进...",
-            "editor_score": 75.0
+            "editor_score": 75.0,
         }
 
         assert round_data["round_number"] == 1

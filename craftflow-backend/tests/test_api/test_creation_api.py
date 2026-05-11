@@ -239,7 +239,9 @@ class TestGetTaskStatus:
         from app.core.exceptions import TaskNotFoundError
 
         mock_service.get_task_status.side_effect = TaskNotFoundError(task_id="nonexistent")
-        mock_polishing_service.get_task_status.side_effect = TaskNotFoundError(task_id="nonexistent")
+        mock_polishing_service.get_task_status.side_effect = TaskNotFoundError(
+            task_id="nonexistent"
+        )
 
         response = await client.get("/api/v1/tasks/nonexistent")
 
@@ -301,7 +303,7 @@ class TestResumeTask:
         mock_service.resume_task.assert_called_once_with(
             task_id="creation_abc123",
             action="update_outline",
-            data={"outline": new_outline },
+            data={"outline": new_outline},
         )
 
     @pytest.mark.asyncio

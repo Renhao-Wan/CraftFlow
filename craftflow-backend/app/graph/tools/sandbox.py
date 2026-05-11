@@ -216,7 +216,9 @@ def validate_code_snippet(code: str, expected_output: str | None = None) -> dict
 
     try:
         # 执行代码
-        exec_result = asyncio.run(E2BSandboxManager.execute_code(code, timeout=15, language="python"))
+        exec_result = asyncio.run(
+            E2BSandboxManager.execute_code(code, timeout=15, language="python")
+        )
 
         # 构建验证结果
         result = {

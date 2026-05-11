@@ -32,8 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── startup ──
     setup_logger()
     logger.info(
-        f"CraftFlow 启动中 | 环境: {settings.environment} | "
-        f"版本: {settings.app_version}"
+        f"CraftFlow 启动中 | 环境: {settings.environment} | " f"版本: {settings.app_version}"
     )
 
     await init_checkpointer()

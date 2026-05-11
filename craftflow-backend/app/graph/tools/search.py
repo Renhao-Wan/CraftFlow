@@ -43,6 +43,7 @@ class TavilySearchTool:
                 )
 
             import os
+
             os.environ["TAVILY_API_KEY"] = settings.tavily_api_key
 
             cls._instance = TavilySearch(

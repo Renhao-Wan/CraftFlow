@@ -19,9 +19,10 @@ def _get_base_dir() -> Path:
     桌面版（PyInstaller 打包）：使用 %APPDATA%/CraftFlow/
     开发环境：基于文件路径推导
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # PyInstaller 打包环境
         from desktop_config import get_data_dir
+
         return get_data_dir()
     return Path(__file__).resolve().parent.parent.parent
 
@@ -32,8 +33,9 @@ def _get_env_file() -> str:
     桌面版：从 %APPDATA%/CraftFlow/.env 读取
     开发环境：从 .env.dev 读取
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         from desktop_config import get_env_file
+
         return str(get_env_file())
     return str(_get_base_dir() / ".env.dev")
 
@@ -102,29 +104,21 @@ class Settings(BaseSettings):
     # ============================================
     # 向量数据库配置
     # ============================================
-    enable_rag: bool = Field(
-        default=False, description="是否启用 RAG（检索增强生成）功能"
-    )
+    enable_rag: bool = Field(default=False, description="是否启用 RAG（检索增强生成）功能")
     vector_db_backend: str = Field(
         default="pgvector", description="向量数据库后端 (pgvector / chroma)"
     )
-    vector_collection_name: str = Field(
-        default="craftflow_docs", description="向量数据库集合名称"
-    )
+    vector_collection_name: str = Field(default="craftflow_docs", description="向量数据库集合名称")
 
     # 向量模型配置
-    embedding_model: str = Field(
-        default="text-embedding-3-small", description="Embedding 模型名称"
-    )
+    embedding_model: str = Field(default="text-embedding-3-small", description="Embedding 模型名称")
     embedding_api_key: str = Field(
         default="", description="Embedding API 密钥（默认使用 LLM_API_KEY）"
     )
     embedding_api_base: str = Field(
         default="", description="Embedding API 基础 URL（默认使用 LLM_API_BASE）"
     )
-    embedding_dimensions: int = Field(
-        default=1536, ge=1, le=3072, description="Embedding 向量维度"
-    )
+    embedding_dimensions: int = Field(default=1536, ge=1, le=3072, description="Embedding 向量维度")
 
     # ============================================
     # FastAPI 服务配置

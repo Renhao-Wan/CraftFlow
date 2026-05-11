@@ -76,9 +76,9 @@ class TestInitCheckpointer:
         with (
             patch("app.services.checkpointer.settings") as mock_settings,
             patch.object(
-                __import__(
-                    "app.services.checkpointer", fromlist=["_FACTORIES"]
-                )._FACTORIES["postgres"],
+                __import__("app.services.checkpointer", fromlist=["_FACTORIES"])._FACTORIES[
+                    "postgres"
+                ],
                 "create",
                 new_callable=AsyncMock,
                 return_value=(mock_saver, mock_closer),
@@ -107,9 +107,9 @@ class TestInitCheckpointer:
         with (
             patch("app.services.checkpointer.settings") as mock_settings,
             patch.object(
-                __import__(
-                    "app.services.checkpointer", fromlist=["_FACTORIES"]
-                )._FACTORIES["postgres"],
+                __import__("app.services.checkpointer", fromlist=["_FACTORIES"])._FACTORIES[
+                    "postgres"
+                ],
                 "create",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("连接失败"),

@@ -53,6 +53,7 @@ class TestRouteFunctions:
             "error": "生成大纲失败",
         }
         from langgraph.graph import END
+
         assert _route_after_planner(state) == END
 
     def test_route_after_writing_no_error(self):
@@ -106,6 +107,7 @@ class TestRouteFunctions:
             "error": "写作失败",
         }
         from langgraph.graph import END
+
         assert _route_after_writing(state) == END
 
     def test_route_after_reducer_success(self):
@@ -121,6 +123,7 @@ class TestRouteFunctions:
             "error": None,
         }
         from langgraph.graph import END
+
         assert _route_after_reducer(state) == END
 
     def test_route_after_reducer_error(self):
@@ -136,6 +139,7 @@ class TestRouteFunctions:
             "error": "合并失败",
         }
         from langgraph.graph import END
+
         assert _route_after_reducer(state) == END
 
 
