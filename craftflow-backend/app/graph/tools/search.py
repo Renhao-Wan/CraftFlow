@@ -6,8 +6,8 @@
 
 from typing import Any
 
-from langchain_tavily import TavilySearch
 from langchain_core.tools import tool
+from langchain_tavily import TavilySearch
 
 from app.core.config import settings
 from app.core.exceptions import ToolExecutionError
@@ -43,6 +43,7 @@ class TavilySearchTool:
                 )
 
             import os
+
             os.environ["TAVILY_API_KEY"] = settings.tavily_api_key
 
             cls._instance = TavilySearch(

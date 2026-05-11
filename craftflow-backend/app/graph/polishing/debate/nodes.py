@@ -64,6 +64,27 @@ def _extract_json_from_response(text: str) -> dict[str, Any] | None:
     return None
 
 
+def _extract_issues_from_fact_check(fact_check_text: str) -> str:
+    """从事实核查报告中提取问题部分
+
+    从 format_fact_check_result() 输出的格式化文本中，只提取"发现的问题"部分，
+    过滤掉"总体准确性"、"已验证事实"和"总结"，减少 AuthorNode 的输入 token。
+
+    Args:
+        fact_check_text: 格式化后的事实核查报告
+
+    Returns:
+        str: 仅包含问题部分的文本，提取失败返回原文
+    """
+    # 匹配"发现的问题"到下一个顶级标题之间的内容
+    pattern = r"\*\*发现的问题\*\*[:：]\s*\n(.*?)(?=\n\*\*|$)"
+    match = re.search(pattern, fact_check_text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    # 提取失败时返回原文，确保不丢失信息
+    return fact_check_text
+
+
 # ============================================
 # AuthorNode
 # ============================================
@@ -80,7 +101,8 @@ async def author_node(state: DebateState) -> dict[str, Any]:
     Returns:
         dict: 状态增量更新
     """
-    content = state.get("content", "")
+    # 第 1 轮：使用原始 content；第 2+ 轮：使用上一轮的 author_output（重写结果）
+    content = state.get("author_output") or state.get("content", "")
     editor_feedback = state.get("editor_feedback", "")
     editor_score = state.get("editor_score", 0)
     fact_check_result = state.get("fact_check_result", "")
@@ -101,12 +123,11 @@ async def author_node(state: DebateState) -> dict[str, Any]:
                 "请大胆改动，不要只做微调。"
             )
 
-        # 构建事实核查上下文
+        # 构建事实核查上下文（只提取问题部分，减少输入 token）
         fact_check_context = ""
         if fact_check_result:
-            fact_check_context = (
-                f"**事实核查报告**（请优先修正报告中标注的问题）：\n{fact_check_result}"
-            )
+            issues_only = _extract_issues_from_fact_check(fact_check_result)
+            fact_check_context = f"**核查发现的问题**（请优先修正）：\n{issues_only}"
 
         human_message = AUTHOR_HUMAN_PROMPT.format(
             content=content,
@@ -121,7 +142,9 @@ async def author_node(state: DebateState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        author_output = response.content if isinstance(response.content, str) else str(response.content)
+        author_output = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         logger.info("AuthorNode 重写完成")
 
@@ -174,7 +197,9 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        response_content = response.content if isinstance(response.content, str) else str(response.content)
+        response_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         # 解析评估结果
         result = _extract_json_from_response(response_content)
@@ -197,7 +222,9 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
                 "editor_score": total_score,
                 "debate_history": [debate_round],
                 "is_passed": total_score >= state.get("pass_score", 90),
-                "messages": [AIMessage(content=f"第 {current_iteration} 轮评估完成，评分: {total_score}/100")],
+                "messages": [
+                    AIMessage(content=f"第 {current_iteration} 轮评估完成，评分: {total_score}/100")
+                ],
             }
         else:
             logger.warning("评估结果解析失败，使用默认分数")

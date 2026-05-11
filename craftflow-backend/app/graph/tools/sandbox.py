@@ -115,7 +115,7 @@ class E2BSandboxManager:
         except asyncio.TimeoutError:
             error_msg = f"代码执行超时（{timeout}s）"
             logger.error(error_msg)
-            raise ToolExecutionError(tool_name="E2BSandbox", message=error_msg)
+            raise ToolExecutionError(tool_name="E2BSandbox", message=error_msg) from None
 
         except Exception as e:
             error_msg = f"沙箱执行失败: {str(e)}"
@@ -153,7 +153,7 @@ def execute_python_code(code: str, timeout: int = 30) -> dict[str, Any]:
         >>> result = execute_python_code("print('Hello, World!')")
         >>> print(result["output"])
         "Hello, World!"
-        
+
     Note:
         如果 E2B 不可用或执行失败，将返回降级响应，不会抛出异常。
     """
@@ -208,7 +208,7 @@ def validate_code_snippet(code: str, expected_output: str | None = None) -> dict
         ... )
         >>> print(result["valid"])
         True
-        
+
     Note:
         如果 E2B 不可用或执行失败，将返回降级响应，不会抛出异常。
     """
@@ -216,7 +216,9 @@ def validate_code_snippet(code: str, expected_output: str | None = None) -> dict
 
     try:
         # 执行代码
-        exec_result = asyncio.run(E2BSandboxManager.execute_code(code, timeout=15, language="python"))
+        exec_result = asyncio.run(
+            E2BSandboxManager.execute_code(code, timeout=15, language="python")
+        )
 
         # 构建验证结果
         result = {

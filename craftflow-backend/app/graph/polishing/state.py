@@ -12,6 +12,7 @@ from langchain_core.messages import BaseMessage
 
 class ScoreDetail(TypedDict):
     """评分详情结构"""
+
     dimension: str
     score: float
     comment: str
@@ -19,6 +20,7 @@ class ScoreDetail(TypedDict):
 
 class DebateRound(TypedDict):
     """对抗轮次记录"""
+
     round_number: int
     author_content: str
     editor_feedback: str
@@ -32,6 +34,7 @@ class PolishingState(TypedDict):
     用于跟踪整个润色流程，包括输入内容、润色模式、
     中间结果和最终输出。
     """
+
     # 输入字段
     content: str
     mode: Literal[1, 2, 3]

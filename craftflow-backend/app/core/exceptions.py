@@ -3,8 +3,8 @@
 定义业务异常类型，并提供 FastAPI 全局异常处理器。
 """
 
-from typing import Any
 from datetime import datetime
+from typing import Any
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
@@ -166,7 +166,7 @@ async def craftflow_exception_handler(request: Request, exc: CraftFlowException)
         JSON 格式的错误响应
     """
     from app.schemas.response import ErrorResponse
-    
+
     logger.error(
         f"业务异常 | 路径: {request.url.path} | "
         f"错误码: {exc.error_code} | 消息: {exc.message} | "
@@ -181,7 +181,7 @@ async def craftflow_exception_handler(request: Request, exc: CraftFlowException)
             detail=exc.details,
             timestamp=datetime.now(),
             path=str(request.url.path),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -203,8 +203,7 @@ def _clean_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any
         for key, value in error.items():
             if key == "ctx" and isinstance(value, dict):
                 clean_error[key] = {
-                    k: str(v) if isinstance(v, Exception) else v
-                    for k, v in value.items()
+                    k: str(v) if isinstance(v, Exception) else v for k, v in value.items()
                 }
             elif isinstance(value, Exception):
                 clean_error[key] = str(value)
@@ -239,7 +238,7 @@ async def validation_exception_handler(
             detail={"errors": errors},
             timestamp=datetime.now(),
             path=str(request.url.path),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 
@@ -254,7 +253,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
         JSON 格式的错误响应
     """
     from app.schemas.response import ErrorResponse
-    
+
     logger.exception(
         f"未捕获异常 | 路径: {request.url.path} | 类型: {type(exc).__name__} | " f"消息: {str(exc)}"
     )
@@ -267,7 +266,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
             detail={"exception_type": type(exc).__name__},
             timestamp=datetime.now(),
             path=str(request.url.path),
-        ).model_dump(mode='json'),
+        ).model_dump(mode="json"),
     )
 
 

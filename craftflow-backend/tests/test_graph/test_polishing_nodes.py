@@ -4,11 +4,16 @@
 使用 mock 隔离 LLM 调用，验证节点的状态更新行为。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage
+import pytest
 
+from app.graph.polishing.debate.nodes import (
+    author_node,
+    editor_node,
+    should_continue_debate,
+)
+from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.nodes import (
     _extract_json_from_response,
     fact_checker_node,
@@ -16,14 +21,7 @@ from app.graph.polishing.nodes import (
     route_by_mode,
     router_node,
 )
-from app.graph.polishing.debate.nodes import (
-    author_node,
-    editor_node,
-    should_continue_debate,
-)
-from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.state import PolishingState
-
 
 # ============================================
 # 辅助函数测试
@@ -296,7 +294,7 @@ class TestFactCheckerNode:
         # 模拟 llm.ainvoke 也返回相同的响应
         mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
-        with patch("app.graph.polishing.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.nodes.get_factchecker_llm", return_value=mock_llm):
             state: PolishingState = {
                 "content": "测试内容",
                 "mode": 3,
@@ -362,7 +360,7 @@ class TestEditorNode:
     async def test_editor_success(self):
         """测试成功评估"""
         mock_response = MagicMock()
-        mock_response.content = '''{
+        mock_response.content = """{
             "scores": [
                 {"dimension": "逻辑性", "score": 22, "comment": "逻辑清晰"},
                 {"dimension": "可读性", "score": 20, "comment": "语言流畅"},
@@ -373,7 +371,7 @@ class TestEditorNode:
             "feedback": "整体质量良好",
             "highlights": ["论证充分"],
             "improvements": ["段落可更精炼"]
-        }'''
+        }"""
 
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response

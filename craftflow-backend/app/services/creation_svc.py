@@ -113,16 +113,18 @@ class CreationService:
         request = task.get("request", {})
 
         try:
-            await self.task_store.save_task({
-                "task_id": task_id,
-                "graph_type": "creation",
-                "status": "interrupted",
-                "topic": request.get("topic"),
-                "description": request.get("description"),
-                "progress": 30.0,
-                "created_at": str(task.get("created_at", datetime.now())),
-                "updated_at": str(datetime.now()),
-            })
+            await self.task_store.save_task(
+                {
+                    "task_id": task_id,
+                    "graph_type": "creation",
+                    "status": "interrupted",
+                    "topic": request.get("topic"),
+                    "description": request.get("description"),
+                    "progress": 30.0,
+                    "created_at": str(task.get("created_at", datetime.now())),
+                    "updated_at": str(datetime.now()),
+                }
+            )
             logger.info(f"中断任务已持久化 - task_id: {task_id}")
         except Exception as e:
             logger.error(f"持久化中断任务失败 - task_id: {task_id}, error: {e}", exc_info=True)
@@ -251,8 +253,11 @@ class CreationService:
 
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "completed",
-                result=final_result, outline_data=outline_for_db,
+                task_id,
+                thread_id,
+                "completed",
+                result=final_result,
+                outline_data=outline_for_db,
             )
             logger.info(f"创作任务已完成 - task_id: {task_id}")
 
@@ -263,7 +268,7 @@ class CreationService:
                 created_at=created_at,
             )
 
-        except GraphInterrupt as e:
+        except GraphInterrupt:
             # 图在 outline_confirmation 中断点暂停（不清理，等待恢复）
             self._update_task(task_id, status="interrupted")
             await self._persist_interrupted(task_id)
@@ -282,7 +287,10 @@ class CreationService:
 
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             raise GraphExecutionError(
@@ -346,8 +354,11 @@ class CreationService:
 
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "completed",
-                result=final_result, outline_data=outline_for_db,
+                task_id,
+                thread_id,
+                "completed",
+                result=final_result,
+                outline_data=outline_for_db,
             )
             logger.info(f"创作任务恢复完成 - task_id: {task_id}")
 
@@ -377,7 +388,10 @@ class CreationService:
 
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             raise GraphExecutionError(
@@ -549,7 +563,6 @@ class CreationService:
         try:
             logger.info(f"创作任务流式启动 - task_id: {task_id}, topic: {topic}")
 
-            final_state: dict = {}
             total_sections = len(initial_state.get("outline", []))
             completed_writers = 0
 
@@ -557,7 +570,6 @@ class CreationService:
                 # node_output: {"node_name": {节点输出的增量字典}}
                 for node_name, partial in node_output.items():
                     if node_name == "__end__":
-                        final_state = partial if isinstance(partial, dict) else {}
                         continue
 
                     if not isinstance(partial, dict):
@@ -570,7 +582,9 @@ class CreationService:
                     current_node = partial.get("current_node", node_name)
                     label = NODE_LABELS.get(current_node, current_node)
                     progress = self._calculate_writer_progress(
-                        current_node, completed_writers, total_sections,
+                        current_node,
+                        completed_writers,
+                        total_sections,
                     )
 
                     await broadcaster.broadcast_update(
@@ -588,9 +602,11 @@ class CreationService:
             # astream() 遇到 interrupt_before 不会抛异常，而是停止 yield
             # 检查图状态是否有待处理的中断
             snapshot = await graph.aget_state(config)
-            has_pending_interrupt = any(
-                task.state is None for task in snapshot.tasks
-            ) if snapshot and snapshot.tasks else False
+            has_pending_interrupt = (
+                any(task.state is None for task in snapshot.tasks)
+                if snapshot and snapshot.tasks
+                else False
+            )
 
             if has_pending_interrupt:
                 # 图在中断点暂停（大纲待确认）
@@ -640,8 +656,11 @@ class CreationService:
 
                 # 持久化到 SQLite + 释放内存
                 await self._persist_and_cleanup(
-                    task_id, thread_id, "completed",
-                    result=result or "", outline_data=outline_for_db,
+                    task_id,
+                    thread_id,
+                    "completed",
+                    result=result or "",
+                    outline_data=outline_for_db,
                 )
 
                 await broadcaster.broadcast_result(task_id, result or "", created_at)
@@ -680,7 +699,10 @@ class CreationService:
 
             # 持久化到 SQLite + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             await broadcaster.broadcast_error(task_id, str(e))
@@ -699,7 +721,12 @@ class CreationService:
         if task is None:
             await broadcaster.send_to(
                 client_id,
-                {"type": "error", "requestId": request_id, "code": "TASK_NOT_FOUND", "message": f"任务不存在: {task_id}"},
+                {
+                    "type": "error",
+                    "requestId": request_id,
+                    "code": "TASK_NOT_FOUND",
+                    "message": f"任务不存在: {task_id}",
+                },
             )
             return
 
@@ -731,13 +758,11 @@ class CreationService:
             pre_state = pre_snapshot.values if pre_snapshot else {}
             total_sections = len(pre_state.get("outline", []))
 
-            final_state: dict = {}
             completed_writers = 0
 
             async for node_output in graph.astream(Command(resume=True), config):
                 for node_name, partial in node_output.items():
                     if node_name == "__end__":
-                        final_state = partial if isinstance(partial, dict) else {}
                         continue
 
                     if not isinstance(partial, dict):
@@ -750,7 +775,9 @@ class CreationService:
                     current_node = partial.get("current_node", node_name)
                     label = NODE_LABELS.get(current_node, current_node)
                     progress = self._calculate_writer_progress(
-                        current_node, completed_writers, total_sections,
+                        current_node,
+                        completed_writers,
+                        total_sections,
                     )
 
                     await broadcaster.broadcast_update(
@@ -765,9 +792,11 @@ class CreationService:
 
             # 检查是否有待处理的中断
             snapshot = await graph.aget_state(config)
-            has_pending_interrupt = any(
-                task.state is None for task in snapshot.tasks
-            ) if snapshot and snapshot.tasks else False
+            has_pending_interrupt = (
+                any(task.state is None for task in snapshot.tasks)
+                if snapshot and snapshot.tasks
+                else False
+            )
 
             if has_pending_interrupt:
                 self._update_task(task_id, status="interrupted")
@@ -803,8 +832,11 @@ class CreationService:
 
                 # 持久化到 SQLite + 释放内存
                 await self._persist_and_cleanup(
-                    task_id, thread_id, "completed",
-                    result=result or "", outline_data=outline_for_db,
+                    task_id,
+                    thread_id,
+                    "completed",
+                    result=result or "",
+                    outline_data=outline_for_db,
                 )
 
                 await broadcaster.broadcast_result(task_id, result or "", created_at)
@@ -829,7 +861,10 @@ class CreationService:
 
             # 持久化到 SQLite + 释放内存
             await self._persist_and_cleanup(
-                task_id, thread_id, "failed", error=str(e),
+                task_id,
+                thread_id,
+                "failed",
+                error=str(e),
             )
 
             await broadcaster.broadcast_error(task_id, str(e))
@@ -857,7 +892,9 @@ class CreationService:
 
     @staticmethod
     def _calculate_writer_progress(
-        current_node: str, completed_writers: int, total_sections: int,
+        current_node: str,
+        completed_writers: int,
+        total_sections: int,
     ) -> float:
         """计算包含并发 writer 的总体进度
 
@@ -898,7 +935,11 @@ class CreationService:
                 ]
             elif key == "sections":
                 serialized[key] = [
-                    {"title": s.get("title", ""), "content": s.get("content", ""), "index": s.get("index", 0)}
+                    {
+                        "title": s.get("title", ""),
+                        "content": s.get("content", ""),
+                        "index": s.get("index", 0),
+                    }
                     for s in (value or [])
                 ]
             else:
@@ -910,10 +951,12 @@ class CreationService:
         history = []
         try:
             async for checkpoint in self.checkpointer.alist(config):
-                history.append({
-                    "checkpoint_id": getattr(checkpoint, "id", None),
-                    "ts": getattr(checkpoint, "ts", None),
-                })
+                history.append(
+                    {
+                        "checkpoint_id": getattr(checkpoint, "id", None),
+                        "ts": getattr(checkpoint, "ts", None),
+                    }
+                )
         except Exception as e:
             logger.warning(f"获取执行历史失败: {str(e)}")
         return history

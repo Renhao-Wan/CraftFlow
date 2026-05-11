@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_custom_llm
+from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
 from app.graph.creation.prompts import (
     PLANNER_HUMAN_PROMPT,
     PLANNER_SYSTEM_PROMPT,
@@ -136,7 +136,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例（大纲生成需要更大的 max_tokens 以容纳完整 JSON）
-        llm = get_custom_llm(max_tokens=8192)
+        llm = get_planner_llm()
 
         # 构建 Prompt
         description = state.get("description", "")
@@ -154,7 +154,9 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        response_content = response.content if isinstance(response.content, str) else str(response.content)
+        response_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         # 解析大纲（支持多种 JSON 结构）
         outline_data = _extract_json_from_response(response_content)
@@ -163,9 +165,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         if outline_data:
             outline = _normalize_outline(outline_data)
             if not outline:
-                logger.warning(
-                    f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}"
-                )
+                logger.warning(f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}")
 
         if outline:
             logger.info(f"大纲生成成功，共 {len(outline)} 个章节")
@@ -173,7 +173,9 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
             # 返回状态更新
             return {
                 "outline": outline,
-                "messages": [AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")],
+                "messages": [
+                    AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")
+                ],
                 "current_node": "PlannerNode",
             }
         else:
@@ -232,7 +234,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
-        llm = get_default_llm()
+        llm = get_writer_llm()
 
         # 构建 Prompt
         human_message = WRITER_HUMAN_PROMPT.format(
@@ -320,7 +322,9 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        final_draft = response.content if isinstance(response.content, str) else str(response.content)
+        final_draft = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         logger.info("文章合并完成")
 

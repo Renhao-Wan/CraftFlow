@@ -18,6 +18,7 @@ class DebateState(TypedDict):
     用于 Author-Editor 对抗循环子图，跟踪每轮的
     重写内容、编辑反馈和评分。
     """
+
     # 输入字段
     content: str
     topic: Optional[str]

@@ -4,10 +4,9 @@
 使用 mock 隔离 LLM 调用，验证节点的状态更新行为。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage
+import pytest
 
 from app.graph.creation.nodes import (
     _extract_json_from_response,
@@ -16,7 +15,6 @@ from app.graph.creation.nodes import (
     writer_node,
 )
 from app.graph.creation.state import CreationState
-
 
 # ============================================
 # 辅助函数测试
@@ -76,13 +74,10 @@ class TestPlannerNode:
         mock_response = MagicMock()
         mock_response.content = '{"outline": [{"title": "引言", "summary": "介绍主题"}, {"title": "总结", "summary": "归纳观点"}]}'
 
-        mock_llm_with_tools = AsyncMock()
-        mock_llm_with_tools.ainvoke.return_value = mock_response
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke.return_value = mock_response
 
-        mock_llm = MagicMock()
-        mock_llm.bind_tools.return_value = mock_llm_with_tools
-
-        with patch("app.graph.creation.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.creation.nodes.get_planner_llm", return_value=mock_llm):
             state: CreationState = {
                 "topic": "人工智能",
                 "description": "讨论 AI 的发展趋势",
@@ -108,13 +103,10 @@ class TestPlannerNode:
         mock_response = MagicMock()
         mock_response.content = "这是一个大纲，但不是 JSON 格式"
 
-        mock_llm_with_tools = AsyncMock()
-        mock_llm_with_tools.ainvoke.return_value = mock_response
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke.return_value = mock_response
 
-        mock_llm = MagicMock()
-        mock_llm.bind_tools.return_value = mock_llm_with_tools
-
-        with patch("app.graph.creation.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.creation.nodes.get_planner_llm", return_value=mock_llm):
             state: CreationState = {
                 "topic": "测试主题",
                 "description": None,
@@ -143,7 +135,7 @@ class TestWriterNode:
             content="## 第一章内容\n\n这是第一章的详细内容..."
         )
 
-        with patch("app.graph.creation.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.creation.nodes.get_writer_llm", return_value=mock_llm):
             state: CreationState = {
                 "topic": "人工智能",
                 "description": None,

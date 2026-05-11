@@ -24,8 +24,9 @@ def _get_db_dir() -> Path:
     桌面版：使用 %APPDATA%/CraftFlow/sqlite/
     开发环境：使用 data/sqlite/
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         from desktop_config import get_sqlite_dir
+
         return get_sqlite_dir()
     return Path(__file__).resolve().parent.parent.parent / "data" / "sqlite"
 
@@ -110,7 +111,9 @@ class TaskStore:
         logger.debug(f"任务已保存到 SQLite - task_id: {task['task_id']}")
 
     async def get_task(
-        self, task_id: str, graph_type: Optional[str] = None,
+        self,
+        task_id: str,
+        graph_type: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
         """根据 task_id 查询单个任务
 
@@ -131,7 +134,8 @@ class TaskStore:
             )
         else:
             cursor = await self._db.execute(
-                "SELECT * FROM tasks WHERE task_id = ?", (task_id,),
+                "SELECT * FROM tasks WHERE task_id = ?",
+                (task_id,),
             )
         row = await cursor.fetchone()
         if row is None:
@@ -155,7 +159,9 @@ class TaskStore:
         return [_row_to_dict(cursor, row) for row in rows]
 
     async def get_task_list(
-        self, limit: int = 50, offset: int = 0,
+        self,
+        limit: int = 50,
+        offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
         """查询任务列表（按创建时间降序）
 
@@ -192,7 +198,8 @@ class TaskStore:
             raise RuntimeError("TaskStore 未初始化")
 
         cursor = await self._db.execute(
-            "DELETE FROM tasks WHERE task_id = ?", (task_id,),
+            "DELETE FROM tasks WHERE task_id = ?",
+            (task_id,),
         )
         await self._db.commit()
         deleted = cursor.rowcount > 0
@@ -211,4 +218,4 @@ class TaskStore:
 def _row_to_dict(cursor: aiosqlite.Cursor, row: aiosqlite.Row) -> dict[str, Any]:
     """将数据库行转换为字典"""
     columns = [desc[0] for desc in cursor.description]
-    return dict(zip(columns, row))
+    return dict(zip(columns, row, strict=False))

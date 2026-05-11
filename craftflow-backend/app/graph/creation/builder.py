@@ -76,7 +76,9 @@ def _fan_out_writers(state: CreationState) -> list[Send]:
             "topic": state.get("topic", ""),
             "description": state.get("description"),
             "outline": outline,
-            "sections": [{"title": outline[j]["title"], "content": "", "index": j} for j in range(i)],
+            "sections": [
+                {"title": outline[j]["title"], "content": "", "index": j} for j in range(i)
+            ],
             "final_draft": None,
             "messages": [],
             "current_node": f"WriterNode_{i}",
@@ -153,9 +155,12 @@ def build_creation_graph() -> StateGraph:
 
     # Outline Confirmation: 大纲确认节点（HITL 中断点）
     # 这是一个虚拟节点，实际的用户确认在图外部处理
-    graph.add_node("outline_confirmation", lambda state: {
-        "current_node": "outline_confirmation",
-    })
+    graph.add_node(
+        "outline_confirmation",
+        lambda state: {
+            "current_node": "outline_confirmation",
+        },
+    )
 
     # WriterNode: 撰写章节
     graph.add_node("writer", writer_node)
@@ -232,7 +237,6 @@ def get_creation_graph(
     )
 
     logger.info(
-        f"Creation Graph 编译完成 - "
-        f"checkpointer: {'已注入' if checkpointer else '未注入'}"
+        f"Creation Graph 编译完成 - " f"checkpointer: {'已注入' if checkpointer else '未注入'}"
     )
     return compiled_graph

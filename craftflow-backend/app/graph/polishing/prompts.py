@@ -109,6 +109,12 @@ FACT_CHECKER_SYSTEM_PROMPT = create_base_system_prompt(
 4. **技术准确性**：技术概念、API、工具名称是否正确
 5. **逻辑一致性**：前后论述是否矛盾
 
+### 输出约束（严格遵守）
+
+- issues 列表最多 5 条，每条 description 不超过 50 字，suggestion 不超过 30 字
+- verified_facts 列表最多 10 条，每条不超过 30 字
+- summary 不超过 100 字
+
 ### 输出格式
 
 请以 JSON 格式输出核查结果：

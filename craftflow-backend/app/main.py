@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import close_services, init_services
 from app.api.v1.router import router as v1_router
-from app.api.v1.ws import router as ws_router, init_ws_services
+from app.api.v1.ws import init_ws_services
+from app.api.v1.ws import router as ws_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logger import get_logger, setup_logger
@@ -31,8 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── startup ──
     setup_logger()
     logger.info(
-        f"CraftFlow 启动中 | 环境: {settings.environment} | "
-        f"版本: {settings.app_version}"
+        f"CraftFlow 启动中 | 环境: {settings.environment} | " f"版本: {settings.app_version}"
     )
 
     await init_checkpointer()

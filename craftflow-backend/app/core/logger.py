@@ -21,8 +21,9 @@ def _get_log_dir() -> Path:
     桌面版：使用 %APPDATA%/CraftFlow/logs/
     开发环境：使用 BASE_DIR/logs/
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         from desktop_config import get_log_dir
+
         return get_log_dir()
     return BASE_DIR / "logs"
 
