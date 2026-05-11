@@ -106,6 +106,16 @@ REDUCER_SYSTEM_PROMPT = create_base_system_prompt(
 )
 ```
 
+#### 输出格式变化说明
+
+**改前**：LLM 直接输出完整 Markdown 文章，`reducer_node` 将其作为 `final_draft` 返回。
+
+**改后**：LLM 输出结构化 JSON（`introduction` + `transitions` + `conclusion`），`reducer_node` 解析后调用 `assemble_article()` 将 JSON 与原始章节内容拼装为 `final_draft`。
+
+这是一个根本性的行为变化，需要关注：
+- 下游消费 `final_draft` 的代码无需改动（最终输出仍是完整 Markdown 文章）
+- 但 LLM 不再参与章节内容的重写，writer 原文被保留，过渡语只能基于标题生成，可能缺乏与实际内容的衔接
+
 #### 改后的 REDUCER_HUMAN_PROMPT
 
 ```python
@@ -163,7 +173,7 @@ def assemble_article(
     conclusion: str,
 ) -> str:
     """将引言、章节、过渡语、总结组装为完整文章"""
-    parts = [f"# {sections[0].get('topic', '')}\n", introduction + "\n"]
+    parts = [f"# {sections[0].get('title', '')}\n", introduction + "\n"]
 
     for i, section in enumerate(sorted(sections, key=lambda x: x["index"])):
         if i > 0 and i - 1 < len(transitions):
@@ -196,8 +206,8 @@ def assemble_article(
 
 | 文件 | 改动内容 |
 |------|----------|
-| `app/graph/creation/nodes.py` | 重写 `reducer_node`，新增 `assemble_article` 函数 |
-| `app/graph/creation/prompts.py` | 重写 `REDUCER_SYSTEM_PROMPT` 和 `REDUCER_HUMAN_PROMPT`，删除 `format_sections_for_reducer` |
+| `app/graph/creation/nodes.py` | 重写 `reducer_node`，新增 `assemble_article` 函数，移除 `format_sections_for_reducer` 的 import |
+| `app/graph/creation/prompts.py` | 重写 `REDUCER_SYSTEM_PROMPT` 和 `REDUCER_HUMAN_PROMPT`，删除 `format_sections_for_reducer` 函数 |
 | `app/graph/common/prompts.py` | 无需改动 |
 
 ## 预期收益
@@ -215,7 +225,7 @@ def assemble_article(
 |------|------|
 | 实现成本 | **中** — 需重写 reducer_node 逻辑和 prompt |
 | 风险 | **中** — 改变了文章组装方式，需验证最终输出质量 |
-| JSON 解析 | 存在 LLM 输出非标准 JSON 的风险，需复用 `_extract_json_from_response` |
+| JSON 解析 | 存在 LLM 输出非标准 JSON 的风险。`_extract_json_from_response` 已在 `creation/nodes.py` 中定义（第 32-65 行），可直接复用，无需跨模块引用 |
 
 ## 实施建议
 
@@ -226,3 +236,62 @@ def assemble_article(
    - 整体文章的连贯性是否下降
 3. 如果质量可接受，保留方案 A
 4. 如果质量下降明显，考虑折中方案：ReducerNode 读取章节摘要（而非全文），生成引言+过渡+总结后组装
+
+---
+
+## 方案推荐：方案 A（标题 + 摘要）
+
+### 方案 A 的核心问题
+
+原方案只传**章节标题**，LLM 生成过渡语时无法了解各章节的实际内容，导致过渡语可能过于笼统（如"接下来我们讨论…"而非内容相关的衔接）。
+
+### 推荐改进：传入标题 + 摘要
+
+`CreationState` 中的 `outline` 字段（`list[OutlineItem]`）在 reducer 执行时仍然可用——`planner_node` 生成的 outline 会一直保留在 state 中，`_fan_out_writers` 也将 outline 传递给了 writer_state。因此 reducer 可以**零额外成本**获取每个章节的标题和摘要。
+
+#### 改后的 REDUCER_HUMAN_PROMPT
+
+```python
+REDUCER_HUMAN_PROMPT = """文章主题：{topic}
+
+章节结构：
+{section_outlines}
+
+请为上述文章生成引言、各章节之间的过渡语、和总结。严格输出 JSON 格式。"""
+```
+
+#### 改后的 reducer_node 输入构建
+
+```python
+# 利用 outline 中已有的 title + summary，无需传入完整 sections
+outline = state.get("outline", [])
+section_outlines = "\n".join(
+    f"{i+1}. {item.get('title', '未命名')} — {item.get('summary', '')}"
+    for i, item in enumerate(outline)
+)
+```
+
+### Token 对比（修正版）
+
+| 项目 | 改前 | 方案 A（仅标题） | 推荐方案（标题+摘要） |
+|------|------|-----------------|---------------------|
+| System prompt | ~1500 token | ~500 token | ~500 token |
+| Human message | ~3500 token | ~200 token | ~400-600 token |
+| 输出 | ~3000-4000 token | ~400 token | ~400 token |
+| **总计** | **~8000-9500 token** | **~1100 token** | **~1300-1500 token** |
+| **节省** | - | **~85%** | **~82-85%** |
+
+摘要的额外 token 成本很低（5 个章节的摘要约 200-400 token），但能让过渡语与实际内容相关。
+
+### 推荐方案的优势
+
+1. **过渡语质量更高** — LLM 看到各章节的摘要，能生成内容相关的衔接，而非泛泛的"接下来讨论…"
+2. **零额外成本** — outline 已在 state 中，不需要额外的 LLM 调用或数据处理
+3. **改动量与方案 A 相同** — 只是 REDUCER_HUMAN_PROMPT 模板和 reducer_node 中的输入构建逻辑不同
+4. **向后兼容** — 如果 outline 为空（异常情况），可回退到只传标题
+
+### 需要验证的点
+
+- 过渡语是否与章节内容相关（对比"仅标题"和"标题+摘要"两种输入）
+- 引言/总结是否准确反映文章主旨
+- `outline` 在 HITL 用户修改大纲后是否仍然准确（用户可能在 outline_confirmation 阶段增删章节，此时 outline 会被更新）
