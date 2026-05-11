@@ -1,0 +1,88 @@
+# ============================================================
+# Backend CI — 后端代码质量检查与测试
+# ============================================================
+# 触发条件：
+#   - push 到 master / main / feature-dev 分支
+#   - PR 目标为 master / main 分支
+# 仅当 craftflow-backend/ 或本文件有变更时才触发，
+# 避免前端改动浪费后端 CI 资源。
+# ============================================================
+name: Backend CI
+
+on:
+  push:
+    branches: [ "master", "main", "feature-dev" ]
+    paths:
+      - "craftflow-backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches: [ "master", "main" ]
+    paths:
+      - "craftflow-backend/**"
+      - ".github/workflows/backend.yml"
+
+# 所有 run 命令的默认工作目录
+defaults:
+  run:
+    working-directory: craftflow-backend
+
+jobs:
+  # ── 代码风格检查 ──────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      # Ruff：lint 规则检查（导入排序、未使用变量等）
+      - name: Ruff check
+        run: uv run ruff check app/ tests/
+
+      # Black：代码格式化检查（仅检查，不修改）
+      - name: Black check
+        run: uv run black --check app/ tests/
+
+  # ── 单元测试 / 集成测试 ───────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      # 创建最小 .env.dev，避免因缺少环境变量导致启动失败
+      # 实际密钥通过 GitHub Secrets 注入（如需要）
+      - name: Create CI env file
+        run: |
+          cat > .env.dev << 'EOF'
+          LLM_API_KEY=test
+          LLM_API_BASE=https://api.openai.com/v1
+          LLM_MODEL=gpt-4
+          ENABLE_RAG=false
+          EOF
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --timeout=30
+        env:
+          ENV_FILE: .env.dev

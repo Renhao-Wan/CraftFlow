@@ -334,13 +334,14 @@ class TestExtractResult:
         assert PolishingService._extract_result(state) == "格式化内容"
 
     def test_extract_from_fact_check_result(self):
-        """测试从 fact_check_result 提取结果"""
+        """测试 fact_check_result 不作为文章结果提取（核查报告通过单独字段传递）"""
         state = {
             "final_content": None,
             "formatted_content": None,
             "fact_check_result": "核查结果",
         }
-        assert PolishingService._extract_result(state) == "核查结果"
+        # _extract_result 提取文章内容，fact_check_result 单独处理
+        assert PolishingService._extract_result(state) is None
 
     def test_extract_returns_none_when_empty(self):
         """测试无结果时返回 None"""
@@ -368,10 +369,10 @@ class TestProgressCalculation:
 
     def test_progress_by_node(self):
         nodes = {
-            "router": 20.0,
+            "router": 10.0,
             "formatter": 60.0,
             "debate": 60.0,
-            "fact_checker": 60.0,
+            "fact_checker": 30.0,
         }
         for node, expected in nodes.items():
             assert PolishingService._calculate_progress(

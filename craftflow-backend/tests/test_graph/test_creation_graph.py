@@ -57,8 +57,8 @@ class TestRouteFunctions:
         from langgraph.graph import END
         assert _route_after_planner(state) == END
 
-    def test_route_after_writing_incomplete(self):
-        """测试章节未完成时的路由"""
+    def test_route_after_writing_no_error(self):
+        """测试 WriterNode 无错误时的路由（Send 并发模式下直接进入 reducer）"""
         state: CreationState = {
             "topic": "测试主题",
             "description": None,
@@ -74,7 +74,8 @@ class TestRouteFunctions:
             "current_node": "WriterNode",
             "error": None,
         }
-        assert _route_after_writing(state) == "fan_out"
+        # Send 并发模式下，所有 writer 完成后直接进入 reducer
+        assert _route_after_writing(state) == "reducer"
 
     def test_route_after_writing_complete(self):
         """测试章节完成时的路由"""
@@ -148,8 +149,8 @@ class TestRouteFunctions:
 class TestFanOutWriters:
     """测试扇出写作任务"""
 
-    def test_fan_out_with_remaining_sections(self):
-        """测试有待撰写章节时的扇出"""
+    def test_fan_out_with_sections(self):
+        """测试有大纲章节时的扇出（Send 并发模式为每个章节创建独立任务）"""
         state: CreationState = {
             "topic": "测试主题",
             "description": None,
@@ -163,36 +164,34 @@ class TestFanOutWriters:
             ],
             "final_draft": None,
             "messages": [],
-            "current_node": "fan_out",
+            "current_node": "outline_confirmation",
             "error": None,
         }
 
         sends = _fan_out_writers(state)
 
-        # 应该扇出 2 个任务（第二章和第三章）
-        assert len(sends) == 2
+        # Send 并发模式为 outline 中每个章节创建独立的 writer 任务
+        assert len(sends) == 3
 
-    def test_fan_out_all_complete(self):
-        """测试所有章节已完成时的扇出"""
+    def test_fan_out_single_chapter(self):
+        """测试单章节大纲的扇出"""
         state: CreationState = {
             "topic": "测试主题",
             "description": None,
             "outline": [
                 {"title": "第一章", "summary": "概述"},
             ],
-            "sections": [
-                {"title": "第一章", "content": "内容", "index": 0},
-            ],
+            "sections": [],
             "final_draft": None,
             "messages": [],
-            "current_node": "fan_out",
+            "current_node": "outline_confirmation",
             "error": None,
         }
 
         sends = _fan_out_writers(state)
 
-        # 所有章节已完成，不应扇出
-        assert len(sends) == 0
+        # 大纲有 1 个章节，扇出 1 个 writer 任务
+        assert len(sends) == 1
 
     def test_fan_out_empty_outline(self):
         """测试大纲为空时的扇出"""
@@ -228,11 +227,10 @@ class TestCreationGraph:
         # 验证图已创建
         assert graph is not None
 
-        # 验证节点存在
+        # 验证节点存在（fan_out 通过条件边实现，不是独立节点）
         nodes = list(graph.nodes)
         assert "planner" in nodes
         assert "outline_confirmation" in nodes
-        assert "fan_out" in nodes
         assert "writer" in nodes
         assert "reducer" in nodes
 
