@@ -352,7 +352,7 @@ ENABLE_AUTH=false
 
 ### Q4: WebSocket 在 standalone 模式下可用吗？
 
-standalone 模式下 WebSocket 服务不初始化，路由不注册。前端应使用 REST API 交互。
+是的，所有模式（standalone 和 server）都支持 WebSocket。standalone 模式下无需 API Key 鉴权，直接连接即可。
 
 ### Q5: 多实例部署需要注意什么？
 
