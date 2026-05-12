@@ -11,7 +11,8 @@ name: Backend CI
 
 on:
   push:
-    branches: [ "master", "main", "feature-dev" ]
+    # branches: [ "master", "main", "feature-dev" ]
+    branches: [ "master", "main" ]
     paths:
       - "craftflow-backend/**"
       - ".github/workflows/backend.yml"

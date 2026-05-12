@@ -26,7 +26,7 @@ from app.core.logger import get_logger
 from app.graph.creation.builder import get_creation_graph
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.services.task_store import AbstractTaskStore
+from app.adapters.base import BusinessAdapter
 
 logger = get_logger(__name__)
 
@@ -50,15 +50,15 @@ class CreationService:
         _tasks: 任务元数据存储
     """
 
-    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: AbstractTaskStore) -> None:
+    def __init__(self, checkpointer: BaseCheckpointSaver, adapter: BusinessAdapter) -> None:
         """初始化 Creation Service
 
         Args:
             checkpointer: LangGraph Checkpointer 实例
-            task_store: SQLite 任务持久化存储
+            adapter: 业务适配器
         """
         self.checkpointer = checkpointer
-        self.task_store = task_store
+        self.adapter = adapter
         self._graph = None
         self._tasks: dict[str, dict[str, Any]] = {}
 
@@ -113,7 +113,7 @@ class CreationService:
         request = task.get("request", {})
 
         try:
-            await self.task_store.save_task(
+            await self.adapter.save_task(
                 {
                     "task_id": task_id,
                     "graph_type": "creation",
@@ -172,7 +172,7 @@ class CreationService:
                 "updated_at": str(datetime.now()),
             }
             logger.debug(f"保存数据: {save_data}")
-            await self.task_store.save_task(save_data)
+            await self.adapter.save_task(save_data)
             logger.info(f"SQLite 保存成功 - task_id: {task_id}")
         except Exception as e:
             logger.error(f"保存任务到 SQLite 失败 - task_id: {task_id}, error: {e}", exc_info=True)
@@ -192,7 +192,7 @@ class CreationService:
         Returns:
             加载的任务数量
         """
-        interrupted = await self.task_store.get_interrupted_tasks()
+        interrupted = await self.adapter.get_interrupted_tasks()
         if not interrupted:
             return 0
 
@@ -470,7 +470,7 @@ class CreationService:
 
         # 2. 内存未找到，查 TaskStore（仅查 creation 类型）
         if task is None:
-            row = await self.task_store.get_task(task_id, graph_type="creation")
+            row = await self.adapter.get_task(task_id)
             if row is None:
                 raise TaskNotFoundError(task_id=task_id)
 
