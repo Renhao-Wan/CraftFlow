@@ -145,16 +145,16 @@ npm run dev
 ### 架构设计
 
 - [系统架构设计](docs/architecture.md) — 整体架构设计
-- [接口流程图解](docs/api-flow.md) — API 接口流程图
 - [设计补充文档](docs/design-notes.md) — 设计补充说明
 - [未来拓展路线图](docs/roadmap.md) — 项目功能规划
 
 ### 后端技术文档
 
-- [Creation Graph 流程](craftflow-backend/docs/creation-graph.md) — 创作图详细流程
-- [Polishing Graph 流程](craftflow-backend/docs/polishing-graph.md) — 润色图详细流程
-- [核心开发蓝图](craftflow-backend/docs/core-dev-guide.md) — 核心开发规范
-- [工具调用说明](craftflow-backend/docs/tool-calling.md) — 工具链调用说明
+- [接口流程图解](craftflow-backend/docs/api/api-flow.md) — API 接口流程图
+- [Creation Graph 流程](craftflow-backend/docs/graph/creation-graph.md) — 创作图详细流程
+- [Polishing Graph 流程](craftflow-backend/docs/graph/polishing-graph.md) — 润色图详细流程
+- [核心开发蓝图](craftflow-backend/docs/guide/core-dev-guide.md) — 核心开发规范
+- [工具调用说明](craftflow-backend/docs/guide/tool-calling.md) — 工具链调用说明
 
 ## 贡献指南
 

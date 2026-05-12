@@ -463,3 +463,9 @@ Creation Graph                    Polishing Graph
 
 - Creation Graph 的输出（`final_draft`）可以作为 Polishing Graph 的输入（`content`）
 - 用户可以在创作完成后选择润色模式进行二次优化
+
+---
+
+**文档版本**: v1.0  
+**创建日期**: 2026-05-12  
+**维护者**: Renhao-Wan
