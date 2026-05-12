@@ -49,6 +49,28 @@ class BusinessAdapter(ABC):
     async def get_all_llm_profiles(self) -> list[dict[str, Any]]:
         """获取所有 LLM Profile"""
 
+    @abstractmethod
+    async def save_llm_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
+        """保存或更新 LLM Profile（INSERT OR REPLACE）"""
+
+    @abstractmethod
+    async def delete_llm_profile(self, profile_id: str) -> bool:
+        """删除 LLM Profile，返回是否成功"""
+
+    @abstractmethod
+    async def set_default_profile(self, profile_id: str) -> bool:
+        """将指定 Profile 设为默认，返回是否成功"""
+
+    # ========== 写作参数 ==========
+
+    @abstractmethod
+    async def get_writing_params(self) -> dict[str, Any]:
+        """获取写作参数"""
+
+    @abstractmethod
+    async def update_writing_params(self, params: dict[str, Any]) -> dict[str, Any]:
+        """更新写作参数，返回更新后的完整参数"""
+
     # ========== 生命周期 ==========
 
     @abstractmethod

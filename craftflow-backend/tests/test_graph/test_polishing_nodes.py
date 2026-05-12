@@ -221,7 +221,7 @@ class TestRouterNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.polishing.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.nodes.get_default_llm", new_callable=AsyncMock, return_value=mock_llm):
             state: PolishingState = {
                 "content": "测试内容",
                 "mode": 2,  # 默认值
@@ -254,7 +254,7 @@ class TestFormatterNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.polishing.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.nodes.get_default_llm", new_callable=AsyncMock, return_value=mock_llm):
             state: PolishingState = {
                 "content": "原始内容",
                 "mode": 1,
@@ -294,7 +294,7 @@ class TestFactCheckerNode:
         # 模拟 llm.ainvoke 也返回相同的响应
         mock_llm.ainvoke = AsyncMock(return_value=mock_response)
 
-        with patch("app.graph.polishing.nodes.get_factchecker_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.nodes.get_factchecker_llm", new_callable=AsyncMock, return_value=mock_llm):
             state: PolishingState = {
                 "content": "测试内容",
                 "mode": 3,
@@ -329,7 +329,7 @@ class TestAuthorNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.polishing.debate.nodes.get_default_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.debate.nodes.get_default_llm", new_callable=AsyncMock, return_value=mock_llm):
             state: DebateState = {
                 "content": "原始内容",
                 "topic": None,
@@ -376,7 +376,7 @@ class TestEditorNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.polishing.debate.nodes.get_editor_llm", return_value=mock_llm):
+        with patch("app.graph.polishing.debate.nodes.get_editor_llm", new_callable=AsyncMock, return_value=mock_llm):
             state: DebateState = {
                 "content": "测试内容",
                 "topic": None,
