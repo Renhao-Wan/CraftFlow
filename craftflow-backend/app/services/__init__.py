@@ -1,6 +1,6 @@
 """业务服务层模块
 
-提供 Checkpointer 管理、Creation 和 Polishing 业务服务。
+提供 Checkpointer 管理、TaskStore 抽象、Creation 和 Polishing 业务服务。
 """
 
 from app.services.checkpointer import (
@@ -10,11 +10,14 @@ from app.services.checkpointer import (
 )
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
+from app.services.task_store import AbstractTaskStore, create_task_store
 
 __all__ = [
     "init_checkpointer",
     "get_checkpointer",
     "close_checkpointer",
+    "AbstractTaskStore",
+    "create_task_store",
     "CreationService",
     "PolishingService",
 ]

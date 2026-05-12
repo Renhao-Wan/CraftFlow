@@ -23,7 +23,7 @@ from app.graph.polishing.builder import get_polishing_graph
 from app.graph.polishing.nodes import register_progress_callback, unregister_progress_callback
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.services.task_store import TaskStore
+from app.services.task_store import AbstractTaskStore
 
 logger = get_logger(__name__)
 
@@ -63,7 +63,7 @@ class PolishingService:
         _tasks: 任务元数据存储
     """
 
-    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: TaskStore) -> None:
+    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: AbstractTaskStore) -> None:
         """初始化 Polishing Service
 
         Args:

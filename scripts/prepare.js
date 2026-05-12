@@ -101,6 +101,7 @@ const backendFiles = [
   'pyproject.toml',
   'uv.lock',
   '.env.example',
+  '.env.standalone',
   'README.md',
   'craftflow.spec',
 ];

@@ -51,25 +51,27 @@ uv sync --extra dev        # 含 pytest, black, ruff
 3. **配置环境变量**
 
 ```bash
-cp .env.example .env.dev
-# 编辑 .env.dev，填写必要的 API Key
+# 桌面端开发（推荐）
+cp .env.standalone .env.dev
+
+# 或服务端开发
+cp .env.server .env.dev
 ```
 
-必填配置项：
-- `OPENAI_API_KEY` 或其他 LLM Provider 的 API Key
-- `TAVILY_API_KEY`（用于互联网搜索）
-- `E2B_API_KEY`（用于代码沙箱，可选）
+编辑 `.env.dev`，填写必要的 API Key：
+- `LLM_API_KEY`：LLM API 密钥（必填）
+- `TAVILY_API_KEY`：Tavily 搜索 API（可选）
+- `E2B_API_KEY`：E2B 代码沙箱 API（可选）
 
 4. **启动开发服务器**
 
 ```bash
+# 使用启动脚本（推荐）
+scripts/dev.ps1    # Windows PowerShell
+scripts/dev.sh     # Linux/macOS
+
+# 或手动启动
 uv run uvicorn app.main:app --reload --env-file .env.dev --host 127.0.0.1 --port 8000
-```
-
-或：
-
-```bash
-python -m uvicorn app.main:app --reload --env-file .env.dev
 ```
 
 服务将在 `http://localhost:8000` 启动。
