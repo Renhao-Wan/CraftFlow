@@ -13,12 +13,22 @@
 - 🤝 **强制人机协同 (HITL)**：关键决策点自动挂起，支持断点续传
 - 🛠️ **工具链增强**：集成搜索、代码沙箱、链接验证等外部工具
 - 📊 **长周期有状态任务**：基于 Checkpointer 的持久化状态管理
+- 🔧 **配置驱动双模式**：一套代码，通过 `APP_MODE` 环境变量切换 standalone / server 模式
+
+### 运行模式
+
+| 特性 | standalone（桌面端） | server（服务端） |
+|------|---------------------|-----------------|
+| 存储 | SQLite | PostgreSQL |
+| 鉴权 | 无 | API Key |
+| WebSocket | 不启用 | 启用 |
+| 配置 | 零配置启动 | 需配置 DATABASE_URL |
 
 ### 技术栈
 
 - **后端框架**: Python 3.11+, FastAPI, Pydantic V2
 - **AI 编排**: LangGraph, LangChain
-- **持久化**: PostgreSQL (pgvector), Redis
+- **持久化**: SQLite（桌面端）/ PostgreSQL + pgvector（服务端）
 - **LLM**: OpenAI 格式
 
 ## 快速开始
@@ -89,11 +99,12 @@ uv run uvicorn app.main:app --reload --env-file .env.dev --host 127.0.0.1 --port
 craftflow-backend/
 ├── app/
 │   ├── api/                    # FastAPI 路由层
-│   │   ├── dependencies.py     # 依赖注入
+│   │   ├── dependencies.py     # 依赖注入（模式感知初始化）
 │   │   └── v1/                 # API v1 版本
 │   ├── core/                   # 基础设施层
-│   │   ├── config.py           # 全局配置
-│   │   ├── exceptions.py       # 异常处理
+│   │   ├── auth.py             # API Key 鉴权模块
+│   │   ├── config.py           # 全局配置（APP_MODE 驱动）
+│   │   ├── exceptions.py       # 异常处理（生产环境脱敏）
 │   │   └── logger.py           # 日志配置
 │   ├── graph/                  # LangGraph 核心编排
 │   │   ├── common/             # 共享抽象（LLM 工厂、Prompt）
@@ -102,11 +113,19 @@ craftflow-backend/
 │   │   └── polishing/          # Polishing Graph 模块
 │   ├── schemas/                # Pydantic 数据模型
 │   ├── services/               # 业务服务层
+│   │   ├── task_store.py       # TaskStore 抽象接口 + 工厂
+│   │   ├── task_store_sqlite.py # SQLite 实现
+│   │   └── task_store_postgres.py # PostgreSQL 实现
 │   └── main.py                 # 应用入口
 ├── tests/                      # 测试目录
+│   ├── test_standalone.py      # standalone 模式端到端测试
+│   ├── test_server.py          # server 模式端到端测试
+│   └── test_auth.py            # 鉴权模块测试
 ├── docs/                       # 文档目录
 ├── logs/                       # 日志目录
-├── .env.example                # 环境变量模板
+├── .env.example                # 环境变量配置说明
+├── .env.standalone             # 桌面端配置模板
+├── .env.server                 # 服务端配置模板
 ├── pyproject.toml              # 项目依赖配置
 └── README.md                   # 本文件
 ```
@@ -202,15 +221,21 @@ uv run ruff check app/ tests/
 
 ## 部署
 
-### 生产环境配置
+### 生产环境配置（server 模式）
 
-1. 修改 `.env` 文件：
-   - 设置 `ENVIRONMENT=production`
-   - 设置 `USE_PERSISTENT_CHECKPOINTER=true`
-   - 配置 PostgreSQL 连接字符串
-   - 关闭 `DEBUG` 和 `RELOAD`
+1. 复制服务端配置模板：
 
-2. 使用 Gunicorn 部署：
+```bash
+cp .env.server .env
+```
+
+2. 编辑 `.env`，修改以下关键配置：
+   - `API_KEY`：设置强密钥（Java 后端调用时需要携带）
+   - `DATABASE_URL`：PostgreSQL 连接串
+   - `LLM_API_KEY`：LLM API 密钥
+   - `ENVIRONMENT=production`：隐藏 API 文档
+
+3. 使用 Gunicorn 部署：
 
 ```bash
 gunicorn app.main:app \
@@ -219,6 +244,31 @@ gunicorn app.main:app \
   --bind 0.0.0.0:8000 \
   --env-file .env
 ```
+
+### 桌面端部署（standalone 模式）
+
+桌面端使用 standalone 模式，SQLite 存储，零配置：
+
+```bash
+cp .env.standalone .env
+uv run uvicorn app.main:app --env-file .env --host 127.0.0.1 --port 8000
+```
+
+### API Key 鉴权
+
+server 模式下，所有 REST API 需要在请求头中携带 API Key：
+
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/tasks
+```
+
+WebSocket 连接通过查询参数传递：
+
+```bash
+ws://localhost:8000/ws?api_key=your-api-key
+```
+
+standalone 模式下无需鉴权，所有端点直接放行。
 
 ### Docker 部署（计划中）
 
@@ -260,6 +310,6 @@ Docker 支持尚在规划中，敬请期待。
 
 ---
 
-**文档版本**: v1.0  
-**最后更新**: 2026-04-30  
+**文档版本**: v2.0
+**最后更新**: 2026-05-12
 **维护者**: Renhao-Wan
