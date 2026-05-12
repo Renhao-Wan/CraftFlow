@@ -98,6 +98,12 @@ def create_task_store() -> AbstractTaskStore:
     if backend == "sqlite":
         from app.services.task_store_sqlite import SqliteTaskStore
 
+        # 桌面版（PyInstaller 打包）：使用 _get_default_db_path() 自动解析到 %APPDATA%/CraftFlow/
+        # 开发环境：使用 settings.taskstore_db_path（相对路径，相对于项目根目录）
+        import sys
+
+        if getattr(sys, "frozen", False):
+            return SqliteTaskStore()  # 使用 _get_default_db_path()
         db_path = Path(settings.taskstore_db_path) if settings.taskstore_db_path else None
         return SqliteTaskStore(db_path=db_path)
 
