@@ -57,9 +57,8 @@ def main():
     # ============================================
     logger.info("\n[状态持久化配置]")
     logger.info(f"  Checkpointer 后端: {settings.checkpointer_backend}")
-    logger.info(f"  Checkpoint DB 路径: {settings.checkpoint_db_path}")
     logger.info(f"  TaskStore 后端: {settings.taskstore_backend}")
-    logger.info(f"  TaskStore DB 路径: {settings.taskstore_db_path}")
+    logger.info("  SQLite 路径: 基于代码位置自动推导（data/sqlite/、data/checkpoints/）")
     if settings.checkpointer_backend == "postgres" or settings.taskstore_backend == "postgres":
         logger.info(f"  数据库 URL: {settings.database_url}")
 

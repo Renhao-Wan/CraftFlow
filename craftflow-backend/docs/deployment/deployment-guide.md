@@ -117,13 +117,10 @@ npm run dev
 ### 4.4 指定配置文件
 
 ```bash
-# 方式 1：环境变量
-APP_MODE=server uv run uvicorn app.main:app
+# 方式 1：显式指定（推荐）
+CRAFTFLOW_ENV_FILE=.env.server uv run uvicorn app.main:app
 
-# 方式 2：显式指定
-CRAFTFLOW_ENV_FILE=/path/to/custom.env uv run uvicorn app.main:app
-
-# 方式 3：uvicorn 参数
+# 方式 2：uvicorn 参数（仅注入进程环境，不影响 Settings 的 env_file）
 uv run uvicorn app.main:app --env-file .env.server
 ```
 
@@ -320,13 +317,15 @@ DEBUG=false       # 生产环境设为 false
 
 ## 十、环境变量配置文件对照
 
-| 文件 | 用途 | 提交 Git |
-|------|------|----------|
-| `.env.example` | 配置说明文档 | ✅ |
-| `.env.standalone` | 桌面端默认配置 | ✅ |
-| `.env.server` | 服务端默认配置 | ✅ |
-| `.env.dev` | 本地开发配置 | ❌ |
-| `.env` | 生产环境配置 | ❌ |
+| 文件 | 用途 | 代码加载 | 提交 Git |
+|------|------|----------|----------|
+| `.env.example` | 配置说明文档 | ❌ | ✅ |
+| `.env.standalone` | 桌面端配置模板（供复制参考） | ❌ | ✅ |
+| `.env.server` | 服务端配置模板（供复制参考） | ❌ | ✅ |
+| `.env.dev` | 本地开发配置 | ✅ | ❌ |
+| `.env` | 生产环境配置 | ✅ | ❌ |
+
+代码加载优先级：`CRAFTFLOW_ENV_FILE` → PyInstaller → `.env.dev` → `.env`。
 
 详细配置说明见 [环境变量配置指南](env-configuration-guide.md)。
 
@@ -346,7 +345,13 @@ ENABLE_AUTH=false
 
 ### Q3: 如何切换 standalone/server 模式？
 
-修改 `APP_MODE` 环境变量即可，代码无需改动。但需注意：
+`APP_MODE` 控制运行时行为（鉴权、存储后端校验），不影响配置文件选择。修改方式：
+
+- **本地开发**：编辑 `.env.dev` 中的 `APP_MODE`
+- **生产部署**：编辑 `.env` 中的 `APP_MODE`
+- **切换配置文件**：使用 `CRAFTFLOW_ENV_FILE=.env.server`
+
+需注意：
 - standalone 模式下 postgres 会被自动降级为 sqlite
 - standalone 模式下鉴权自动禁用
 

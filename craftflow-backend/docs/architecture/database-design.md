@@ -250,9 +250,9 @@ TASKSTORE_BACKEND=sqlite
 ENABLE_RAG=false
 ```
 
-特点：零配置，SQLite 文件自动创建，无需外部数据库服务。
+特点：零配置，SQLite 路径基于代码位置自动推导，无需手动配置。
 
-> **桌面端说明**：桌面端（PyInstaller 打包）自动使用 `%APPDATA%/CraftFlow/` 目录存储数据，`CHECKPOINT_DB_PATH` 和 `TASKSTORE_DB_PATH` 配置无效。
+> **桌面端说明**：桌面端（PyInstaller 打包）自动使用 `%APPDATA%/CraftFlow/` 目录存储数据。
 
 ### 6.2 server 模式推荐配置（SQLite）
 

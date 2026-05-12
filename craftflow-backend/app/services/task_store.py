@@ -6,7 +6,6 @@
 """
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, Optional
 
 
@@ -88,6 +87,9 @@ def create_task_store() -> AbstractTaskStore:
     - sqlite：使用 SqliteTaskStore（默认，适用于桌面端和开发环境）
     - postgres：使用 PostgresTaskStore（适用于服务端生产环境）
 
+    SQLite 路径使用 _get_default_db_path() 基于文件位置推导绝对路径，
+    不依赖当前工作目录。
+
     Returns:
         AbstractTaskStore 的具体实现实例
     """
@@ -98,14 +100,7 @@ def create_task_store() -> AbstractTaskStore:
     if backend == "sqlite":
         from app.services.task_store_sqlite import SqliteTaskStore
 
-        # 桌面版（PyInstaller 打包）：使用 _get_default_db_path() 自动解析到 %APPDATA%/CraftFlow/
-        # 开发环境：使用 settings.taskstore_db_path（相对路径，相对于项目根目录）
-        import sys
-
-        if getattr(sys, "frozen", False):
-            return SqliteTaskStore()  # 使用 _get_default_db_path()
-        db_path = Path(settings.taskstore_db_path) if settings.taskstore_db_path else None
-        return SqliteTaskStore(db_path=db_path)
+        return SqliteTaskStore()  # 使用 _get_default_db_path()，绝对路径
 
     elif backend == "postgres":
         from app.services.task_store_postgres import PostgresTaskStore

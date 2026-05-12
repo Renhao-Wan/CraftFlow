@@ -9,19 +9,21 @@
 ```
 craftflow-backend/
 ├── .env.example      # 配置说明文档（列出所有配置项及详细说明）
-├── .env.standalone   # 桌面端默认配置（可直接使用）
-└── .env.server       # 服务端默认配置（可直接使用）
+├── .env.standalone   # 桌面端配置模板（供复制参考，代码不直接加载）
+├── .env.server       # 服务端配置模板（供复制参考，代码不直接加载）
+├── .env.dev          # 本地开发配置（不提交 Git）
+└── .env              # 生产部署配置（不提交 Git）
 ```
 
-| 文件 | 用途 | 提交 Git |
-|------|------|----------|
-| `.env.example` | 配置说明文档，供开发者参考 | ✅ 是 |
-| `.env.standalone` | 桌面端默认配置，包含合理默认值 | ✅ 是 |
-| `.env.server` | 服务端默认配置，包含合理默认值 | ✅ 是 |
+| 文件 | 用途 | 代码加载 | 提交 Git |
+|------|------|----------|----------|
+| `.env.example` | 配置说明文档，供开发者参考 | ❌ | ✅ |
+| `.env.standalone` | 桌面端配置模板，供复制参考 | ❌ | ✅ |
+| `.env.server` | 服务端配置模板，供复制参考 | ❌ | ✅ |
+| `.env.dev` | 本地开发配置（优先级 3） | ✅ | ❌ |
+| `.env` | 生产部署兜底（优先级 4） | ✅ | ❌ |
 
-**注意**：以下文件不提交 Git，由用户本地创建：
-- `.env.dev` — 本地开发配置（包含真实 API Key）
-- `.env` — 用户自定义配置
+**说明**：`.env.standalone` 和 `.env.server` 是模板文件，用于复制到 `.env.dev` 或 `.env` 后修改使用，代码不会直接加载它们。
 
 ### 1.2 文件定位
 
@@ -59,28 +61,14 @@ craftflow-backend/
                                  /     \
                                 ▼       ▼
                   ┌──────────────┐  ┌─────────────────────┐
-                  │ %APPDATA%/   │  │ 读取环境变量          │
-                  │ CraftFlow/   │  │ APP_MODE             │
-                  │ .env         │  └──────────┬──────────┘
-                  └──────────────┘             │
-                                  ┌────────────▼────────────┐
-                                  │ APP_MODE 的值是什么？      │
-                                  └────────────┬────────────┘
-                                               │
-                          ┌────────────────────┼────────────────────┐
-                          │                    │                    │
-                          ▼                    ▼                    ▼
-                   "standalone"           "server"               其他/无
-                          │                    │                    │
-                          ▼                    ▼                    ▼
-                ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-                │.env.standalone│    │ .env.server  │    │   .env.dev   │
-                │  存在？       │    │  存在？       │    │  (回退)      │
-                └──────┬───────┘    └──────┬───────┘    └──────────────┘
-                  是 / \ 否           是 / \ 否
-                 /     \             /     \
-                ▼       ▼           ▼       ▼
-          使用该文件  .env.dev   使用该文件  .env.dev
+                  │ %APPDATA%/   │  │ .env.dev 存在？      │
+                  │ CraftFlow/   │  └──────────┬──────────┘
+                  │ .env         │        是 / \ 否
+                  └──────────────┘       /     \
+                                       ▼       ▼
+                                 ┌──────────┐  ┌──────────┐
+                                 │ .env.dev │  │   .env   │
+                                 └──────────┘  └──────────┘
 ```
 
 ### 2.2 加载优先级
@@ -89,8 +77,8 @@ craftflow-backend/
 |--------|------|------|
 | 1 | `CRAFTFLOW_ENV_FILE` 环境变量 | 显式指定配置文件路径，最高优先级 |
 | 2 | PyInstaller 打包环境 | 自动使用 `%APPDATA%/CraftFlow/.env` |
-| 3 | `.env.{APP_MODE}` | 根据 APP_MODE 选择（standalone/server） |
-| 4 | `.env.dev` | 最终回退 |
+| 3 | `.env.dev` | 本地开发配置 |
+| 4 | `.env` | 生产部署兜底 |
 
 ### 2.3 相关代码
 
@@ -111,16 +99,14 @@ def _get_env_file() -> str:
         from desktop_config import get_env_file
         return str(get_env_file())
 
-    # 3. 开发环境：根据 APP_MODE 选择
+    # 3. 本地开发：.env.dev
     base_dir = _get_base_dir()
-    app_mode = os.environ.get("APP_MODE", "standalone")
+    dev_env_file = base_dir / ".env.dev"
+    if dev_env_file.is_file():
+        return str(dev_env_file)
 
-    mode_env_file = base_dir / f".env.{app_mode}"
-    if mode_env_file.is_file():
-        return str(mode_env_file)
-
-    # 回退
-    return str(base_dir / ".env.dev")
+    # 4. 生产部署：.env
+    return str(base_dir / ".env")
 ```
 
 **桌面版路径适配**：`desktop_config.py`
@@ -154,8 +140,13 @@ def get_env_file() -> Path:
 | `LOG_LEVEL` | DEBUG/INFO/WARNING/ERROR | INFO | 日志级别 |
 
 **APP_MODE 说明**：
-- `standalone`：桌面端模式，SQLite 存储，无鉴权，零配置
-- `server`：服务端模式，PostgreSQL 存储，API Key 鉴权
+
+`APP_MODE` 控制运行时行为（由 `model_validator` 自动调整配置），不影响配置文件选择。
+
+- `standalone`：强制禁用鉴权，强制使用 SQLite（postgres 自动降级），WebSocket 无需 API Key
+- `server`：鉴权可选，存储后端可选（SQLite 或 PostgreSQL），使用 postgres 时要求 `DATABASE_URL`
+
+> **注意**：桌面端（PyInstaller 打包）的 `.env` 默认为 `APP_MODE=standalone`，请勿手动改为 `server`，否则会导致鉴权启用、需要配置 `DATABASE_URL` 等问题。
 
 ### 3.2 鉴权配置
 
@@ -184,12 +175,12 @@ def get_env_file() -> Path:
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `CHECKPOINTER_BACKEND` | memory/sqlite/postgres | sqlite | Checkpointer 后端 |
-| `CHECKPOINT_DB_PATH` | str | data/checkpoints/checkpoints.db | SQLite Checkpointer 路径（桌面端忽略，自动使用 %APPDATA%/CraftFlow/checkpoints/） |
 | `TASKSTORE_BACKEND` | sqlite/postgres | sqlite | TaskStore 后端 |
-| `TASKSTORE_DB_PATH` | str | data/sqlite/craftflow.db | SQLite TaskStore 路径（桌面端忽略，自动使用 %APPDATA%/CraftFlow/sqlite/） |
 | `DATABASE_URL` | str | - | PostgreSQL 连接串 |
 | `DB_POOL_SIZE` | int | 10 | 数据库连接池大小 |
 | `DB_MAX_OVERFLOW` | int | 20 | 连接池最大溢出数 |
+
+> **SQLite 路径**：基于代码文件位置自动推导（`data/sqlite/`、`data/checkpoints/`），无需手动配置，不受工作目录影响。
 
 **后端选择**：
 | 后端 | 适用场景 | 说明 |
@@ -294,6 +285,16 @@ def validate_mode_config(self) -> "Settings":
 | `standalone` | `TASKSTORE_BACKEND` 强制为 `sqlite`（如为 postgres） |
 | `server` | 使用 postgres 时，`DATABASE_URL` 必填（否则报错） |
 
+### 4.3 APP_MODE 与存储后端组合
+
+| APP_MODE | CHECKPOINTER_BACKEND | TASKSTORE_BACKEND | DATABASE_URL | 结果 |
+|----------|---------------------|-------------------|-------------|------|
+| standalone | sqlite（默认） | sqlite（默认） | 不需要 | ✅ 正常 |
+| standalone | postgres | postgres | 不需要 | ⚠️ 自动降级为 sqlite |
+| server | sqlite | sqlite | 不需要 | ✅ 正常（单机 server） |
+| server | postgres | postgres | 必填 | ✅ 正常（生产部署） |
+| server | postgres | postgres | 未填 | ❌ 启动报错 |
+
 ---
 
 ## 五、打包流程
@@ -379,13 +380,10 @@ scripts/dev.sh     # Linux/macOS
 ### 6.2 指定配置文件
 
 ```bash
-# 方式 1：通过环境变量指定 APP_MODE
-APP_MODE=server python -m app.main
+# 方式 1：显式指定（推荐）
+CRAFTFLOW_ENV_FILE=.env.server python -m app.main
 
-# 方式 2：显式指定配置文件
-CRAFTFLOW_ENV_FILE=/path/to/custom.env python -m app.main
-
-# 方式 3：通过 uvicorn 参数
+# 方式 2：uvicorn 参数（仅注入进程环境，不影响 Settings 的 env_file）
 uv run uvicorn app.main:app --env-file .env.server
 ```
 
@@ -436,11 +434,11 @@ uv run python scripts/check_config.py
 
 **开发环境**：
 ```bash
-# 桌面端模式
-APP_MODE=standalone python -m app.main
+# 桌面端模式（默认，.env.dev 中 APP_MODE=standalone）
+python -m app.main
 
 # 服务端模式
-APP_MODE=server python -m app.main
+CRAFTFLOW_ENV_FILE=.env.server python -m app.main
 ```
 
 **打包后**：编辑 `%APPDATA%/CraftFlow/.env`，修改 `APP_MODE`。
@@ -463,8 +461,8 @@ ENABLE_AUTH=false
 
 1. `CRAFTFLOW_ENV_FILE` 环境变量（最高）
 2. PyInstaller 打包环境自动检测
-3. `.env.{APP_MODE}` 文件
-4. `.env.dev`（最低）
+3. `.env.dev`（本地开发）
+4. `.env`（生产部署兜底）
 
 ---
 

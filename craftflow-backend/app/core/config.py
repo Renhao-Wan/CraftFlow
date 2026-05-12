@@ -37,7 +37,8 @@ def _get_env_file() -> str:
     优先级：
     1. 环境变量 CRAFTFLOW_ENV_FILE（显式指定）
     2. 桌面版：%APPDATA%/CraftFlow/.env
-    3. 开发环境：.env.dev（可根据 APP_MODE 选择 .env.standalone 或 .env.server）
+    3. .env.dev（本地开发）
+    4. .env（生产部署兜底）
     """
     import os
 
@@ -52,18 +53,14 @@ def _get_env_file() -> str:
 
         return str(get_env_file())
 
-    # 3. 开发环境：根据 APP_MODE 选择配置文件
+    # 3. 本地开发：.env.dev
     base_dir = _get_base_dir()
-    app_mode = os.environ.get("APP_MODE", "standalone")
+    dev_env_file = base_dir / ".env.dev"
+    if dev_env_file.is_file():
+        return str(dev_env_file)
 
-    # 尝试加载模式专属配置文件
-    mode_env_file = base_dir / f".env.{app_mode}"
-    if mode_env_file.is_file():
-        return str(mode_env_file)
-
-    # 回退到默认配置文件
-    default_env_file = base_dir / ".env.dev"
-    return str(default_env_file)
+    # 4. 生产部署：.env
+    return str(base_dir / ".env")
 
 
 # 项目根目录
@@ -130,10 +127,6 @@ class Settings(BaseSettings):
     checkpointer_backend: Literal["memory", "sqlite", "postgres"] = Field(
         default="sqlite", description="Checkpointer 后端（memory / sqlite / postgres）"
     )
-    checkpoint_db_path: str = Field(
-        default="data/checkpoints/checkpoints.db",
-        description="SQLite Checkpointer 数据库路径（仅 checkpointer_backend=sqlite 时生效）",
-    )
     database_url: str = Field(
         default="",
         description="PostgreSQL 数据库连接 URL（checkpointer_backend=postgres 或 taskstore_backend=postgres 时必填）",
@@ -146,10 +139,6 @@ class Settings(BaseSettings):
     # ============================================
     taskstore_backend: Literal["sqlite", "postgres"] = Field(
         default="sqlite", description="TaskStore 存储后端（sqlite / postgres）"
-    )
-    taskstore_db_path: str = Field(
-        default="data/sqlite/craftflow.db",
-        description="SQLite TaskStore 数据库路径（仅 taskstore_backend=sqlite 时生效）",
     )
 
     # ============================================
