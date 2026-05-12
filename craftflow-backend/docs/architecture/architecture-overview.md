@@ -53,7 +53,7 @@ CraftFlow Python 后端是整个平台的 **AI 能力层**，专注于 LangGraph
     │ SQLite        │              │ SQLite / PG   │
     │ 无鉴权        │              │ API Key 鉴权  │
     │ localhost     │              │ 云端部署      │
-    │ 无 WebSocket  │              │ WebSocket     │
+    │ WebSocket     │              │ WebSocket     │
     │ 零配置启动    │              │ 高可用        │
     └───────────────┘              └───────────────┘
 ```
@@ -64,7 +64,7 @@ CraftFlow Python 后端是整个平台的 **AI 能力层**，专注于 LangGraph
 |------|---------------------|-----------------|
 | 存储后端 | 强制 SQLite | SQLite 或 PostgreSQL（可选） |
 | 鉴权 | 强制关闭 | 可选（建议开启） |
-| WebSocket | 不初始化 | 启用 |
+| WebSocket | 启用（无鉴权） | 启用（可选鉴权） |
 | 网络 | 127.0.0.1 | 0.0.0.0 |
 | 调用方 | 前端直连 | Java 后端代理 |
 | 数据目录 | %APPDATA%/CraftFlow/ | 项目目录或自定义 |
@@ -158,7 +158,7 @@ interrupt（HITL）→ status=interrupted
     │
     ├→ _tasks dict 更新
     ├→ TaskStore 更新
-    └→ WebSocket 推送（server 模式）
+    └→ WebSocket 推送
 ```
 
 ### 5.2 任务恢复流程
@@ -244,8 +244,7 @@ async def lifespan(app: FastAPI):
         ├→ load_interrupted_tasks()   #    3d. 恢复中断任务
         └→ _init_server_components()  #    3e. server 模式扩展（预留）
 
-    if settings.is_server:            # 4. WebSocket 仅 server 模式
-        init_ws_services()
+    init_ws_services()                # 4. 初始化 WebSocket 服务
 
     yield
 
