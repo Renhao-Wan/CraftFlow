@@ -143,17 +143,17 @@ __screenshots__/
 .netlify/
 .fleet/
 
-# ==================== Desktop (CraftFlow-Desktop/) ====================
+# ==================== Desktop (craftflow-desktop/) ====================
 # 用 dir/** 模式忽略内容但保留目录遍历，使否定规则生效
-CraftFlow-Desktop/frontend/**
-!CraftFlow-Desktop/frontend/.env.production
+craftflow-desktop/frontend/**
+!craftflow-desktop/frontend/.env.production
 
-CraftFlow-Desktop/backend/**
-!CraftFlow-Desktop/backend/desktop_config.py
+craftflow-desktop/backend/**
+!craftflow-desktop/backend/desktop_config.py
 
 # release 构建产物（保留 .gitkeep）
-CraftFlow-Desktop/release/**
-!CraftFlow-Desktop/release/.gitkeep
+craftflow-desktop/release/**
+!craftflow-desktop/release/.gitkeep
 
 # node_modules
-CraftFlow-Desktop/node_modules/
+craftflow-desktop/node_modules/

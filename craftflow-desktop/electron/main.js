@@ -32,7 +32,7 @@ function getBackendPath() {
   const isDev = !app.isPackaged;
 
   if (isDev) {
-    // 开发环境：假设后端在 CraftFlow-Desktop/backend/dist/craftflow/
+    // 开发环境：假设后端在 craftflow-desktop/backend/dist/craftflow/
     return path.join(__dirname, '..', 'backend', 'dist', 'craftflow', 'craftflow.exe');
   }
 

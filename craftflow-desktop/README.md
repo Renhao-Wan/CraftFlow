@@ -99,7 +99,7 @@ npm run build:electron
 ### 目录结构
 
 ```
-CraftFlow-Desktop/
+craftflow-desktop/
 ├── electron/
 │   ├── main.js          # Electron 主进程
 │   ├── preload.js       # 安全 IPC 桥接
