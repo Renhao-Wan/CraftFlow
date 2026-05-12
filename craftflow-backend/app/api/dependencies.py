@@ -24,6 +24,7 @@ from app.core.exceptions import CheckpointerError
 from app.core.logger import get_logger
 from app.adapters.base import BusinessAdapter
 from app.adapters.standalone import StandaloneAdapter
+from app.graph.common.llm_factory import LLMFactory
 from app.services.checkpointer import get_checkpointer
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
@@ -64,7 +65,10 @@ async def init_services() -> None:
     _adapter = StandaloneAdapter()
     await _adapter.init()
 
-    # 2. 创建业务服务
+    # 2. 绑定 Adapter 到 LLMFactory
+    LLMFactory.set_adapter(_adapter)
+
+    # 3. 创建业务服务
     _creation_service = CreationService(checkpointer=checkpointer, adapter=_adapter)
     _polishing_service = PolishingService(checkpointer=checkpointer, adapter=_adapter)
 
@@ -95,6 +99,7 @@ async def close_services() -> None:
     """关闭所有业务服务，释放资源"""
     global _creation_service, _polishing_service, _adapter
 
+    LLMFactory.clear_cache()
     if _adapter:
         await _adapter.close()
     _creation_service = None

@@ -47,10 +47,8 @@ def main():
     # LLM 配置
     # ============================================
     logger.info("\n[LLM 配置]")
-    logger.info(f"  LLM 模型: {settings.llm_model}")
-    logger.info(f"  LLM API Key: {'已配置' if settings.llm_api_key else '未配置'}")
-    logger.info(f"  最大 Token 数: {settings.max_tokens}")
-    logger.info(f"  默认温度: {settings.default_temperature}")
+    logger.info("  LLM 配置已迁移至数据库 llm_profiles 表")
+    logger.info("  请在前端设置页面管理 LLM Profile")
 
     # ============================================
     # 状态持久化配置

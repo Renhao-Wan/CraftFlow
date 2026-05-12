@@ -128,7 +128,7 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
 
     # 使用 LLM 分析并推荐模式
     try:
-        llm = get_default_llm()
+        llm = await get_default_llm()
 
         human_message = ROUTER_HUMAN_PROMPT.format(content=content[:2000])  # 限制长度
 
@@ -189,7 +189,7 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
     logger.info("FormatterNode 开始执行")
 
     try:
-        llm = get_default_llm()
+        llm = await get_default_llm()
 
         human_message = FORMATTER_HUMAN_PROMPT.format(content=content)
 
@@ -253,7 +253,7 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     await _report_progress(task_id, "fact_checker", "事实核查", fc_start)
 
     try:
-        llm = get_factchecker_llm()
+        llm = await get_factchecker_llm()
         llm_with_tools = llm.bind_tools(SEARCH_TOOLS)
 
         human_message = FACT_CHECKER_HUMAN_PROMPT.format(content=content)
