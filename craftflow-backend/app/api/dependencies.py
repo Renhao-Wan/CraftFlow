@@ -22,7 +22,7 @@ from app.core.logger import get_logger
 from app.services.checkpointer import get_checkpointer
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
-from app.services.task_store import TaskStore
+from app.services.task_store import AbstractTaskStore, create_task_store
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 
 _creation_service: CreationService | None = None
 _polishing_service: PolishingService | None = None
-_task_store: TaskStore | None = None
+_task_store: AbstractTaskStore | None = None
 
 
 async def init_services() -> None:
@@ -48,7 +48,7 @@ async def init_services() -> None:
 
     checkpointer = get_checkpointer()
 
-    _task_store = TaskStore()
+    _task_store = create_task_store()
     await _task_store.init_db()
 
     _creation_service = CreationService(checkpointer=checkpointer, task_store=_task_store)
@@ -63,7 +63,7 @@ async def init_services() -> None:
 async def _load_interrupted_tasks(
     creation_svc: CreationService,
     polishing_svc: PolishingService,
-    task_store: TaskStore,
+    task_store: AbstractTaskStore,
 ) -> None:
     """从 TaskStore 加载中断任务到服务内存
 
@@ -166,11 +166,11 @@ def get_polishing_service() -> PolishingService:
     return _polishing_service
 
 
-def get_task_store() -> TaskStore:
+def get_task_store() -> AbstractTaskStore:
     """获取 TaskStore 实例（FastAPI 依赖注入）
 
     Returns:
-        TaskStore: SQLite 任务持久化存储实例
+        AbstractTaskStore: 任务持久化存储实例（SQLite 或 PostgreSQL）
 
     Raises:
         CheckpointerError: 服务尚未初始化时抛出

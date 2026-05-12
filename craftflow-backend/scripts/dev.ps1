@@ -9,8 +9,8 @@ Write-Host ""
 # 检查 .env.dev 是否存在
 if (-Not (Test-Path ".env.dev")) {
     Write-Host "⚠️  未找到 .env.dev 文件" -ForegroundColor Yellow
-    Write-Host "正在从 .env.example 复制..." -ForegroundColor Yellow
-    Copy-Item ".env.example" ".env.dev"
+    Write-Host "正在从 .env.standalone 复制..." -ForegroundColor Yellow
+    Copy-Item ".env.standalone" ".env.dev"
     Write-Host "✅ 已创建 .env.dev，请编辑并填写 API Key" -ForegroundColor Green
     Write-Host ""
 }

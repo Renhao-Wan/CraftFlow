@@ -26,7 +26,7 @@ from app.core.logger import get_logger
 from app.graph.creation.builder import get_creation_graph
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.services.task_store import TaskStore
+from app.services.task_store import AbstractTaskStore
 
 logger = get_logger(__name__)
 
@@ -50,7 +50,7 @@ class CreationService:
         _tasks: 任务元数据存储
     """
 
-    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: TaskStore) -> None:
+    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: AbstractTaskStore) -> None:
         """初始化 Creation Service
 
         Args:
