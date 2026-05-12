@@ -9,8 +9,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _is_frozen() -> bool:
+    """判断是否在 PyInstaller 打包环境中运行"""
+    return getattr(sys, "frozen", False)
 
 
 def _get_base_dir() -> Path:
@@ -19,8 +24,7 @@ def _get_base_dir() -> Path:
     桌面版（PyInstaller 打包）：使用 %APPDATA%/CraftFlow/
     开发环境：基于文件路径推导
     """
-    if getattr(sys, "frozen", False):
-        # PyInstaller 打包环境
+    if _is_frozen():
         from desktop_config import get_data_dir
 
         return get_data_dir()
@@ -30,14 +34,36 @@ def _get_base_dir() -> Path:
 def _get_env_file() -> str:
     """获取 .env 文件路径
 
-    桌面版：从 %APPDATA%/CraftFlow/.env 读取
-    开发环境：从 .env.dev 读取
+    优先级：
+    1. 环境变量 CRAFTFLOW_ENV_FILE（显式指定）
+    2. 桌面版：%APPDATA%/CraftFlow/.env
+    3. 开发环境：.env.dev（可根据 APP_MODE 选择 .env.standalone 或 .env.server）
     """
-    if getattr(sys, "frozen", False):
+    import os
+
+    # 1. 检查环境变量显式指定
+    env_file = os.environ.get("CRAFTFLOW_ENV_FILE")
+    if env_file and Path(env_file).is_file():
+        return env_file
+
+    # 2. 桌面版环境
+    if _is_frozen():
         from desktop_config import get_env_file
 
         return str(get_env_file())
-    return str(_get_base_dir() / ".env.dev")
+
+    # 3. 开发环境：根据 APP_MODE 选择配置文件
+    base_dir = _get_base_dir()
+    app_mode = os.environ.get("APP_MODE", "standalone")
+
+    # 尝试加载模式专属配置文件
+    mode_env_file = base_dir / f".env.{app_mode}"
+    if mode_env_file.is_file():
+        return str(mode_env_file)
+
+    # 回退到默认配置文件
+    default_env_file = base_dir / ".env.dev"
+    return str(default_env_file)
 
 
 # 项目根目录
@@ -63,12 +89,28 @@ class Settings(BaseSettings):
     # ============================================
     app_name: str = Field(default="CraftFlow Backend", description="应用名称")
     app_version: str = Field(default="0.1.0", description="应用版本")
+    app_mode: Literal["standalone", "server"] = Field(
+        default="standalone",
+        description="运行模式：standalone（桌面端，SQLite，无鉴权）/ server（服务端，PostgreSQL，API Key 鉴权）",
+    )
     environment: Literal["development", "production"] = Field(
         default="development", description="运行环境"
     )
     debug: bool = Field(default=True, description="调试模式")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
         default="INFO", description="日志级别"
+    )
+
+    # ============================================
+    # 鉴权配置
+    # ============================================
+    enable_auth: bool = Field(
+        default=False,
+        description="是否启用 API Key 鉴权（standalone 模式下自动禁用）",
+    )
+    api_key: str = Field(
+        default="craftflow-dev-key",
+        description="API Key，用于验证 Java 后端调用（server 模式下必须修改）",
     )
 
     # ============================================
@@ -88,12 +130,27 @@ class Settings(BaseSettings):
     checkpointer_backend: Literal["memory", "sqlite", "postgres"] = Field(
         default="sqlite", description="Checkpointer 后端（memory / sqlite / postgres）"
     )
+    checkpoint_db_path: str = Field(
+        default="data/checkpoints/checkpoints.db",
+        description="SQLite Checkpointer 数据库路径（仅 checkpointer_backend=sqlite 时生效）",
+    )
     database_url: str = Field(
-        default="postgresql+asyncpg://user:password@localhost:5432/craftflow",
-        description="PostgreSQL 数据库连接 URL（checkpointer_backend=postgres 时必填）",
+        default="",
+        description="PostgreSQL 数据库连接 URL（checkpointer_backend=postgres 或 taskstore_backend=postgres 时必填）",
     )
     db_pool_size: int = Field(default=10, ge=1, le=100, description="数据库连接池大小")
     db_max_overflow: int = Field(default=20, ge=0, le=100, description="连接池最大溢出数")
+
+    # ============================================
+    # TaskStore 配置
+    # ============================================
+    taskstore_backend: Literal["sqlite", "postgres"] = Field(
+        default="sqlite", description="TaskStore 存储后端（sqlite / postgres）"
+    )
+    taskstore_db_path: str = Field(
+        default="data/sqlite/craftflow.db",
+        description="SQLite TaskStore 数据库路径（仅 taskstore_backend=sqlite 时生效）",
+    )
 
     # ============================================
     # 外部工具 API 配置
@@ -162,13 +219,24 @@ class Settings(BaseSettings):
             return []
         return [origin.strip() for origin in v.split(",") if origin.strip()]
 
-    @field_validator("database_url")
-    @classmethod
-    def validate_database_url(cls, v: str, info) -> str:
-        """验证数据库 URL 格式"""
-        if info.data.get("checkpointer_backend") == "postgres" and not v:
-            raise ValueError("checkpointer_backend=postgres 时必须提供有效的 database_url")
-        return v
+    @model_validator(mode="after")
+    def validate_mode_config(self) -> "Settings":
+        """根据 APP_MODE 自动调整配置"""
+        if self.app_mode == "standalone":
+            # 桌面端模式：强制禁用鉴权
+            self.enable_auth = False
+            # 桌面端模式：默认使用 SQLite
+            if self.checkpointer_backend == "postgres":
+                self.checkpointer_backend = "sqlite"
+            if self.taskstore_backend == "postgres":
+                self.taskstore_backend = "sqlite"
+        elif self.app_mode == "server":
+            # 服务端模式：如果使用 postgres，要求配置 database_url
+            if (
+                self.checkpointer_backend == "postgres" or self.taskstore_backend == "postgres"
+            ) and not self.database_url:
+                raise ValueError("server 模式下使用 postgres 后端时必须配置 DATABASE_URL")
+        return self
 
     @property
     def is_production(self) -> bool:
@@ -179,6 +247,16 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """判断是否为开发环境"""
         return self.environment == "development"
+
+    @property
+    def is_standalone(self) -> bool:
+        """判断是否为桌面端模式"""
+        return self.app_mode == "standalone"
+
+    @property
+    def is_server(self) -> bool:
+        """判断是否为服务端模式"""
+        return self.app_mode == "server"
 
 
 @lru_cache

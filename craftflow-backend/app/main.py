@@ -28,16 +28,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     startup: 初始化日志、Checkpointer、业务服务
     shutdown: 关闭业务服务、Checkpointer
+
+    模式感知：
+    - standalone: 跳过 WebSocket 服务初始化
+    - server: 初始化 WebSocket 服务（ConnectionManager, TaskBroadcaster）
     """
     # ── startup ──
     setup_logger()
     logger.info(
-        f"CraftFlow 启动中 | 环境: {settings.environment} | " f"版本: {settings.app_version}"
+        f"CraftFlow 启动中 | 模式: {settings.app_mode} | "
+        f"环境: {settings.environment} | 版本: {settings.app_version}"
     )
 
     await init_checkpointer()
     await init_services()
-    init_ws_services()
+
+    # WebSocket 仅服务端模式需要（桌面端通过 REST 直接交互）
+    if settings.is_server:
+        init_ws_services()
+        logger.info("WebSocket 服务已初始化（server 模式）")
 
     logger.info("CraftFlow 启动完成")
 
@@ -80,8 +89,9 @@ def create_app() -> FastAPI:
     # v1 路由（REST）
     app.include_router(v1_router)
 
-    # WebSocket 路由
-    app.include_router(ws_router)
+    # WebSocket 路由（仅 server 模式注册）
+    if settings.is_server:
+        app.include_router(ws_router)
 
     # 健康检查
     @app.get("/health", tags=["Health"])
@@ -89,6 +99,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "version": settings.app_version,
+            "mode": settings.app_mode,
             "environment": settings.environment,
         }
 

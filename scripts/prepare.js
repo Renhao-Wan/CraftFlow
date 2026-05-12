@@ -1,14 +1,14 @@
 /**
  * CraftFlow Desktop 文件准备脚本
  *
- * 从原始项目复制必要文件到 CraftFlow-Desktop/，排除开发文件和缓存。
+ * 从原始项目复制必要文件到 craftflow-desktop/，排除开发文件和缓存。
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const TARGET_DIR = path.join(ROOT_DIR, 'CraftFlow-Desktop');
+const TARGET_DIR = path.join(ROOT_DIR, 'craftflow-desktop');
 
 /**
  * 递归复制目录
@@ -101,6 +101,7 @@ const backendFiles = [
   'pyproject.toml',
   'uv.lock',
   '.env.example',
+  '.env.standalone',
   'README.md',
   'craftflow.spec',
 ];
