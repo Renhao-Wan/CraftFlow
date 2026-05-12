@@ -279,7 +279,6 @@ Docker 支持尚在规划中，敬请期待。
 详细架构文档请参考：
 
 - [后端架构总览](docs/architecture/architecture-overview.md) — 后端整体架构设计
-- [架构改造记录](docs/architecture/architecture-refactor-record.md) — 配置驱动架构改造实施记录
 - [数据存储架构](docs/architecture/database-design.md) — 四层存储架构设计
 - [API 接口参考](docs/api/api-reference.md) — REST 和 WebSocket 接口详细说明
 - [接口流程图解](docs/api/api-flow.md) — API 接口流程图
