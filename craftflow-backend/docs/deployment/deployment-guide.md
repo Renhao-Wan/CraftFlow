@@ -39,9 +39,7 @@ ENVIRONMENT=development
 ENABLE_AUTH=false
 
 CHECKPOINTER_BACKEND=sqlite
-CHECKPOINT_DB_PATH=data/checkpoints/checkpoints.db
 TASKSTORE_BACKEND=sqlite
-TASKSTORE_DB_PATH=data/sqlite/craftflow.db
 
 LLM_API_KEY=sk-your-api-key
 LLM_API_BASE=

@@ -184,9 +184,9 @@ def get_env_file() -> Path:
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `CHECKPOINTER_BACKEND` | memory/sqlite/postgres | sqlite | Checkpointer 后端 |
-| `CHECKPOINT_DB_PATH` | str | data/checkpoints/checkpoints.db | SQLite Checkpointer 路径 |
+| `CHECKPOINT_DB_PATH` | str | data/checkpoints/checkpoints.db | SQLite Checkpointer 路径（桌面端忽略，自动使用 %APPDATA%/CraftFlow/checkpoints/） |
 | `TASKSTORE_BACKEND` | sqlite/postgres | sqlite | TaskStore 后端 |
-| `TASKSTORE_DB_PATH` | str | data/sqlite/craftflow.db | SQLite TaskStore 路径 |
+| `TASKSTORE_DB_PATH` | str | data/sqlite/craftflow.db | SQLite TaskStore 路径（桌面端忽略，自动使用 %APPDATA%/CraftFlow/sqlite/） |
 | `DATABASE_URL` | str | - | PostgreSQL 连接串 |
 | `DB_POOL_SIZE` | int | 10 | 数据库连接池大小 |
 | `DB_MAX_OVERFLOW` | int | 20 | 连接池最大溢出数 |

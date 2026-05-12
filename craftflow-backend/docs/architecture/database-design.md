@@ -246,13 +246,13 @@ RAG 功能通过 `ENABLE_RAG` 配置项控制：
 
 ```
 CHECKPOINTER_BACKEND=sqlite
-CHECKPOINT_DB_PATH=data/checkpoints/checkpoints.db
 TASKSTORE_BACKEND=sqlite
-TASKSTORE_DB_PATH=data/sqlite/craftflow.db
 ENABLE_RAG=false
 ```
 
 特点：零配置，SQLite 文件自动创建，无需外部数据库服务。
+
+> **桌面端说明**：桌面端（PyInstaller 打包）自动使用 `%APPDATA%/CraftFlow/` 目录存储数据，`CHECKPOINT_DB_PATH` 和 `TASKSTORE_DB_PATH` 配置无效。
 
 ### 6.2 server 模式推荐配置（SQLite）
 
