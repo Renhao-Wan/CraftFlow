@@ -50,6 +50,32 @@ _CREATE_INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
 """
 
+_CREATE_LLM_PROFILES_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS llm_profiles (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL UNIQUE,
+    api_key     TEXT NOT NULL,
+    api_base    TEXT NOT NULL DEFAULT '',
+    model       TEXT NOT NULL,
+    temperature REAL NOT NULL DEFAULT 0.7,
+    is_default  INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+"""
+
+_CREATE_SETTINGS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+"""
+
+_DEFAULT_SETTINGS = [
+    ("max_outline_sections", "5"),
+    ("max_concurrent_writers", "3"),
+]
+
 
 class SqliteTaskStore(AbstractTaskStore):
     """SQLite 任务持久化存储
@@ -68,6 +94,13 @@ class SqliteTaskStore(AbstractTaskStore):
         self._db = await aiosqlite.connect(str(self._db_path))
         await self._db.execute(_CREATE_TABLE_SQL)
         await self._db.execute(_CREATE_INDEX_SQL)
+        await self._db.execute(_CREATE_LLM_PROFILES_TABLE_SQL)
+        await self._db.execute(_CREATE_SETTINGS_TABLE_SQL)
+        # 写入默认设置（INSERT OR IGNORE 避免覆盖已有的用户设置）
+        await self._db.executemany(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+            _DEFAULT_SETTINGS,
+        )
         await self._db.commit()
         logger.info(f"SQLite TaskStore 初始化完成 - {self._db_path}")
 

@@ -25,15 +25,15 @@ app/core/
 from app.core import settings
 
 # 访问配置
-print(f"LLM 模型: {settings.llm_model}")
 print(f"运行环境: {settings.environment}")
 print(f"是否生产环境: {settings.is_production}")
+print(f"运行模式: {settings.app_mode}")
 
 # 所有配置项都有类型提示和验证
-max_tokens: int = settings.max_tokens  # IDE 会提供自动补全
+max_outline_sections: int = settings.max_outline_sections  # IDE 会提供自动补全
 ```
 
-**配置来源**: `.env.dev` 文件（开发环境）或环境变量
+**配置来源**: `.env.dev` 文件（开发环境）或环境变量。LLM 配置已迁移至数据库 `llm_profiles` 表，通过前端设置页面管理。
 
 ### 2. 日志系统
 

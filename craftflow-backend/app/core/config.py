@@ -111,15 +111,10 @@ class Settings(BaseSettings):
     )
 
     # ============================================
-    # LLM 配置
+    # LLM 配置（已迁移至数据库 llm_profiles 表）
     # ============================================
-    llm_api_key: str = Field(default="", description="LLM API 密钥")
-    llm_api_base: str = Field(default="", description="LLM API 基础 URL（可选）")
-    llm_model: str = Field(default="gpt-4-turbo", description="默认 LLM 模型")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="最大 Token 数")
-
-    # LLM 温度参数
-    default_temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="默认温度参数")
+    # LLM 配置现在通过 Settings 页面管理，存储在 SQLite 的 llm_profiles 表中。
+    # 首次使用时请在前端设置页面添加 LLM Profile。
 
     # ============================================
     # 状态持久化配置

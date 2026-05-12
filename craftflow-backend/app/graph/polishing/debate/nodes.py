@@ -110,7 +110,7 @@ async def author_node(state: DebateState) -> dict[str, Any]:
     logger.info(f"AuthorNode 开始执行 - 当前评分: {editor_score}")
 
     try:
-        llm = get_default_llm()
+        llm = await get_default_llm()
 
         # 首轮：没有编辑反馈时，给出针对性的首轮指令
         if not editor_feedback:
@@ -184,7 +184,7 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
     logger.info(f"EditorNode 开始执行 - 第 {current_iteration} 轮评估")
 
     try:
-        llm = get_editor_llm()  # 使用更低温度的 LLM
+        llm = await get_editor_llm()  # 使用更低温度的 LLM
 
         human_message = EDITOR_HUMAN_PROMPT.format(
             content=content,
