@@ -6,6 +6,10 @@
     checkpointer + task_store → CreationService / PolishingService
     （checkpointer 和 task_store 在应用启动时初始化）
 
+模式感知：
+    - standalone 模式：SQLite 存储，无鉴权
+    - server 模式：PostgreSQL 存储，API Key 鉴权，可选 Redis/监控
+
 使用方式：
     @router.post("/creation")
     async def create_task(
@@ -15,8 +19,7 @@
         ...
 """
 
-from datetime import datetime as dt
-
+from app.core.config import settings
 from app.core.exceptions import CheckpointerError
 from app.core.logger import get_logger
 from app.services.checkpointer import get_checkpointer
@@ -36,84 +39,57 @@ _task_store: AbstractTaskStore | None = None
 
 
 async def init_services() -> None:
-    """初始化所有业务服务
+    """根据 APP_MODE 初始化所有业务服务
+
+    初始化流程：
+    1. 创建 TaskStore（配置驱动：SQLite / PostgreSQL）
+    2. 初始化 Checkpointer
+    3. 创建业务服务（CreationService, PolishingService）
+    4. 从 TaskStore 加载中断任务到内存（服务重启恢复）
+    5. server 模式下额外初始化扩展组件
 
     在应用启动时调用，必须在 init_checkpointer() 之后执行。
-    启动时从 TaskStore 加载中断任务到内存，确保服务重启后可恢复。
 
     Raises:
         CheckpointerError: Checkpointer 尚未初始化
     """
     global _creation_service, _polishing_service, _task_store
 
+    logger.info(
+        f"初始化业务服务 | 模式: {settings.app_mode} | TaskStore: {settings.taskstore_backend}"
+    )
+
     checkpointer = get_checkpointer()
 
+    # 1. 初始化 TaskStore（配置驱动）
     _task_store = create_task_store()
     await _task_store.init_db()
 
+    # 2. 创建业务服务
     _creation_service = CreationService(checkpointer=checkpointer, task_store=_task_store)
     _polishing_service = PolishingService(checkpointer=checkpointer, task_store=_task_store)
 
-    # 从 TaskStore 加载中断任务到内存（服务重启恢复）
-    await _load_interrupted_tasks(_creation_service, _polishing_service, _task_store)
+    # 3. 从 TaskStore 加载中断任务到内存（委托给各 Service 自行处理）
+    creation_loaded = await _creation_service.load_interrupted_tasks()
+    polishing_loaded = await _polishing_service.load_interrupted_tasks()
+
+    if creation_loaded + polishing_loaded > 0:
+        logger.info(f"已恢复中断任务 | 创作: {creation_loaded} | 润色: {polishing_loaded}")
+
+    # 4. server 模式下额外初始化扩展组件
+    if settings.is_server:
+        await _init_server_components()
 
     logger.info("业务服务初始化完成（CreationService, PolishingService, TaskStore）")
 
 
-async def _load_interrupted_tasks(
-    creation_svc: CreationService,
-    polishing_svc: PolishingService,
-    task_store: AbstractTaskStore,
-) -> None:
-    """从 TaskStore 加载中断任务到服务内存
+async def _init_server_components() -> None:
+    """服务端模式额外组件初始化
 
-    服务重启后，将 SQLite 中的 interrupted 任务恢复到 _tasks dict，
-    使用户可以继续恢复这些任务。
+    server 模式下可扩展：Redis 连接池、监控指标收集等。
+    当前为空实现，预留扩展点。
     """
-    interrupted = await task_store.get_interrupted_tasks()
-    if not interrupted:
-        return
-
-    loaded = 0
-    for row in interrupted:
-        task_id = row["task_id"]
-        graph_type = row["graph_type"]
-
-        if graph_type == "creation":
-            svc = creation_svc
-            request: dict = {
-                "topic": row.get("topic"),
-                "description": row.get("description"),
-            }
-        elif graph_type == "polishing":
-            svc = polishing_svc
-            request = {
-                "mode": row.get("mode"),
-            }
-        else:
-            logger.warning(f"未知的 graph_type: {graph_type}, task_id: {task_id}")
-            continue
-
-        # 避免覆盖内存中已有的任务
-        if task_id in svc._tasks:
-            continue
-
-        created_at = row.get("created_at")
-        updated_at = row.get("updated_at")
-
-        svc._tasks[task_id] = {
-            "task_id": task_id,
-            "thread_id": task_id,
-            "graph_type": graph_type,
-            "status": "interrupted",
-            "request": request,
-            "created_at": created_at if isinstance(created_at, dt) else dt.now(),
-            "updated_at": updated_at if isinstance(updated_at, dt) else dt.now(),
-        }
-        loaded += 1
-
-    if loaded > 0:
-        logger.info(f"已从 SQLite 加载 {loaded} 个中断任务")
+    logger.info("server 模式扩展组件初始化（当前无额外组件）")
 
 
 async def close_services() -> None:

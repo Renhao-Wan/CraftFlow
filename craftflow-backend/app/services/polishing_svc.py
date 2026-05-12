@@ -160,6 +160,50 @@ class PolishingService:
 
         self._tasks.pop(task_id, None)
 
+    async def load_interrupted_tasks(self) -> int:
+        """从 TaskStore 加载中断任务到内存
+
+        服务重启后，将持久化的 interrupted 任务恢复到 _tasks dict，
+        使用户可以继续恢复这些任务。
+
+        Returns:
+            加载的任务数量
+        """
+        interrupted = await self.task_store.get_interrupted_tasks()
+        if not interrupted:
+            return 0
+
+        loaded = 0
+        for row in interrupted:
+            if row["graph_type"] != "polishing":
+                continue
+
+            task_id = row["task_id"]
+
+            # 避免覆盖内存中已有的任务
+            if task_id in self._tasks:
+                continue
+
+            created_at = row.get("created_at")
+            updated_at = row.get("updated_at")
+
+            self._tasks[task_id] = {
+                "task_id": task_id,
+                "thread_id": task_id,
+                "graph_type": "polishing",
+                "status": "interrupted",
+                "request": {
+                    "mode": row.get("mode"),
+                },
+                "created_at": created_at if isinstance(created_at, datetime) else datetime.now(),
+                "updated_at": updated_at if isinstance(updated_at, datetime) else datetime.now(),
+            }
+            loaded += 1
+
+        if loaded > 0:
+            logger.info(f"PolishingService 已加载 {loaded} 个中断任务")
+        return loaded
+
     # ============================================
     # 公开 API
     # ============================================
