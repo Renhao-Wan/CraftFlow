@@ -13,12 +13,12 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api.dependencies import get_creation_service, get_polishing_service, get_task_store
+from app.adapters.base import BusinessAdapter
+from app.api.dependencies import get_adapter, get_creation_service, get_polishing_service
 from app.main import create_app
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
-from app.services.task_store import AbstractTaskStore
 
 
 @pytest.fixture
@@ -60,17 +60,17 @@ def mock_polishing_svc():
 
 
 @pytest.fixture
-def mock_task_store():
-    """mock TaskStore"""
-    store = AsyncMock(spec=AbstractTaskStore)
-    store.get_task.return_value = None
-    store.get_task_list.return_value = ([], 0)
-    store.delete_task.return_value = False
-    return store
+def mock_adapter():
+    """mock BusinessAdapter"""
+    adapter = AsyncMock(spec=BusinessAdapter)
+    adapter.get_task.return_value = None
+    adapter.get_task_list.return_value = ([], 0)
+    adapter.delete_task.return_value = False
+    return adapter
 
 
 @pytest.fixture
-def standalone_app(mock_creation_svc, mock_polishing_svc, mock_task_store):
+def standalone_app(mock_creation_svc, mock_polishing_svc, mock_adapter):
     """创建 standalone 模式的 FastAPI 应用
 
     模拟 standalone 配置：enable_auth=False, app_mode=standalone
@@ -78,7 +78,7 @@ def standalone_app(mock_creation_svc, mock_polishing_svc, mock_task_store):
     app = create_app()
     app.dependency_overrides[get_creation_service] = lambda: mock_creation_svc
     app.dependency_overrides[get_polishing_service] = lambda: mock_polishing_svc
-    app.dependency_overrides[get_task_store] = lambda: mock_task_store
+    app.dependency_overrides[get_adapter] = lambda: mock_adapter
     return app
 
 
