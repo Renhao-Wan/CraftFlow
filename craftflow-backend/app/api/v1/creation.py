@@ -5,9 +5,12 @@
 - POST   /tasks/{task_id}/resume    恢复中断的任务（HITL）
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_creation_service
+from app.core.auth import verify_api_key
 from app.schemas.request import CreationRequest, ResumeRequest
 from app.schemas.response import TaskResponse
 from app.services.creation_svc import CreationService
@@ -23,12 +26,15 @@ router = APIRouter()
     description="发起一个创作流程。系统将生成大纲并在大纲确认点暂停，等待用户确认。",
     responses={
         201: {"description": "任务创建成功"},
+        401: {"description": "未提供 API Key"},
+        403: {"description": "无效的 API Key"},
         422: {"description": "请求参数验证失败"},
         500: {"description": "服务内部错误"},
     },
 )
 async def create_creation_task(
     request: CreationRequest,
+    caller: dict[str, Any] = Depends(verify_api_key),
     service: CreationService = Depends(get_creation_service),
 ) -> TaskResponse:
     """创建创作任务
@@ -49,6 +55,8 @@ async def create_creation_task(
     description="在 HITL 中断点（大纲确认）恢复任务执行。支持确认或更新大纲。",
     responses={
         200: {"description": "任务恢复成功"},
+        401: {"description": "未提供 API Key"},
+        403: {"description": "无效的 API Key"},
         404: {"description": "任务不存在"},
         422: {"description": "请求参数验证失败"},
         500: {"description": "服务内部错误"},
@@ -57,6 +65,7 @@ async def create_creation_task(
 async def resume_task(
     task_id: str,
     request: ResumeRequest,
+    caller: dict[str, Any] = Depends(verify_api_key),
     service: CreationService = Depends(get_creation_service),
 ) -> TaskResponse:
     """恢复被中断的创作任务

@@ -688,15 +688,23 @@ class DatabaseManager:
 - `dependencies.py`：使用 `create_task_store()` 工厂替代直接实例化
 - 所有类型引用更新为 `AbstractTaskStore`（creation_svc, polishing_svc, tasks.py, 测试）
 
-### Phase 3：鉴权模块（预计 1-2 天）
+### Phase 3：鉴权模块 ✅ 已完成
 
-| 步骤 | 任务 | 涉及文件 | 验证方式 |
-|------|------|----------|----------|
-| 3.1 | 实现 `auth.py` API Key 验证模块 | `app/core/auth.py` | 单元测试 |
-| 3.2 | 添加 `verify_api_key` 依赖 | `app/core/auth.py` | 集成测试 |
-| 3.3 | 改造 REST 路由注入鉴权 | `app/api/v1/*.py` | 有/无 API Key 测试 |
-| 3.4 | 改造 WebSocket 鉴权 | `app/api/v1/ws.py` | 连接测试 |
-| 3.5 | 生产环境异常信息脱敏 | `app/core/exceptions.py` | 安全审查 |
+| 步骤 | 任务 | 涉及文件 | 验证方式 | 状态 |
+|------|------|----------|----------|------|
+| 3.1 | 实现 `auth.py` API Key 验证模块 | `app/core/auth.py` | 单元测试 | ✅ |
+| 3.2 | 添加 `verify_api_key` 依赖 | `app/core/auth.py` | 集成测试 | ✅ |
+| 3.3 | 改造 REST 路由注入鉴权 | `app/api/v1/*.py` | 有/无 API Key 测试 | ✅ |
+| 3.4 | 改造 WebSocket 鉴权 | `app/api/v1/ws.py` | 连接测试 | ✅ |
+| 3.5 | 生产环境异常信息脱敏 | `app/core/exceptions.py` | 安全审查 | ✅ |
+
+**完成内容**：
+- `auth.py`：实现 `verify_api_key`（REST 鉴权依赖）和 `verify_ws_api_key`（WebSocket 鉴权），standalone 模式自动放行，server 模式验证 `X-API-Key` 请求头
+- `creation.py`、`polishing.py`、`tasks.py`：所有 REST 端点注入 `verify_api_key` 依赖
+- `ws.py`：WebSocket 连接建立前通过查询参数 `api_key` 验证
+- `exceptions.py`：生产环境下 `craftflow_exception_handler` 和 `generic_exception_handler` 隐藏内部实现细节（`details` 和 `exception_type`）
+- `app/core/__init__.py`：导出 `verify_api_key` 和 `verify_ws_api_key`
+- `tests/test_auth.py`：13 个测试覆盖 standalone/server 模式、REST/WebSocket 鉴权、集成测试（401/403/200）
 
 ### Phase 4：依赖注入改造（预计 1-2 天）
 

@@ -4,9 +4,12 @@
 - POST /polishing  创建润色任务（三档模式）
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_polishing_service
+from app.core.auth import verify_api_key
 from app.schemas.request import PolishingRequest
 from app.schemas.response import TaskResponse
 from app.services.polishing_svc import PolishingService
@@ -27,12 +30,15 @@ router = APIRouter()
     ),
     responses={
         201: {"description": "任务创建成功"},
+        401: {"description": "未提供 API Key"},
+        403: {"description": "无效的 API Key"},
         422: {"description": "请求参数验证失败"},
         500: {"description": "服务内部错误"},
     },
 )
 async def create_polishing_task(
     request: PolishingRequest,
+    caller: dict[str, Any] = Depends(verify_api_key),
     service: PolishingService = Depends(get_polishing_service),
 ) -> TaskResponse:
     """创建润色任务
