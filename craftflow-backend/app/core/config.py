@@ -233,12 +233,9 @@ class Settings(BaseSettings):
         elif self.app_mode == "server":
             # 服务端模式：如果使用 postgres，要求配置 database_url
             if (
-                self.checkpointer_backend == "postgres"
-                or self.taskstore_backend == "postgres"
+                self.checkpointer_backend == "postgres" or self.taskstore_backend == "postgres"
             ) and not self.database_url:
-                raise ValueError(
-                    "server 模式下使用 postgres 后端时必须配置 DATABASE_URL"
-                )
+                raise ValueError("server 模式下使用 postgres 后端时必须配置 DATABASE_URL")
         return self
 
     @property
