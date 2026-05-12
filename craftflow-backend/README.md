@@ -19,10 +19,10 @@
 
 | 特性 | standalone（桌面端） | server（服务端） |
 |------|---------------------|-----------------|
-| 存储 | SQLite | PostgreSQL |
-| 鉴权 | 无 | API Key |
+| 存储 | SQLite（强制） | SQLite 或 PostgreSQL（可选） |
+| 鉴权 | 无（强制禁用） | API Key（可选，建议开启） |
 | WebSocket | 不启用 | 启用 |
-| 配置 | 零配置启动 | 需配置 DATABASE_URL |
+| 配置 | 零配置启动 | 需配置 API_KEY，使用 PostgreSQL 时需配置 DATABASE_URL |
 
 ### 技术栈
 
@@ -278,9 +278,20 @@ Docker 支持尚在规划中，敬请期待。
 
 详细架构文档请参考：
 
-- [系统架构设计](../../docs/architecture.md) — 整体架构设计
-- [核心开发蓝图](docs/core-dev-guide.md)
-- [开发计划](docs/plan/dev-plan.md)
+- [后端架构总览](docs/architecture/architecture-overview.md) — 后端整体架构设计
+- [架构改造记录](docs/architecture/architecture-refactor-record.md) — 配置驱动架构改造实施记录
+- [数据存储架构](docs/architecture/database-design.md) — 四层存储架构设计
+- [API 接口参考](docs/api/api-reference.md) — REST 和 WebSocket 接口详细说明
+- [接口流程图解](docs/api/api-flow.md) — API 接口流程图
+- [WebSocket 通信架构](docs/api/WebSocket-architecture.md) — WebSocket 通信设计
+- [鉴权设计](docs/api/authentication-design.md) — API Key 鉴权机制
+- [Creation Graph 流程](docs/graph/creation-graph.md) — 创作图详细流程
+- [Polishing Graph 流程](docs/graph/polishing-graph.md) — 润色图详细流程
+- [核心开发蓝图](docs/guide/core-dev-guide.md) — 核心开发规范
+- [Prompt 策略](docs/guide/prompt-strategy.md) — Prompt 模板组织原则
+- [工具调用说明](docs/guide/tool-calling.md) — 工具链调用说明
+- [部署指南](docs/deployment/deployment-guide.md) — 不同场景部署方案
+- [环境变量配置](docs/deployment/env-configuration-guide.md) — 配置项完整说明
 
 ### 核心设计理念
 

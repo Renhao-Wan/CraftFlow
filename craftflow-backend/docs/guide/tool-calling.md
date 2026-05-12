@@ -54,3 +54,9 @@ def fact_checker_node(state: GraphState):
     response = llm_with_tools.invoke(state["draft"])
     ...
 ```
+
+---
+
+**文档版本**: v1.0  
+**创建日期**: 2026-05-12  
+**维护者**: Renhao-Wan

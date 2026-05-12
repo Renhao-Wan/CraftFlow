@@ -191,3 +191,9 @@ craftflow-backend/
 ├── pyproject.toml               # 环境依赖 (langchain, fastapi 等)
 └── README.md                    # 项目核心介绍文档
 ```
+
+---
+
+**文档版本**: v1.0  
+**创建日期**: 2026-05-12  
+**维护者**: Renhao-Wan
