@@ -65,7 +65,7 @@ class SevenZipWrapper {
 }
 '@
 
-$baseDir = 'd:\python\PycharmProjects\CraftFlow\CraftFlow-Desktop\node_modules\7zip-bin\win'
+$baseDir = 'd:\python\PycharmProjects\CraftFlow\craftflow-desktop\node_modules\7zip-bin\win'
 
 foreach (${arch} in @('x64', 'ia32', 'arm64')) {
     $targetDir = "$baseDir\${arch}"
