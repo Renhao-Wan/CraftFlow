@@ -1,6 +1,7 @@
 """配置验证脚本
 
 用于测试配置模块是否能正确读取环境变量。
+支持 Phase 1 配置层改造的新增配置项验证。
 """
 
 import sys
@@ -17,47 +18,85 @@ def main():
     """测试配置读取"""
     # 初始化日志
     setup_logger()
-    
+
     logger.info("=" * 60)
     logger.info("CraftFlow 配置验证")
     logger.info("=" * 60)
-    
-    # 应用配置
-    logger.info(f"应用名称: {settings.app_name}")
-    logger.info(f"应用版本: {settings.app_version}")
-    logger.info(f"运行环境: {settings.environment}")
-    logger.info(f"调试模式: {settings.debug}")
-    logger.info(f"日志级别: {settings.log_level}")
-    
+
+    # ============================================
+    # 应用基础配置
+    # ============================================
+    logger.info("\n[应用基础配置]")
+    logger.info(f"  应用名称: {settings.app_name}")
+    logger.info(f"  应用版本: {settings.app_version}")
+    logger.info(f"  运行模式: {settings.app_mode}")
+    logger.info(f"  运行环境: {settings.environment}")
+    logger.info(f"  调试模式: {settings.debug}")
+    logger.info(f"  日志级别: {settings.log_level}")
+    logger.info(f"  是否桌面端模式: {settings.is_standalone}")
+    logger.info(f"  是否服务端模式: {settings.is_server}")
+
+    # ============================================
+    # 鉴权配置
+    # ============================================
+    logger.info("\n[鉴权配置]")
+    logger.info(f"  启用鉴权: {settings.enable_auth}")
+    logger.info(f"  API Key: {'已配置' if settings.api_key else '未配置'}")
+
+    # ============================================
     # LLM 配置
-    logger.info(f"\nLLM 模型: {settings.llm_model}")
-    logger.info(f"LLM API Key: {'已配置' if settings.llm_api_key else '未配置'}")
-    logger.info(f"最大 Token 数: {settings.max_tokens}")
-    logger.info(f"默认温度: {settings.default_temperature}")
-    
-    # 持久化配置
-    logger.info(f"\nCheckpointer 后端: {settings.checkpointer_backend}")
-    if settings.checkpointer_backend == "postgres":
-        logger.info(f"数据库 URL: {settings.database_url}")
-    
+    # ============================================
+    logger.info("\n[LLM 配置]")
+    logger.info(f"  LLM 模型: {settings.llm_model}")
+    logger.info(f"  LLM API Key: {'已配置' if settings.llm_api_key else '未配置'}")
+    logger.info(f"  最大 Token 数: {settings.max_tokens}")
+    logger.info(f"  默认温度: {settings.default_temperature}")
+
+    # ============================================
+    # 状态持久化配置
+    # ============================================
+    logger.info("\n[状态持久化配置]")
+    logger.info(f"  Checkpointer 后端: {settings.checkpointer_backend}")
+    logger.info(f"  Checkpoint DB 路径: {settings.checkpoint_db_path}")
+    logger.info(f"  TaskStore 后端: {settings.taskstore_backend}")
+    logger.info(f"  TaskStore DB 路径: {settings.taskstore_db_path}")
+    if settings.checkpointer_backend == "postgres" or settings.taskstore_backend == "postgres":
+        logger.info(f"  数据库 URL: {settings.database_url}")
+
+    # ============================================
     # 外部工具配置
-    logger.info(f"\nTavily API Key: {'已配置' if settings.tavily_api_key else '未配置'}")
-    logger.info(f"E2B API Key: {'已配置' if settings.e2b_api_key else '未配置'}")
-    
-    # 服务配置
-    logger.info(f"\n服务地址: {settings.host}:{settings.port}")
-    logger.info(f"CORS 来源: {settings.cors_origins}")
-    
-    # 业务配置
-    logger.info(f"\n最大大纲章节数: {settings.max_outline_sections}")
-    logger.info(f"最大并发写作节点: {settings.max_concurrent_writers}")
-    logger.info(f"对抗循环最大迭代: {settings.max_debate_iterations}")
-    logger.info(f"主编通过分数: {settings.editor_pass_score}")
-    
-    logger.info("=" * 60)
+    # ============================================
+    logger.info("\n[外部工具配置]")
+    logger.info(f"  Tavily API Key: {'已配置' if settings.tavily_api_key else '未配置'}")
+    logger.info(f"  E2B API Key: {'已配置' if settings.e2b_api_key else '未配置'}")
+
+    # ============================================
+    # 向量数据库配置
+    # ============================================
+    logger.info("\n[向量数据库配置]")
+    logger.info(f"  启用 RAG: {settings.enable_rag}")
+    logger.info(f"  向量数据库后端: {settings.vector_db_backend}")
+
+    # ============================================
+    # FastAPI 服务配置
+    # ============================================
+    logger.info("\n[FastAPI 服务配置]")
+    logger.info(f"  服务地址: {settings.host}:{settings.port}")
+    logger.info(f"  CORS 来源: {settings.cors_origins}")
+
+    # ============================================
+    # 业务逻辑配置
+    # ============================================
+    logger.info("\n[业务逻辑配置]")
+    logger.info(f"  最大大纲章节数: {settings.max_outline_sections}")
+    logger.info(f"  最大并发写作节点: {settings.max_concurrent_writers}")
+    logger.info(f"  对抗循环最大迭代: {settings.max_debate_iterations}")
+    logger.info(f"  主编通过分数: {settings.editor_pass_score}")
+
+    logger.info("\n" + "=" * 60)
     logger.success("✓ 配置验证完成")
     logger.info("=" * 60)
-    
+
     # 测试日志级别
     logger.debug("这是 DEBUG 级别日志")
     logger.info("这是 INFO 级别日志")

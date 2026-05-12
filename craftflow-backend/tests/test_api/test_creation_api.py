@@ -17,7 +17,7 @@ from app.api.v1.tasks import router as tasks_router
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
-from app.services.task_store import TaskStore
+from app.services.task_store import AbstractTaskStore
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def mock_polishing_service():
 @pytest.fixture
 def mock_task_store():
     """创建 mock TaskStore"""
-    store = AsyncMock(spec=TaskStore)
+    store = AsyncMock(spec=AbstractTaskStore)
     store.get_task.return_value = None
     store.get_task_list.return_value = []
     return store

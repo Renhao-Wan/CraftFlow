@@ -1,6 +1,7 @@
 """自定义异常类与全局异常处理器
 
 定义业务异常类型，并提供 FastAPI 全局异常处理器。
+生产环境下对异常信息进行脱敏处理，避免泄露内部实现细节。
 """
 
 from datetime import datetime
@@ -158,6 +159,8 @@ class ValidationError(CraftFlowException):
 async def craftflow_exception_handler(request: Request, exc: CraftFlowException) -> JSONResponse:
     """处理 CraftFlow 自定义异常
 
+    生产环境下隐藏 details 中的内部实现细节，仅保留错误码和友好消息。
+
     Args:
         request: FastAPI 请求对象
         exc: CraftFlow 异常实例
@@ -165,6 +168,7 @@ async def craftflow_exception_handler(request: Request, exc: CraftFlowException)
     Returns:
         JSON 格式的错误响应
     """
+    from app.core.config import settings
     from app.schemas.response import ErrorResponse
 
     logger.error(
@@ -173,12 +177,15 @@ async def craftflow_exception_handler(request: Request, exc: CraftFlowException)
         f"详情: {exc.details}"
     )
 
+    # 生产环境脱敏：隐藏内部细节，仅保留错误码和用户友好消息
+    detail = exc.details if settings.is_development else {}
+
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
             error=exc.error_code,
             message=exc.message,
-            detail=exc.details,
+            detail=detail,
             timestamp=datetime.now(),
             path=str(request.url.path),
         ).model_dump(mode="json"),
@@ -245,6 +252,8 @@ async def validation_exception_handler(
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """处理未捕获的通用异常
 
+    生产环境下隐藏异常类型和内部消息，避免泄露实现细节。
+
     Args:
         request: FastAPI 请求对象
         exc: 通用异常
@@ -252,18 +261,22 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     Returns:
         JSON 格式的错误响应
     """
+    from app.core.config import settings
     from app.schemas.response import ErrorResponse
 
     logger.exception(
-        f"未捕获异常 | 路径: {request.url.path} | 类型: {type(exc).__name__} | " f"消息: {str(exc)}"
+        f"未捕获异常 | 路径: {request.url.path} | 类型: {type(exc).__name__} | 消息: {str(exc)}"
     )
+
+    # 生产环境脱敏：不暴露异常类型等内部信息
+    detail = {"exception_type": type(exc).__name__} if settings.is_development else {}
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
             error="INTERNAL_SERVER_ERROR",
             message="服务器内部错误，请稍后重试",
-            detail={"exception_type": type(exc).__name__},
+            detail=detail,
             timestamp=datetime.now(),
             path=str(request.url.path),
         ).model_dump(mode="json"),
