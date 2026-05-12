@@ -15,6 +15,7 @@ from app.api.dependencies import (
     get_polishing_service,
     get_task_store,
 )
+from app.core.auth import verify_api_key
 from app.core.exceptions import TaskNotFoundError
 from app.schemas.response import TaskStatusResponse
 from app.services.creation_svc import CreationService
@@ -28,6 +29,7 @@ router = APIRouter()
 async def list_tasks(
     limit: int = Query(50, ge=1, le=200, description="最大返回数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
+    caller: dict[str, Any] = Depends(verify_api_key),
     store: AbstractTaskStore = Depends(get_task_store),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
@@ -71,6 +73,7 @@ async def list_tasks(
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
     task_id: str,
+    caller: dict[str, Any] = Depends(verify_api_key),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
 ) -> TaskStatusResponse:
@@ -96,6 +99,7 @@ async def get_task_status(
 @router.delete("/tasks/{task_id}")
 async def delete_task(
     task_id: str,
+    caller: dict[str, Any] = Depends(verify_api_key),
     store: AbstractTaskStore = Depends(get_task_store),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
