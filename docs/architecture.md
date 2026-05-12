@@ -34,10 +34,10 @@ CraftFlow 定位为 **“虚拟编辑部”**，摒弃了“单次 Prompt 线性
 * **AI 编排引擎层 (LangGraph)**：
   * **Creation Graph (渐进创作引擎)**：基于 `Send` 原语实现章节并发生成。
   * **Polishing Graph (多阶润色引擎)**：基于条件边 (`Conditional Edges`) 实现路由流转与多智能体博弈。
-* **状态持久化层 (PostgreSQL/Redis)**：
-  * 利用 LangGraph 的 `PostgresSaver` 作为图的持久化断点存储 (Checkpointer)。开发时使用 `MemorySaver`
-  * Redis 用于外部系统的任务防重、限流及基础会话缓存。
-* **工具链层 (LangChain Tools)**：集成 Google Search、Python REPL 安全沙箱等，用于执行硬核核查。
+* **状态持久化层 (SQLite/PostgreSQL)**：
+  * 利用 LangGraph 的 Checkpointer 机制实现图状态持久化。桌面端使用 `AsyncSqliteSaver`，服务端使用 `AsyncPostgresSaver`，开发调试时使用 `MemorySaver`。
+  * TaskStore 通过工厂模式支持 SQLite 和 PostgreSQL 双后端。
+* **工具链层 (LangChain Tools)**：集成 Tavily Search、E2B Code Interpreter 等，用于执行硬核核查。
 
 ---
 
@@ -92,7 +92,7 @@ CraftFlow 定位为 **“虚拟编辑部”**，摒弃了“单次 Prompt 线性
   * 响应示例 2 (遇断点挂起)：`{"status": "interrupted", "awaiting": "outline_confirmation", "data": {...大纲内容...}}`
 * **POST /api/v1/tasks/{task_id}/resume** (人机协同注入点)
   * 请求：`{"action": "confirm_outline", "modified_data": {...修改后的大纲...}}`
-  * 行为：引擎拉取 PostgreSQL 中的图快照，注入新数据继续运行。
+  * 行为：引擎从 Checkpointer 拉取图快照，注入新数据继续运行。
 * **POST /api/v1/polishing** (发起润色任务)
   * 请求：`{"content": "正文...", "mode": 3}`
   * 响应：`{"task_id": "p-UUID", "status": "running"}`
@@ -120,3 +120,9 @@ Java 后端完全不需要知道内部图逻辑。当社区用户需要“AI 扩
    设计三阶润色模式，将策略模式（Strategy Pattern）与图的条件边完美融合。高阶模式融合 Debate（多智能体博弈）与 Tool Use（外挂验证），展现了极强的架构控制力与质量兜底能力。
 4. **跨语言异构系统的平滑解耦**
    没有将 Agent 代码与原业务逻辑揉在一起，而是抽象为标准 SaaS 服务。利用轮询机制解决长时异步调度痛点，体现了扎实的微服务架构师视野。
+
+---
+
+**文档版本**: v1.0  
+**创建日期**: 2026-05-12  
+**维护者**: Renhao-Wan
