@@ -65,7 +65,7 @@ def get_checkpoints_dir() -> Path:
 def get_env_file() -> Path:
     """获取 .env 文件路径
 
-    如果不存在，从 .env.example 复制模板。
+    如果不存在，从 .env.standalone 复制模板。
 
     Returns:
         Path: .env 文件路径
@@ -73,17 +73,17 @@ def get_env_file() -> Path:
     env_path = get_data_dir() / ".env"
 
     if not env_path.exists():
-        # 尝试从打包资源中复制 .env.example
+        # 尝试从打包资源中复制 .env.standalone
         if getattr(sys, 'frozen', False):
             # PyInstaller 打包环境
             bundle_dir = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(sys.executable).parent
-            example_path = bundle_dir / ".env.example"
+            template_path = bundle_dir / ".env.standalone"
         else:
             # 开发环境
-            example_path = Path(__file__).parent / ".env.example"
+            template_path = Path(__file__).parent / ".env.standalone"
 
-        if example_path.exists():
-            shutil.copy2(example_path, env_path)
+        if template_path.exists():
+            shutil.copy2(template_path, env_path)
             print(f"[desktop_config] 已从模板创建 .env: {env_path}")
         else:
             # 创建空的 .env 文件
