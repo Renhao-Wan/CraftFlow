@@ -706,13 +706,19 @@ class DatabaseManager:
 - `app/core/__init__.py`：导出 `verify_api_key` 和 `verify_ws_api_key`
 - `tests/test_auth.py`：13 个测试覆盖 standalone/server 模式、REST/WebSocket 鉴权、集成测试（401/403/200）
 
-### Phase 4：依赖注入改造（预计 1-2 天）
+### Phase 4：依赖注入改造 ✅ 已完成
 
-| 步骤 | 任务 | 涉及文件 | 验证方式 |
-|------|------|----------|----------|
-| 4.1 | 重构 `init_services()` 支持模式感知 | `app/api/dependencies.py` | 两种模式启动验证 |
-| 4.2 | 将 `_load_interrupted_tasks()` 内聚到 Service | `app/services/creation_svc.py` | 中断恢复测试 |
-| 4.3 | 条件化 WebSocket 服务初始化 | `app/main.py` | 桌面端启动验证 |
+| 步骤 | 任务 | 涉及文件 | 验证方式 | 状态 |
+|------|------|----------|----------|------|
+| 4.1 | 重构 `init_services()` 支持模式感知 | `app/api/dependencies.py` | 两种模式启动验证 | ✅ |
+| 4.2 | 将 `_load_interrupted_tasks()` 内聚到 Service | `app/services/creation_svc.py`, `polishing_svc.py` | 中断恢复测试 | ✅ |
+| 4.3 | 条件化 WebSocket 服务初始化 | `app/main.py` | 桌面端启动验证 | ✅ |
+
+**完成内容**：
+- `dependencies.py`：移除独立的 `_load_interrupted_tasks()` 函数，改为委托给各 Service 的 `load_interrupted_tasks()` 方法；新增 `_init_server_components()` 预留 server 模式扩展点；日志中输出当前模式和 TaskStore 后端
+- `creation_svc.py`：新增 `load_interrupted_tasks()` 方法，从 TaskStore 加载 creation 类型中断任务到 `_tasks` dict
+- `polishing_svc.py`：新增 `load_interrupted_tasks()` 方法，从 TaskStore 加载 polishing 类型中断任务到 `_tasks` dict
+- `main.py`：WebSocket 服务（`init_ws_services` + 路由注册）仅在 server 模式下初始化；health 端点增加 `mode` 字段；启动日志输出当前模式
 
 ### Phase 5：集成测试与文档（预计 1-2 天）
 
