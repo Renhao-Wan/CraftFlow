@@ -23,7 +23,7 @@ from app.graph.polishing.builder import get_polishing_graph
 from app.graph.polishing.nodes import register_progress_callback, unregister_progress_callback
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.services.task_store import AbstractTaskStore
+from app.adapters.base import BusinessAdapter
 
 logger = get_logger(__name__)
 
@@ -63,15 +63,15 @@ class PolishingService:
         _tasks: 任务元数据存储
     """
 
-    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: AbstractTaskStore) -> None:
+    def __init__(self, checkpointer: BaseCheckpointSaver, adapter: BusinessAdapter) -> None:
         """初始化 Polishing Service
 
         Args:
             checkpointer: LangGraph Checkpointer 实例
-            task_store: SQLite 任务持久化存储
+            adapter: 业务适配器
         """
         self.checkpointer = checkpointer
-        self.task_store = task_store
+        self.adapter = adapter
         self._graph = None
         self._tasks: dict[str, dict[str, Any]] = {}
 
@@ -150,7 +150,7 @@ class PolishingService:
                 "updated_at": str(datetime.now()),
             }
             logger.debug(f"保存数据: {save_data}")
-            await self.task_store.save_task(save_data)
+            await self.adapter.save_task(save_data)
             logger.info(f"SQLite 保存成功 - task_id: {task_id}")
         except Exception as e:
             logger.error(f"保存任务到 SQLite 失败 - task_id: {task_id}, error: {e}", exc_info=True)
@@ -169,7 +169,7 @@ class PolishingService:
         Returns:
             加载的任务数量
         """
-        interrupted = await self.task_store.get_interrupted_tasks()
+        interrupted = await self.adapter.get_interrupted_tasks()
         if not interrupted:
             return 0
 
@@ -352,7 +352,7 @@ class PolishingService:
 
         # 2. 内存未找到，查 TaskStore（仅查 polishing 类型）
         if task is None:
-            row = await self.task_store.get_task(task_id, graph_type="polishing")
+            row = await self.adapter.get_task(task_id)
             if row is None:
                 raise TaskNotFoundError(task_id=task_id)
 

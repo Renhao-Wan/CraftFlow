@@ -11,16 +11,16 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import (
+    get_adapter,
     get_creation_service,
     get_polishing_service,
-    get_task_store,
 )
+from app.adapters.base import BusinessAdapter
 from app.core.auth import verify_api_key
 from app.core.exceptions import TaskNotFoundError
 from app.schemas.response import TaskStatusResponse
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
-from app.services.task_store import AbstractTaskStore
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ async def list_tasks(
     limit: int = Query(50, ge=1, le=200, description="最大返回数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
     caller: dict[str, Any] = Depends(verify_api_key),
-    store: AbstractTaskStore = Depends(get_task_store),
+    adapter: BusinessAdapter = Depends(get_adapter),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
 ) -> dict[str, Any]:
@@ -57,7 +57,7 @@ async def list_tasks(
             memory_task_ids.add(task["task_id"])
 
     # 2. 从 SQLite 查询任务，排除已在内存中的（去重）
-    db_tasks, db_total = await store.get_task_list(limit=limit, offset=offset)
+    db_tasks, db_total = await adapter.get_task_list(limit=limit, offset=offset)
     db_tasks_deduped = [t for t in db_tasks if t["task_id"] not in memory_task_ids]
 
     # 3. 合并并按 created_at 降序排序
@@ -100,7 +100,7 @@ async def get_task_status(
 async def delete_task(
     task_id: str,
     caller: dict[str, Any] = Depends(verify_api_key),
-    store: AbstractTaskStore = Depends(get_task_store),
+    adapter: BusinessAdapter = Depends(get_adapter),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
 ) -> dict[str, Any]:
@@ -118,7 +118,7 @@ async def delete_task(
         return {"task_id": task_id, "deleted": True}
 
     # 2. 内存中没有，从 SQLite 删除
-    deleted = await store.delete_task(task_id)
+    deleted = await adapter.delete_task(task_id)
     if not deleted:
         raise TaskNotFoundError(task_id=task_id)
     return {"task_id": task_id, "deleted": True}

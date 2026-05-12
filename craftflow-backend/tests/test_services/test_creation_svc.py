@@ -21,13 +21,13 @@ def mock_checkpointer():
 
 
 @pytest.fixture
-def mock_task_store():
-    """创建 mock TaskStore"""
-    store = AsyncMock()
-    store.save_task = AsyncMock()
-    store.get_task = AsyncMock(return_value=None)
-    store.get_task_list = AsyncMock(return_value=[])
-    return store
+def mock_adapter():
+    """创建 mock BusinessAdapter"""
+    adapter = AsyncMock()
+    adapter.save_task = AsyncMock()
+    adapter.get_task = AsyncMock(return_value=None)
+    adapter.get_task_list = AsyncMock(return_value=([], 0))
+    return adapter
 
 
 @pytest.fixture
@@ -41,9 +41,9 @@ def mock_graph():
 
 
 @pytest.fixture
-def service(mock_checkpointer, mock_task_store, mock_graph):
+def service(mock_checkpointer, mock_adapter, mock_graph):
     """创建 CreationService 实例（注入 mock graph）"""
-    svc = CreationService(checkpointer=mock_checkpointer, task_store=mock_task_store)
+    svc = CreationService(checkpointer=mock_checkpointer, adapter=mock_adapter)
     svc._graph = mock_graph
     return svc
 
@@ -96,7 +96,7 @@ class TestStartTask:
         assert result.status == "completed"
 
     @pytest.mark.asyncio
-    async def test_start_task_interrupted_at_outline(self, service, mock_graph, mock_task_store):
+    async def test_start_task_interrupted_at_outline(self, service, mock_graph, mock_adapter):
         """测试任务在大纲确认点中断"""
         _setup_graph_mocks(mock_graph, GraphInterrupt("outline_confirmation"))
 
@@ -107,28 +107,28 @@ class TestStartTask:
         assert "大纲" in result.message
 
         # 中断任务应持久化到 TaskStore
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "interrupted"
         assert saved_data["topic"] == "人工智能"
 
     @pytest.mark.asyncio
-    async def test_start_task_saves_metadata(self, service, mock_graph, mock_task_store):
+    async def test_start_task_saves_metadata(self, service, mock_graph, mock_adapter):
         """测试任务元数据正确保存到 TaskStore"""
         _setup_graph_mocks(mock_graph, {"current_node": "reducer"})
 
         result = await service.start_task(topic="测试主题")
 
         # 已完成任务应持久化到 TaskStore 并从 _tasks 移除
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "completed"
         assert saved_data["graph_type"] == "creation"
         assert saved_data["topic"] == "测试主题"
         assert result.task_id not in service._tasks
 
     @pytest.mark.asyncio
-    async def test_start_task_graph_error_raises(self, service, mock_graph, mock_task_store):
+    async def test_start_task_graph_error_raises(self, service, mock_graph, mock_adapter):
         """测试图执行错误时抛出 GraphExecutionError"""
         _setup_graph_mocks(mock_graph, RuntimeError("LLM 调用失败"))
 
@@ -137,8 +137,8 @@ class TestStartTask:
 
         assert "失败" in str(exc_info.value.message)
         # 失败任务应持久化到 TaskStore
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "failed"
         assert "LLM 调用失败" in saved_data["error"]
 
@@ -158,7 +158,7 @@ class TestStartTask:
         assert initial_state["sections"] == []
 
     @pytest.mark.asyncio
-    async def test_start_task_uses_task_id_as_thread_id(self, service, mock_graph, mock_task_store):
+    async def test_start_task_uses_task_id_as_thread_id(self, service, mock_graph, mock_adapter):
         """测试使用 task_id 作为 thread_id"""
         _setup_graph_mocks(mock_graph, GraphInterrupt("outline_confirmation"))
 
@@ -236,13 +236,13 @@ class TestResumeTask:
             )
 
     @pytest.mark.asyncio
-    async def test_resume_second_interrupt(self, service, mock_graph, mock_task_store):
+    async def test_resume_second_interrupt(self, service, mock_graph, mock_adapter):
         """测试恢复后再次中断的处理"""
         _setup_graph_mocks(mock_graph, GraphInterrupt("outline_confirmation"))
         create_result = await service.start_task(topic="测试")
 
         # 重置 mock 以区分 start 和 resume 的调用
-        mock_task_store.save_task.reset_mock()
+        mock_adapter.save_task.reset_mock()
 
         _setup_graph_mocks(mock_graph, GraphInterrupt("second_interrupt"))
         resume_result = await service.resume_task(
@@ -253,8 +253,8 @@ class TestResumeTask:
         assert resume_result.status == "interrupted"
 
         # 再次中断应重新持久化
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "interrupted"
 
 
@@ -291,7 +291,7 @@ class TestGetTaskStatus:
 
     @pytest.mark.asyncio
     async def test_get_status_completed_task_with_result(
-        self, service, mock_graph, mock_task_store
+        self, service, mock_graph, mock_adapter
     ):
         """测试查询已完成任务的状态包含结果（从 TaskStore 查询）"""
         _setup_graph_mocks(
@@ -302,7 +302,7 @@ class TestGetTaskStatus:
         create_result = await service.start_task(topic="测试")
 
         # 已完成任务已从 _tasks 移除，通过 TaskStore 查询
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "creation",
             "status": "completed",
