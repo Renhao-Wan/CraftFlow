@@ -71,6 +71,16 @@ class BusinessAdapter(ABC):
     async def update_writing_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """更新写作参数，返回更新后的完整参数"""
 
+    # ========== 外部工具配置 ==========
+
+    @abstractmethod
+    async def get_tool_configs(self) -> dict[str, str]:
+        """获取所有外部工具配置（tavily_api_key, e2b_api_key 等）"""
+
+    @abstractmethod
+    async def update_tool_configs(self, configs: dict[str, Any]) -> dict[str, str]:
+        """更新外部工具配置，返回更新后的完整配置"""
+
     # ========== 生命周期 ==========
 
     @abstractmethod

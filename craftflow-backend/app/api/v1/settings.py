@@ -16,9 +16,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.adapters.base import BusinessAdapter
 from app.api.dependencies import get_adapter
+from app.core import tool_configs
 from app.core.auth import verify_api_key
-from app.schemas.request import LlmProfileRequest, WritingParamsRequest
-from app.schemas.response import LlmProfileResponse, WritingParamsResponse
+from app.schemas.request import LlmProfileRequest, ToolConfigsRequest, WritingParamsRequest
+from app.schemas.response import LlmProfileResponse, ToolConfigsResponse, WritingParamsResponse
 
 router = APIRouter(prefix="/settings")
 
@@ -129,6 +130,56 @@ async def set_default_profile(
     if not success:
         raise HTTPException(status_code=404, detail=f"Profile {profile_id} 不存在")
     return {"success": True, "profile_id": profile_id}
+
+
+# ============================================
+# 外部工具配置
+# ============================================
+
+
+def _mask_tool_key(key: str) -> str:
+    """脱敏工具 API Key"""
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "****"
+    return f"{key[:4]}****{key[-4:]}"
+
+
+@router.get("/tool-configs", response_model=ToolConfigsResponse)
+async def get_tool_configs(
+    caller: dict[str, Any] = Depends(verify_api_key),
+    adapter: BusinessAdapter = Depends(get_adapter),
+) -> dict[str, str]:
+    """获取外部工具配置（脱敏）"""
+    configs = await adapter.get_tool_configs()
+    return {k: _mask_tool_key(v) for k, v in configs.items()}
+
+
+@router.patch("/tool-configs", response_model=ToolConfigsResponse)
+async def update_tool_configs(
+    request: ToolConfigsRequest,
+    caller: dict[str, Any] = Depends(verify_api_key),
+    adapter: BusinessAdapter = Depends(get_adapter),
+) -> dict[str, str]:
+    """更新外部工具配置（部分更新）"""
+    update_data: dict[str, Any] = {}
+    for field_name in ("tavily_api_key", "e2b_api_key"):
+        value = getattr(request, field_name, None)
+        if value is not None:
+            update_data[field_name] = value
+
+    if not update_data:
+        configs = await adapter.get_tool_configs()
+        return {k: _mask_tool_key(v) for k, v in configs.items()}
+
+    result = await adapter.update_tool_configs(update_data)
+
+    # 刷新缓存
+    for key, value in update_data.items():
+        tool_configs.refresh(key, value)
+
+    return {k: _mask_tool_key(v) for k, v in result.items()}
 
 
 # ============================================

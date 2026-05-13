@@ -31,6 +31,18 @@ export interface WritingParams {
   tool_call_timeout: number
 }
 
+/** 外部工具配置 — GET /api/v1/settings/tool-configs */
+export interface ToolConfigs {
+  tavily_api_key: string
+  e2b_api_key: string
+}
+
+/** 外部工具配置更新请求 */
+export interface ToolConfigsRequest {
+  tavily_api_key?: string
+  e2b_api_key?: string
+}
+
 /** 写作参数更新请求 */
 export interface WritingParamsRequest {
   max_outline_sections?: number

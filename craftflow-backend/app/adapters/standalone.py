@@ -235,6 +235,41 @@ class StandaloneAdapter(BusinessAdapter):
         logger.debug(f"默认 LLM Profile 已切换 - id: {profile_id}")
         return True
 
+    # ========== 外部工具配置 ==========
+
+    _TOOL_CONFIG_KEYS = ("tavily_api_key", "e2b_api_key")
+
+    async def get_tool_configs(self) -> dict[str, str]:
+        """获取外部工具配置（从 settings 表读取指定 key）"""
+        if self._db is None:
+            raise RuntimeError("StandaloneAdapter 未初始化")
+
+        placeholders = ",".join("?" for _ in self._TOOL_CONFIG_KEYS)
+        cursor = await self._db.execute(
+            f"SELECT key, value FROM settings WHERE key IN ({placeholders})",
+            self._TOOL_CONFIG_KEYS,
+        )
+        rows = await cursor.fetchall()
+        result = {key: "" for key in self._TOOL_CONFIG_KEYS}
+        for row in rows:
+            result[row[0]] = row[1]
+        return result
+
+    async def update_tool_configs(self, configs: dict[str, Any]) -> dict[str, str]:
+        """更新外部工具配置（INSERT OR REPLACE），返回更新后的完整配置"""
+        if self._db is None:
+            raise RuntimeError("StandaloneAdapter 未初始化")
+
+        for key, value in configs.items():
+            if key in self._TOOL_CONFIG_KEYS:
+                await self._db.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                    (key, str(value)),
+                )
+        await self._db.commit()
+        logger.debug(f"外部工具配置已更新: {list(configs.keys())}")
+        return await self.get_tool_configs()
+
     # ========== 写作参数 ==========
 
     async def get_writing_params(self) -> dict[str, Any]:

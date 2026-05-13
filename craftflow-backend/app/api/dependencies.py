@@ -22,6 +22,7 @@
 from app.core.config import settings
 from app.core.exceptions import CheckpointerError
 from app.core.logger import get_logger
+from app.core import tool_configs
 from app.adapters.base import BusinessAdapter
 from app.adapters.standalone import StandaloneAdapter
 from app.graph.common.llm_factory import LLMFactory
@@ -65,7 +66,10 @@ async def init_services() -> None:
     _adapter = StandaloneAdapter()
     await _adapter.init()
 
-    # 2. 绑定 Adapter 到 LLMFactory
+    # 2. 加载外部工具配置到缓存
+    await tool_configs.load_from_adapter(_adapter)
+
+    # 3. 绑定 Adapter 到 LLMFactory
     LLMFactory.set_adapter(_adapter)
 
     # 3. 创建业务服务

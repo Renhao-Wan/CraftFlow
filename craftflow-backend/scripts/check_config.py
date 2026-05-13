@@ -64,8 +64,8 @@ def main():
     # 外部工具配置
     # ============================================
     logger.info("\n[外部工具配置]")
-    logger.info(f"  Tavily API Key: {'已配置' if settings.tavily_api_key else '未配置'}")
-    logger.info(f"  E2B API Key: {'已配置' if settings.e2b_api_key else '未配置'}")
+    logger.info("  外部工具 API Key 已迁移至数据库 settings 表")
+    logger.info("  请在前端设置页面管理 Tavily / E2B API Key")
 
     # ============================================
     # 向量数据库配置

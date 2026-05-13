@@ -8,10 +8,14 @@ import {
   setDefaultProfile,
   getWritingParams,
   updateWritingParams,
+  getToolConfigs,
+  updateToolConfigs,
 } from '@/api/settings'
 import type {
   LlmProfile,
   LlmProfileRequest,
+  ToolConfigs,
+  ToolConfigsRequest,
   WritingParams,
   WritingParamsRequest,
 } from '@/api/types/settings'
@@ -31,14 +35,20 @@ export const useSettingsStore = defineStore('settings', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // ─── Tool Configs State ──────────────────────────────
+  const toolConfigs = ref<ToolConfigs>({
+    tavily_api_key: '',
+    e2b_api_key: '',
+  })
+
   // ─── Computed ───────────────────────────────────────────
   const hasDefault = computed(() => profiles.value.some((p) => p.is_default))
 
   // ─── Settings Modal State ───────────────────────────────
   const settingsModalVisible = ref(false)
-  const settingsInitialTab = ref<'appearance' | 'llm' | 'writing'>('appearance')
+  const settingsInitialTab = ref<'appearance' | 'llm' | 'writing' | 'tools'>('appearance')
 
-  function openSettingsModal(tab: 'appearance' | 'llm' | 'writing' = 'appearance'): void {
+  function openSettingsModal(tab: 'appearance' | 'llm' | 'writing' | 'tools' = 'appearance'): void {
     settingsInitialTab.value = tab
     settingsModalVisible.value = true
   }
@@ -156,11 +166,31 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  /** 加载外部工具配置 */
+  async function fetchToolConfigs(): Promise<void> {
+    try {
+      toolConfigs.value = await getToolConfigs()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '加载工具配置失败'
+    }
+  }
+
+  /** 更新外部工具配置 */
+  async function saveToolConfigs(data: ToolConfigsRequest): Promise<void> {
+    try {
+      toolConfigs.value = await updateToolConfigs(data)
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '更新工具配置失败'
+      throw e
+    }
+  }
+
   return {
     profiles,
     profilesLoaded,
     hasDefault,
     writingParams,
+    toolConfigs,
     loading,
     error,
     settingsModalVisible,
@@ -176,5 +206,7 @@ export const useSettingsStore = defineStore('settings', () => {
     makeDefault,
     fetchWritingParams,
     saveWritingParams,
+    fetchToolConfigs,
+    saveToolConfigs,
   }
 })

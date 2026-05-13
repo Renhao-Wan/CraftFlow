@@ -205,7 +205,6 @@ TASK_TIMEOUT=3600                   # ← 删除
 TOOL_CALL_TIMEOUT=30                # ← 删除
 TASKSTORE_BACKEND=sqlite
 CHECKPOINTER_BACKEND=sqlite
-TAVILY_API_KEY=tvly-xxx
 ```
 
 **改造后**：
@@ -213,10 +212,9 @@ TAVILY_API_KEY=tvly-xxx
 APP_MODE=standalone
 TASKSTORE_BACKEND=sqlite
 CHECKPOINTER_BACKEND=sqlite
-TAVILY_API_KEY=tvly-xxx
 ```
 
-`.env` 只保留基础设施和外部工具配置，LLM 配置和写作参数全部从数据库读取。
+`.env` 只保留基础设施配置（APP_MODE、数据库后端、向量数据库等），LLM 配置、写作参数和外部工具 API Key 全部从数据库读取。
 
 ## 五、后端 API 设计
 
@@ -276,7 +274,7 @@ CREATE TABLE IF NOT EXISTS settings (
 | 主题切换 | ✅ | ✅ |
 | LLM Profile 管理 | ✅ 用户自行管理 | ❌ 已在数据库配好 |
 | 写作参数 | ✅ | ✅ |
-| API Key 输入 | ✅ 用户自己填 | ❌ 已在数据库配好 |
+| 外部工具 API Key | ✅ 用户自己填 | ❌ 已在数据库配好 |
 | 数据目录展示 | ✅ 显示本地路径 | ❌ 不适用 |
 | 清除本地数据 | ✅ 清空 SQLite | ❌ 不适用 |
 
