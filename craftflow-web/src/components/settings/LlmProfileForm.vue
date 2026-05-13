@@ -25,6 +25,7 @@ const form = ref<LlmProfileRequest>({
 })
 
 const submitting = ref(false)
+const formError = ref<string | null>(null)
 
 watch(
   () => props.visible,
@@ -48,6 +49,15 @@ watch(
         is_default: false,
       }
     }
+    formError.value = null
+  },
+)
+
+// 用户修改名称时清除错误（允许重试）
+watch(
+  () => form.value.name,
+  () => {
+    formError.value = null
   },
 )
 
@@ -59,8 +69,11 @@ async function handleSubmit(): Promise<void> {
     } else {
       await store.addProfile(form.value)
     }
+    formError.value = null
     emit('saved')
     emit('close')
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : '保存失败'
   } finally {
     submitting.value = false
   }
@@ -149,11 +162,13 @@ async function handleSubmit(): Promise<void> {
             </label>
           </div>
 
+          <div v-if="formError" class="form-error">{{ formError }}</div>
+
           <div class="modal-footer">
             <button type="button" class="btn-cancel" @click="emit('close')">
               取消
             </button>
-            <button type="submit" class="btn-submit" :disabled="submitting">
+            <button type="submit" class="btn-submit" :disabled="submitting || !!formError">
               {{ submitting ? '保存中...' : '保存' }}
             </button>
           </div>
@@ -255,6 +270,16 @@ async function handleSubmit(): Promise<void> {
   font-size: 12px;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+
+.form-error {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-error-bg, #fef2f2);
+  border: 1px solid var(--color-error, #ef4444);
+  border-radius: var(--radius-sm);
+  color: var(--color-error, #ef4444);
+  font-size: 13px;
+  margin-top: var(--space-sm);
 }
 
 .form-range {

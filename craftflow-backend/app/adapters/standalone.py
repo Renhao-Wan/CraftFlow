@@ -93,41 +93,109 @@ class StandaloneAdapter(BusinessAdapter):
         rows = await cursor.fetchall()
         return [_profile_row_to_dict(cursor, row) for row in rows]
 
+    async def _check_profile_name_exists(self, name: str) -> bool:
+        """检查是否存在同名 Profile"""
+        cursor = await self._db.execute(
+            "SELECT 1 FROM llm_profiles WHERE name = ?", (name,)
+        )
+        return await cursor.fetchone() is not None
+
     async def save_llm_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
         """保存或更新 LLM Profile
 
-        新建时自动生成 id、created_at、updated_at。
+        新建时自动生成 id、created_at、updated_at，首个 Profile 自动设为默认。
         更新时自动更新 updated_at。
+        同名 Profile 将被拒绝（UNIQUE 约束）。
         """
         if self._db is None:
             raise RuntimeError("StandaloneAdapter 未初始化")
 
         now = datetime.now(timezone.utc).isoformat()
-        profile_id = profile.get("id") or str(uuid.uuid4())
+        profile_id = profile.get("id")
 
-        # 检查是否已存在
-        existing = await self.get_llm_profile(profile_id)
-        created_at = existing["created_at"] if existing else now
+        if profile_id:
+            existing = await self.get_llm_profile(profile_id)
+            if existing is not None:
+                # 更新模式：如果改了 name，检查新 name 是否与其他记录冲突
+                if profile["name"] != existing["name"]:
+                    dup = await self._check_profile_name_exists(profile["name"])
+                    if dup:
+                        raise ValueError(f"配置名称 '{profile['name']}' 已存在")
 
-        await self._db.execute(
-            """INSERT OR REPLACE INTO llm_profiles
-            (id, name, api_key, api_base, model, temperature, is_default, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                profile_id,
-                profile["name"],
-                profile["api_key"],
-                profile.get("api_base", ""),
-                profile["model"],
-                profile.get("temperature", 0.7),
-                profile.get("is_default", 0),
-                created_at,
-                now,
-            ),
-        )
+                await self._db.execute(
+                    """UPDATE llm_profiles SET
+                    name = ?, api_key = ?, api_base = ?, model = ?,
+                    temperature = ?, is_default = ?, updated_at = ?
+                    WHERE id = ?""",
+                    (
+                        profile["name"],
+                        profile["api_key"],
+                        profile.get("api_base", ""),
+                        profile["model"],
+                        profile.get("temperature", 0.7),
+                        profile.get("is_default", 0),
+                        now,
+                        profile_id,
+                    ),
+                )
+                logger.debug(f"LLM Profile 已更新 - id: {profile_id}")
+            else:
+                # 指定了 id 但不存在，按新建处理
+                dup = await self._check_profile_name_exists(profile["name"])
+                if dup:
+                    raise ValueError(f"配置名称 '{profile['name']}' 已存在")
+
+                all_profiles = await self.get_all_llm_profiles()
+                is_default = 1 if len(all_profiles) == 0 else profile.get("is_default", 0)
+
+                await self._db.execute(
+                    """INSERT INTO llm_profiles
+                    (id, name, api_key, api_base, model, temperature, is_default, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        profile_id,
+                        profile["name"],
+                        profile["api_key"],
+                        profile.get("api_base", ""),
+                        profile["model"],
+                        profile.get("temperature", 0.7),
+                        is_default,
+                        now,
+                        now,
+                    ),
+                )
+                logger.debug(f"LLM Profile 已创建 - id: {profile_id}, name: {profile['name']}")
+        else:
+            # 新建模式：检查 name 唯一性
+            dup = await self._check_profile_name_exists(profile["name"])
+            if dup:
+                raise ValueError(f"配置名称 '{profile['name']}' 已存在")
+
+            profile_id = str(uuid.uuid4())
+
+            # 首个 Profile 自动设为默认
+            all_profiles = await self.get_all_llm_profiles()
+            is_default = 1 if len(all_profiles) == 0 else profile.get("is_default", 0)
+
+            await self._db.execute(
+                """INSERT INTO llm_profiles
+                (id, name, api_key, api_base, model, temperature, is_default, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    profile_id,
+                    profile["name"],
+                    profile["api_key"],
+                    profile.get("api_base", ""),
+                    profile["model"],
+                    profile.get("temperature", 0.7),
+                    is_default,
+                    now,
+                    now,
+                ),
+            )
+            logger.debug(f"LLM Profile 已创建 - id: {profile_id}, name: {profile['name']}")
+
         await self._db.commit()
-        logger.debug(f"LLM Profile 已保存 - id: {profile_id}, name: {profile['name']}")
-
         return await self.get_llm_profile(profile_id)
 
     async def delete_llm_profile(self, profile_id: str) -> bool:

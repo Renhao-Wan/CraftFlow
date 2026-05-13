@@ -21,7 +21,9 @@ client.interceptors.response.use(
     if (axios.isAxiosError(error)) {
       const status = error.response?.status ?? 0
       const data = error.response?.data as ErrorResponse | undefined
-      const message = data?.message ?? error.message ?? '请求失败'
+      const detail = error.response?.data?.detail
+      const message =
+        data?.message ?? (typeof detail === 'string' ? detail : null) ?? error.message ?? '请求失败'
 
       const toast = useToast()
 

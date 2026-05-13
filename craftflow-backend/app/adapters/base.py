@@ -51,7 +51,7 @@ class BusinessAdapter(ABC):
 
     @abstractmethod
     async def save_llm_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
-        """保存或更新 LLM Profile（INSERT OR REPLACE）"""
+        """保存或更新 LLM Profile（新建用 INSERT，更新用 UPDATE）"""
 
     @abstractmethod
     async def delete_llm_profile(self, profile_id: str) -> bool:

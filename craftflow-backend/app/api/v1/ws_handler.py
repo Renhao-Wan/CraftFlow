@@ -110,6 +110,15 @@ async def _handle_create_creation(
             )
         except Exception as e:
             logger.error(f"创作任务流式执行异常: {e}")
+            await broadcaster.send_to(
+                client_id,
+                {
+                    "type": "error",
+                    "requestId": msg.request_id,
+                    "code": "TASK_CREATE_FAILED",
+                    "message": str(e),
+                },
+            )
 
     asyncio.create_task(_run())
 
@@ -133,6 +142,15 @@ async def _handle_create_polishing(
             )
         except Exception as e:
             logger.error(f"润色任务流式执行异常: {e}")
+            await broadcaster.send_to(
+                client_id,
+                {
+                    "type": "error",
+                    "requestId": msg.request_id,
+                    "code": "TASK_CREATE_FAILED",
+                    "message": str(e),
+                },
+            )
 
     asyncio.create_task(_run())
 
