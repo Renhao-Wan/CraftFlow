@@ -24,6 +24,7 @@ from app.graph.polishing.nodes import register_progress_callback, unregister_pro
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
 from app.adapters.base import BusinessAdapter
+from app.services.error_formatter import format_error_message
 
 logger = get_logger(__name__)
 
@@ -115,7 +116,7 @@ class PolishingService:
         return {"configurable": {"thread_id": thread_id}}
 
     async def _ensure_default_llm(self) -> None:
-        """检查是否存在默认 LLM Profile，不存在则抛出 ValidationError"""
+        """检查是否存在默认 LLM Profile 且 API Key 有效，否则抛出 ValidationError"""
         profile = await self.adapter.get_llm_profile()
         if profile is None:
             all_profiles = await self.adapter.get_all_llm_profiles()
@@ -129,6 +130,14 @@ class PolishingService:
                     message="未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认",
                     field="llm_profile",
                 )
+
+        # 检查 API Key 是否有效
+        api_key = profile.get("api_key", "")
+        if not api_key or not api_key.strip():
+            raise ValidationError(
+                message="默认 LLM 配置的 API Key 为空，请在设置页面补充 API Key",
+                field="llm_api_key",
+            )
 
     async def _persist_and_cleanup(
         self,
@@ -313,7 +322,20 @@ class PolishingService:
 
             # 从图状态提取结果
             graph_state = result or {}
-            final_result = self._extract_result(graph_state) or ""
+            final_result = self._extract_result(graph_state)
+
+            if not final_result:
+                error_msg = "润色任务未生成有效内容"
+                self._update_task(task_id, status="failed", error=error_msg)
+                logger.error(f"润色任务结果为空 - task_id: {task_id}")
+                await self._persist_and_cleanup(
+                    task_id, thread_id, "failed", error=error_msg,
+                )
+                raise GraphExecutionError(
+                    message=error_msg,
+                    details={"task_id": task_id, "mode": mode},
+                )
+
             fact_check_result = graph_state.get("fact_check_result")
 
             # 持久化 + 清理 + 释放内存
@@ -336,7 +358,8 @@ class PolishingService:
         except GraphExecutionError:
             raise
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"润色任务异常 - task_id: {task_id}, error: {str(e)}")
 
             # 持久化 + 清理 + 释放内存
@@ -344,11 +367,11 @@ class PolishingService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
             raise GraphExecutionError(
-                message=f"润色任务执行异常: {str(e)}",
+                message=friendly_msg,
                 details={"task_id": task_id, "mode": mode},
             ) from e
 
@@ -600,36 +623,51 @@ class PolishingService:
 
                     logger.debug(f"节点完成 - {node_name} ({label}), progress: {progress}")
 
-            # 正常返回 = 图已完成
-            self._update_task(task_id, status="completed")
-            logger.info(f"润色任务流式完成 - task_id: {task_id}")
-
             # 从 checkpoint 读取最终状态（比 astream 的 final_state 更可靠）
             snapshot = await graph.aget_state(config)
             graph_state = snapshot.values if snapshot else {}
 
+            # 检查图状态中是否有错误
+            graph_error = graph_state.get("error")
             result = self._extract_result(graph_state)
-            fact_check_result = graph_state.get("fact_check_result")
-            created_at = self._tasks[task_id]["created_at"]
 
-            # 持久化到 SQLite + 释放内存
-            await self._persist_and_cleanup(
-                task_id,
-                thread_id,
-                "completed",
-                result=result or "",
-                fact_check_result=fact_check_result,
-            )
+            if graph_error or not result:
+                # 图"完成"但结果异常（节点返回了错误状态或空结果）
+                error_msg = graph_error or "润色任务未生成有效内容"
+                self._update_task(task_id, status="failed", error=error_msg)
+                logger.error(f"润色任务结果异常 - task_id: {task_id}, error: {error_msg}")
 
-            await broadcaster.broadcast_result(
-                task_id,
-                result or "",
-                created_at,
-                fact_check_result=fact_check_result,
-            )
+                await self._persist_and_cleanup(
+                    task_id, thread_id, "failed", error=error_msg,
+                )
+                await broadcaster.broadcast_error(task_id, error_msg)
+            else:
+                # 正常完成
+                self._update_task(task_id, status="completed")
+                logger.info(f"润色任务流式完成 - task_id: {task_id}")
+
+                fact_check_result = graph_state.get("fact_check_result")
+                created_at = self._tasks[task_id]["created_at"]
+
+                # 持久化到 SQLite + 释放内存
+                await self._persist_and_cleanup(
+                    task_id,
+                    thread_id,
+                    "completed",
+                    result=result or "",
+                    fact_check_result=fact_check_result,
+                )
+
+                await broadcaster.broadcast_result(
+                    task_id,
+                    result or "",
+                    created_at,
+                    fact_check_result=fact_check_result,
+                )
 
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"润色任务流式失败 - task_id: {task_id}, error: {e}")
 
             # 持久化到 SQLite + 释放内存
@@ -637,10 +675,10 @@ class PolishingService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
-            await broadcaster.broadcast_error(task_id, str(e))
+            await broadcaster.broadcast_error(task_id, friendly_msg)
         finally:
             unregister_progress_callback(task_id)
 
