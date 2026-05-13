@@ -37,11 +37,6 @@ const router = createRouter({
       component: () => import('@/views/TaskHistory.vue'),
     },
     {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('@/views/Settings.vue'),
-    },
-    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFound.vue'),
