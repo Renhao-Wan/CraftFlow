@@ -19,6 +19,7 @@ import type {
 export const useSettingsStore = defineStore('settings', () => {
   // ─── State ──────────────────────────────────────────────
   const profiles = ref<LlmProfile[]>([])
+  const profilesLoaded = ref(false)
   const writingParams = ref<WritingParams>({
     max_outline_sections: 5,
     max_concurrent_writers: 3,
@@ -30,6 +31,19 @@ export const useSettingsStore = defineStore('settings', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // ─── Settings Modal State ───────────────────────────────
+  const settingsModalVisible = ref(false)
+  const settingsInitialTab = ref<'appearance' | 'llm' | 'writing'>('appearance')
+
+  function openSettingsModal(tab: 'appearance' | 'llm' | 'writing' = 'appearance'): void {
+    settingsInitialTab.value = tab
+    settingsModalVisible.value = true
+  }
+
+  function closeSettingsModal(): void {
+    settingsModalVisible.value = false
+  }
+
   // ─── Actions ────────────────────────────────────────────
 
   /** 加载所有 LLM Profile */
@@ -38,12 +52,21 @@ export const useSettingsStore = defineStore('settings', () => {
     error.value = null
     try {
       profiles.value = await getLlmProfiles()
+      profilesLoaded.value = true
     } catch (e) {
       error.value = e instanceof Error ? e.message : '加载 LLM 配置失败'
       throw e
     } finally {
       loading.value = false
     }
+  }
+
+  /** 检查是否有 LLM Profile（首次调用会 fetch，之后用缓存） */
+  async function checkProfiles(): Promise<boolean> {
+    if (!profilesLoaded.value) {
+      await fetchProfiles()
+    }
+    return profiles.value.length > 0
   }
 
   /** 创建 LLM Profile */
@@ -132,9 +155,15 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return {
     profiles,
+    profilesLoaded,
     writingParams,
     loading,
     error,
+    settingsModalVisible,
+    settingsInitialTab,
+    openSettingsModal,
+    closeSettingsModal,
+    checkProfiles,
     fetchProfiles,
     addProfile,
     editProfile,
