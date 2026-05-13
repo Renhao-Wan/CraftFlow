@@ -14,6 +14,13 @@
 | GET | `/api/v1/tasks/{task_id}` | 查询单任务状态 | ✅ |
 | POST | `/api/v1/tasks/{task_id}/resume` | 恢复中断任务 | ✅ |
 | DELETE | `/api/v1/tasks/{task_id}` | 删除任务记录 | ✅ |
+| GET | `/api/v1/settings/llm-profiles` | 获取所有 LLM Profile | ✅ |
+| POST | `/api/v1/settings/llm-profiles` | 创建新 LLM Profile | ✅ |
+| PUT | `/api/v1/settings/llm-profiles/{id}` | 更新 LLM Profile | ✅ |
+| DELETE | `/api/v1/settings/llm-profiles/{id}` | 删除 LLM Profile | ✅ |
+| POST | `/api/v1/settings/llm-profiles/{id}/set-default` | 设为默认 Profile | ✅ |
+| GET | `/api/v1/settings/writing-params` | 获取写作参数 | ✅ |
+| PATCH | `/api/v1/settings/writing-params` | 更新写作参数 | ✅ |
 | GET | `/health` | 健康检查 | ❌ |
 
 ### WebSocket
@@ -311,6 +318,221 @@ X-API-Key: {api_key}  # server 模式
 
 ---
 
+### 2.8 获取所有 LLM Profile
+
+```
+GET /api/v1/settings/llm-profiles
+X-API-Key: {api_key}  # server 模式
+```
+
+**响应** (200)：
+```json
+{
+    "profiles": [
+        {
+            "id": "a1b2c3d4-...",
+            "name": "GPT-4o",
+            "api_key": "sk-***",  // 脱敏显示
+            "api_base": "https://api.openai.com/v1",
+            "model": "gpt-4o",
+            "temperature": 0.7,
+            "is_default": true,
+            "created_at": "2026-05-12T10:00:00",
+            "updated_at": "2026-05-12T10:00:00"
+        },
+        {
+            "id": "e5f6g7h8-...",
+            "name": "DeepSeek",
+            "api_key": "sk-***",
+            "api_base": "https://api.deepseek.com",
+            "model": "deepseek-chat",
+            "temperature": 0.7,
+            "is_default": false,
+            "created_at": "2026-05-12T09:00:00",
+            "updated_at": "2026-05-12T09:00:00"
+        }
+    ]
+}
+```
+
+---
+
+### 2.9 创建 LLM Profile
+
+```
+POST /api/v1/settings/llm-profiles
+Content-Type: application/json
+X-API-Key: {api_key}  # server 模式
+```
+
+**请求体**：
+```json
+{
+    "name": "GPT-4o",                              // 必填，唯一
+    "api_key": "sk-xxx",                           // 必填
+    "api_base": "https://api.openai.com/v1",       // 可选，默认 ""
+    "model": "gpt-4o",                             // 必填
+    "temperature": 0.7,                            // 可选，默认 0.7
+    "is_default": true                             // 可选，默认 false
+}
+```
+
+**响应** (201)：
+```json
+{
+    "id": "a1b2c3d4-...",
+    "name": "GPT-4o",
+    "message": "LLM Profile 创建成功"
+}
+```
+
+**错误响应**：
+| 状态码 | 场景 |
+|--------|------|
+| 400 | name 已存在 |
+| 422 | 请求参数验证失败 |
+
+---
+
+### 2.10 更新 LLM Profile
+
+```
+PUT /api/v1/settings/llm-profiles/{id}
+Content-Type: application/json
+X-API-Key: {api_key}  # server 模式
+```
+
+**请求体**（所有字段可选）：
+```json
+{
+    "name": "GPT-4o Updated",
+    "api_key": "sk-new-xxx",
+    "api_base": "https://api.openai.com/v1",
+    "model": "gpt-4o",
+    "temperature": 0.5
+}
+```
+
+**响应** (200)：
+```json
+{
+    "id": "a1b2c3d4-...",
+    "message": "LLM Profile 更新成功"
+}
+```
+
+**错误响应**：
+| 状态码 | 场景 |
+|--------|------|
+| 404 | Profile 不存在 |
+| 400 | name 已存在（与其他 Profile 冲突） |
+| 422 | 请求参数验证失败 |
+
+---
+
+### 2.11 删除 LLM Profile
+
+```
+DELETE /api/v1/settings/llm-profiles/{id}
+X-API-Key: {api_key}  # server 模式
+```
+
+**响应** (200)：
+```json
+{
+    "id": "a1b2c3d4-...",
+    "message": "LLM Profile 删除成功"
+}
+```
+
+**错误响应**：
+| 状态码 | 场景 |
+|--------|------|
+| 404 | Profile 不存在 |
+| 400 | 不能删除默认 Profile（需先设置其他 Profile 为默认） |
+
+---
+
+### 2.12 设为默认 Profile
+
+```
+POST /api/v1/settings/llm-profiles/{id}/set-default
+X-API-Key: {api_key}  # server 模式
+```
+
+**响应** (200)：
+```json
+{
+    "id": "a1b2c3d4-...",
+    "message": "已设为默认 LLM Profile"
+}
+```
+
+**说明**：
+- 将指定 Profile 设为默认，其他 Profile 的 `is_default` 自动取消
+- 创建任务时默认使用 `is_default=true` 的 Profile
+
+**错误响应**：
+| 状态码 | 场景 |
+|--------|------|
+| 404 | Profile 不存在 |
+
+---
+
+### 2.13 获取写作参数
+
+```
+GET /api/v1/settings/writing-params
+X-API-Key: {api_key}  # server 模式
+```
+
+**响应** (200)：
+```json
+{
+    "max_outline_sections": 10,
+    "max_concurrent_writers": 5,
+    "max_debate_iterations": 3,
+    "editor_pass_score": 90
+}
+```
+
+---
+
+### 2.14 更新写作参数
+
+```
+PATCH /api/v1/settings/writing-params
+Content-Type: application/json
+X-API-Key: {api_key}  # server 模式
+```
+
+**请求体**（所有字段可选）：
+```json
+{
+    "max_outline_sections": 15,
+    "max_concurrent_writers": 3
+}
+```
+
+**响应** (200)：
+```json
+{
+    "message": "写作参数更新成功",
+    "params": {
+        "max_outline_sections": 15,
+        "max_concurrent_writers": 3,
+        "max_debate_iterations": 3,
+        "editor_pass_score": 90
+    }
+}
+```
+
+**说明**：
+- 修改后立即生效，无需重启服务
+- 下次创建任务时使用新参数
+
+---
+
 ## 三、WebSocket 接口
 
 ### 3.1 连接
@@ -426,6 +648,10 @@ ws://host:port/ws?api_key={api_key}
 | error code | HTTP 状态码 | 说明 |
 |------------|-------------|------|
 | `TASK_NOT_FOUND` | 404 | 任务不存在 |
+| `LLM_PROFILE_NOT_FOUND` | 404 | LLM Profile 不存在 |
+| `LLM_PROFILE_NAME_EXISTS` | 400 | LLM Profile 名称已存在 |
+| `LLM_PROFILE_IS_DEFAULT` | 400 | 不能删除默认 Profile |
+| `NO_LLM_PROFILE` | 500 | 未配置 LLM Profile |
 | `GRAPH_EXECUTION_ERROR` | 500 | Graph 执行错误 |
 | `CHECKPOINTER_ERROR` | 500 | 状态持久化错误 |
 | `TASK_TIMEOUT` | 408 | 任务执行超时 |
@@ -437,6 +663,7 @@ ws://host:port/ws?api_key={api_key}
 
 ---
 
-**文档版本**: v1.0  
-**创建日期**: 2026-05-12  
+**文档版本**: v2.0
+**创建日期**: 2026-05-12
+**最后更新**: 2026-05-12
 **维护者**: Renhao-Wan
