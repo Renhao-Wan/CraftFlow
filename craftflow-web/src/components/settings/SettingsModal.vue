@@ -7,8 +7,9 @@ import LlmProfileList from './LlmProfileList.vue'
 import LlmProfileForm from './LlmProfileForm.vue'
 import WritingParams from './WritingParams.vue'
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
+  initialTab?: 'appearance' | 'llm' | 'writing'
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +27,17 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'writing', label: '写作参数', icon: 'pen' },
 ]
 
-const activeTab = ref<TabKey>('appearance')
+const activeTab = ref<TabKey>(props.initialTab ?? 'appearance')
+
+// Sync activeTab when modal opens with a specific initialTab
+watch(
+  () => props.visible,
+  (val) => {
+    if (val && props.initialTab) {
+      activeTab.value = props.initialTab
+    }
+  },
+)
 
 // LLM Profile form state
 const showForm = ref(false)
@@ -233,6 +244,12 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  scrollbar-width: none;
+}
+
+.settings-modal::-webkit-scrollbar,
+.settings-modal *::-webkit-scrollbar {
+  display: none;
 }
 
 /* --- Header --- */
@@ -283,7 +300,6 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow-y: auto;
 }
 
 .nav-tab {

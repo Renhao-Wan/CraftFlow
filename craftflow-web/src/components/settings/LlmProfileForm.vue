@@ -110,8 +110,9 @@ async function handleSubmit(): Promise<void> {
               v-model="form.api_base"
               type="text"
               class="form-input"
-              placeholder="https://api.openai.com/v1（留空使用默认）"
+              placeholder="https://api.openai.com/v1"
             />
+            <span class="form-hint">需为 OpenAI 兼容格式</span>
           </div>
 
           <div class="form-group">
@@ -170,7 +171,7 @@ async function handleSubmit(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2100;
   animation: fadeIn 150ms ease;
 }
 
@@ -182,6 +183,11 @@ async function handleSubmit(): Promise<void> {
   background: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
+  scrollbar-width: none;
+}
+
+.modal-content::-webkit-scrollbar {
+  display: none;
 }
 
 .modal-header {
@@ -243,6 +249,12 @@ async function handleSubmit(): Promise<void> {
 .form-input:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 
 .form-range {

@@ -1,16 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import AppSidebar from './AppSidebar.vue'
 import SettingsModal from '@/components/settings/SettingsModal.vue'
+import { useSettingsStore } from '@/stores/settings'
 
-const settingsVisible = ref(false)
+const settingsStore = useSettingsStore()
 
 function openSettings(): void {
-  settingsVisible.value = true
-}
-
-function closeSettings(): void {
-  settingsVisible.value = false
+  settingsStore.openSettingsModal()
 }
 </script>
 
@@ -26,7 +22,11 @@ function closeSettings(): void {
     </main>
   </div>
 
-  <SettingsModal :visible="settingsVisible" @close="closeSettings" />
+  <SettingsModal
+    :visible="settingsStore.settingsModalVisible"
+    :initial-tab="settingsStore.settingsInitialTab"
+    @close="settingsStore.closeSettingsModal()"
+  />
 </template>
 
 <style scoped>
