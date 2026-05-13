@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import {
   getLlmProfiles,
@@ -30,6 +30,9 @@ export const useSettingsStore = defineStore('settings', () => {
   })
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  // ─── Computed ───────────────────────────────────────────
+  const hasDefault = computed(() => profiles.value.some((p) => p.is_default))
 
   // ─── Settings Modal State ───────────────────────────────
   const settingsModalVisible = ref(false)
@@ -69,36 +72,36 @@ export const useSettingsStore = defineStore('settings', () => {
     return profiles.value.length > 0
   }
 
-  /** 创建 LLM Profile */
+  /** 检查是否有默认 LLM Profile */
+  async function checkHasDefault(): Promise<boolean> {
+    if (!profilesLoaded.value) {
+      await fetchProfiles()
+    }
+    return hasDefault.value
+  }
+
+  /** 创建 LLM Profile（错误由调用方处理） */
   async function addProfile(data: LlmProfileRequest): Promise<LlmProfile> {
     loading.value = true
-    error.value = null
     try {
       const profile = await createLlmProfile(data)
       await fetchProfiles()
       return profile
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '创建 LLM 配置失败'
-      throw e
     } finally {
       loading.value = false
     }
   }
 
-  /** 更新 LLM Profile */
+  /** 更新 LLM Profile（错误由调用方处理） */
   async function editProfile(
     profileId: string,
     data: LlmProfileRequest,
   ): Promise<LlmProfile> {
     loading.value = true
-    error.value = null
     try {
       const profile = await updateLlmProfile(profileId, data)
       await fetchProfiles()
       return profile
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '更新 LLM 配置失败'
-      throw e
     } finally {
       loading.value = false
     }
@@ -156,6 +159,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     profiles,
     profilesLoaded,
+    hasDefault,
     writingParams,
     loading,
     error,
@@ -164,6 +168,7 @@ export const useSettingsStore = defineStore('settings', () => {
     openSettingsModal,
     closeSettingsModal,
     checkProfiles,
+    checkHasDefault,
     fetchProfiles,
     addProfile,
     editProfile,

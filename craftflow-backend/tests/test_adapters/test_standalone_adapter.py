@@ -43,7 +43,7 @@ class TestSaveLlmProfile:
 
     @pytest.mark.asyncio
     async def test_save_new_profile(self, adapter):
-        """测试新建 Profile"""
+        """测试新建 Profile（首个自动设为默认）"""
         result = await adapter.save_llm_profile(_sample_profile())
 
         assert result["id"] is not None
@@ -51,7 +51,7 @@ class TestSaveLlmProfile:
         assert result["api_key"] == "sk-test-key"
         assert result["model"] == "gpt-4"
         assert result["temperature"] == 0.7
-        assert result["is_default"] is False
+        assert result["is_default"] is True  # 首个 Profile 自动设为默认
         assert result["created_at"] is not None
         assert result["updated_at"] is not None
 
@@ -91,11 +91,36 @@ class TestSaveLlmProfile:
     @pytest.mark.asyncio
     async def test_save_profile_default_values(self, adapter):
         """测试默认值填充"""
+        # 先创建一个 Profile，使后续 Profile 不会自动成为默认
+        await adapter.save_llm_profile(_sample_profile(name="first"))
         minimal = {"name": "minimal", "api_key": "sk-xxx", "model": "gpt-3.5-turbo"}
         result = await adapter.save_llm_profile(minimal)
 
         assert result["api_base"] == ""
         assert result["temperature"] == 0.7
+        assert result["is_default"] is False
+
+    @pytest.mark.asyncio
+    async def test_save_duplicate_name_raises(self, adapter):
+        """测试同名 Profile 创建时抛出 ValueError"""
+        await adapter.save_llm_profile(_sample_profile(name="unique"))
+
+        with pytest.raises(ValueError, match="已存在"):
+            await adapter.save_llm_profile(_sample_profile(name="unique"))
+
+    @pytest.mark.asyncio
+    async def test_first_profile_auto_default(self, adapter):
+        """测试首个 Profile 自动设为默认"""
+        result = await adapter.save_llm_profile(_sample_profile(name="first"))
+
+        assert result["is_default"] is True
+
+    @pytest.mark.asyncio
+    async def test_second_profile_not_auto_default(self, adapter):
+        """测试第二个 Profile 不会自动设为默认"""
+        await adapter.save_llm_profile(_sample_profile(name="first"))
+        result = await adapter.save_llm_profile(_sample_profile(name="second"))
+
         assert result["is_default"] is False
 
 
@@ -121,8 +146,9 @@ class TestGetLlmProfile:
     @pytest.mark.asyncio
     async def test_get_default_profile(self, adapter):
         """测试查询默认 Profile"""
-        await adapter.save_llm_profile(_sample_profile(name="non-default", is_default=0))
-        await adapter.save_llm_profile(_sample_profile(name="the-default", is_default=1))
+        await adapter.save_llm_profile(_sample_profile(name="non-default"))
+        p2 = await adapter.save_llm_profile(_sample_profile(name="the-default"))
+        await adapter.set_default_profile(p2["id"])
 
         result = await adapter.get_llm_profile()
 
@@ -139,8 +165,9 @@ class TestGetLlmProfile:
 
     @pytest.mark.asyncio
     async def test_get_default_when_none_set(self, adapter):
-        """测试无默认 Profile 时返回 None"""
-        await adapter.save_llm_profile(_sample_profile(is_default=0))
+        """测试删除默认 Profile 后查询默认返回 None"""
+        saved = await adapter.save_llm_profile(_sample_profile(is_default=1))
+        await adapter.delete_llm_profile(saved["id"])
 
         result = await adapter.get_llm_profile()
 

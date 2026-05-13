@@ -21,7 +21,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.errors import GraphInterrupt
 from langgraph.types import Command
 
-from app.core.exceptions import GraphExecutionError, TaskNotFoundError
+from app.core.exceptions import GraphExecutionError, TaskNotFoundError, ValidationError
 from app.core.logger import get_logger
 from app.graph.creation.builder import get_creation_graph
 from app.schemas.response import TaskResponse, TaskStatusResponse
@@ -100,6 +100,22 @@ class CreationService:
     def _build_config(self, thread_id: str) -> dict:
         """构建 LangGraph 执行配置"""
         return {"configurable": {"thread_id": thread_id}}
+
+    async def _ensure_default_llm(self) -> None:
+        """检查是否存在默认 LLM Profile，不存在则抛出 ValidationError"""
+        profile = await self.adapter.get_llm_profile()
+        if profile is None:
+            all_profiles = await self.adapter.get_all_llm_profiles()
+            if len(all_profiles) == 0:
+                raise ValidationError(
+                    message="尚未配置 LLM 模型，请先在设置页面添加至少一个 LLM 配置",
+                    field="llm_profile",
+                )
+            else:
+                raise ValidationError(
+                    message="未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认",
+                    field="llm_profile",
+                )
 
     async def _persist_interrupted(self, task_id: str) -> None:
         """将中断状态的任务保存到 SQLite
@@ -252,6 +268,9 @@ class CreationService:
         Raises:
             GraphExecutionError: 图执行失败时抛出
         """
+        # 前置检查：确保有默认 LLM Profile
+        await self._ensure_default_llm()
+
         task_id = self._generate_task_id()
         thread_id = task_id  # 使用 task_id 作为 thread_id
 
@@ -573,6 +592,9 @@ class CreationService:
 
         使用 LangGraph astream() 逐节点 yield 状态更新，在关键节点手动推送进度。
         """
+        # 前置检查：确保有默认 LLM Profile
+        await self._ensure_default_llm()
+
         task_id = self._generate_task_id()
         thread_id = task_id
 
