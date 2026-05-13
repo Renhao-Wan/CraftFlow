@@ -13,6 +13,7 @@ const settingsStore = useSettingsStore()
 const content = ref('')
 const selectedMode = ref<PolishingMode>(1)
 const noLlmError = ref(false)
+const noLlmErrorMsg = ref('尚未配置 LLM 模型，请先添加至少一个配置')
 
 const CONTENT_MIN = 10
 const CONTENT_MAX = 50_000
@@ -41,6 +42,13 @@ async function onSubmit(): Promise<void> {
 
   const hasProfiles = await settingsStore.checkProfiles()
   if (!hasProfiles) {
+    noLlmErrorMsg.value = '尚未配置 LLM 模型，请先添加至少一个配置'
+    noLlmError.value = true
+    return
+  }
+  const hasDefault = await settingsStore.checkHasDefault()
+  if (!hasDefault) {
+    noLlmErrorMsg.value = '未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认'
     noLlmError.value = true
     return
   }
@@ -119,7 +127,7 @@ function onRetry(): void {
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        <span class="llm-warning-text">尚未配置 LLM 模型，请先添加至少一个配置</span>
+        <span class="llm-warning-text">{{ noLlmErrorMsg }}</span>
         <button type="button" class="llm-warning-btn" @click="goToLlmSettings">
           前往设置
         </button>
