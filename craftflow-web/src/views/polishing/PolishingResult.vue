@@ -17,7 +17,7 @@ const props = defineProps<{ taskId: string }>()
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { loadTask, stop } = useTaskLifecycle()
+const { retryPolishing, loadTask, stop, submitting } = useTaskLifecycle()
 
 const copied = ref(false)
 const viewMode = ref<'result' | 'compare' | 'factCheck'>('result')
@@ -88,9 +88,10 @@ const accuracyClass = computed(() => {
   }
 })
 
-async function onRetry(): Promise<void> {
-  taskStore.clearCurrentTask()
-  await loadTask(props.taskId)
+function onRetry(): void {
+  if (originalContent.value && polishingMode.value) {
+    retryPolishing(originalContent.value, polishingMode.value)
+  }
 }
 
 async function onCopy(): Promise<void> {
