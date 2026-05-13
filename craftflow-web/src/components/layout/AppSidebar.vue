@@ -169,7 +169,7 @@ function navigateTo(path: string): void {
   display: block;
   width: 20px;
   height: 2px;
-  background: var(--color-text);
+  background: currentColor;
   border-radius: 1px;
   transition: transform var(--transition-fast);
 }
@@ -234,7 +234,7 @@ function navigateTo(path: string): void {
   font-style: italic;
   font-size: 24px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--color-text-sidebar);
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
@@ -253,7 +253,7 @@ function navigateTo(path: string): void {
 /* --- Divider --- */
 .sidebar-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-sidebar-divider);
   margin: var(--space-sm) var(--space-lg);
 }
 
@@ -287,8 +287,8 @@ function navigateTo(path: string): void {
 }
 
 .nav-item.active {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-sidebar);
+  background: var(--color-sidebar-active-bg);
 }
 
 .nav-indicator {
@@ -346,7 +346,7 @@ function navigateTo(path: string): void {
 }
 
 .footer-status {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .settings-btn {
