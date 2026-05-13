@@ -210,6 +210,13 @@ class LlmProfileResponse(BaseModel):
     updated_at: str = Field(..., description="更新时间")
 
 
+class ToolConfigsResponse(BaseModel):
+    """外部工具配置响应模型（API Key 已脱敏）"""
+
+    tavily_api_key: str = Field(..., description="Tavily API Key（脱敏）")
+    e2b_api_key: str = Field(..., description="E2B API Key（脱敏）")
+
+
 class WritingParamsResponse(BaseModel):
     """写作参数响应模型"""
 

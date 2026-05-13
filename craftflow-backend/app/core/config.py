@@ -137,12 +137,6 @@ class Settings(BaseSettings):
     )
 
     # ============================================
-    # 外部工具 API 配置
-    # ============================================
-    tavily_api_key: str = Field(default="", description="Tavily Search API 密钥")
-    e2b_api_key: str = Field(default="", description="E2B Code Interpreter API 密钥")
-
-    # ============================================
     # 向量数据库配置
     # ============================================
     enable_rag: bool = Field(default=False, description="是否启用 RAG（检索增强生成）功能")

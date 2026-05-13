@@ -78,6 +78,8 @@ _DEFAULT_SETTINGS = [
     ("editor_pass_score", "90"),
     ("task_timeout", "3600"),
     ("tool_call_timeout", "30"),
+    ("tavily_api_key", ""),
+    ("e2b_api_key", ""),
 ]
 
 

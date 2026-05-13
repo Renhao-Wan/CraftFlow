@@ -130,6 +130,17 @@ class LlmProfileRequest(BaseModel):
     is_default: bool = Field(default=False, description="是否为默认配置")
 
 
+class ToolConfigsRequest(BaseModel):
+    """外部工具配置更新请求模型"""
+
+    tavily_api_key: Optional[str] = Field(
+        default=None, max_length=200, description="Tavily Search API Key"
+    )
+    e2b_api_key: Optional[str] = Field(
+        default=None, max_length=200, description="E2B Code Sandbox API Key"
+    )
+
+
 class WritingParamsRequest(BaseModel):
     """写作参数更新请求模型"""
 
