@@ -213,7 +213,12 @@ function handleMessage(message: WsMessage): void {
     if (pending) {
       clearTimeout(pending.timer)
       pendingRequests.delete(message.requestId)
-      pending.resolve(message)
+      // 错误消息 reject，成功消息 resolve
+      if (message.type === 'error') {
+        pending.reject(new Error(message.message as string ?? '请求失败'))
+      } else {
+        pending.resolve(message)
+      }
       // 不 return，继续触发 type 监听器（某些场景两者都需要）
     }
   }
