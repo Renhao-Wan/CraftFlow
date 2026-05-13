@@ -186,14 +186,11 @@ class Settings(BaseSettings):
     redis_max_connections: int = Field(default=20, ge=1, le=100, description="Redis 最大连接数")
 
     # ============================================
-    # 业务逻辑配置
+    # 业务逻辑配置（已迁移至数据库 settings 表）
     # ============================================
-    max_outline_sections: int = Field(default=10, ge=1, le=50, description="大纲最大章节数")
-    max_concurrent_writers: int = Field(default=5, ge=1, le=20, description="并发写作节点数量上限")
-    max_debate_iterations: int = Field(default=3, ge=1, le=10, description="对抗循环最大迭代次数")
-    editor_pass_score: int = Field(default=90, ge=0, le=100, description="主编通过分数阈值")
-    task_timeout: int = Field(default=3600, ge=60, le=86400, description="任务超时时间（秒）")
-    tool_call_timeout: int = Field(default=30, ge=5, le=300, description="工具调用超时时间（秒）")
+    # max_outline_sections, max_concurrent_writers, max_debate_iterations,
+    # editor_pass_score, task_timeout, tool_call_timeout
+    # 现在通过前端设置页面管理，存储在 SQLite 的 settings 表中。
 
     @field_validator("cors_origins")
     @classmethod

@@ -19,6 +19,16 @@ def mock_checkpointer():
     return MagicMock()
 
 
+_DEFAULT_WRITING_PARAMS = {
+    "max_outline_sections": "5",
+    "max_concurrent_writers": "3",
+    "max_debate_iterations": "3",
+    "editor_pass_score": "90",
+    "task_timeout": "3600",
+    "tool_call_timeout": "30",
+}
+
+
 @pytest.fixture
 def mock_adapter():
     """创建 mock BusinessAdapter"""
@@ -26,6 +36,7 @@ def mock_adapter():
     adapter.save_task = AsyncMock()
     adapter.get_task = AsyncMock(return_value=None)
     adapter.get_task_list = AsyncMock(return_value=([], 0))
+    adapter.get_writing_params = AsyncMock(return_value=_DEFAULT_WRITING_PARAMS)
     return adapter
 
 

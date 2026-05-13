@@ -262,6 +262,11 @@ class CreationService:
             request_data={"topic": topic, "description": description},
         )
 
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_outline_sections = int(params.get("max_outline_sections", 5))
+        max_concurrent_writers = int(params.get("max_concurrent_writers", 3))
+
         initial_state = {
             "topic": topic,
             "description": description,
@@ -271,6 +276,8 @@ class CreationService:
             "messages": [],
             "current_node": None,
             "error": None,
+            "max_outline_sections": max_outline_sections,
+            "max_concurrent_writers": max_concurrent_writers,
         }
 
         config = self._build_config(thread_id)
@@ -591,6 +598,11 @@ class CreationService:
             },
         )
 
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_outline_sections = int(params.get("max_outline_sections", 5))
+        max_concurrent_writers = int(params.get("max_concurrent_writers", 3))
+
         initial_state = {
             "topic": topic,
             "description": description,
@@ -600,6 +612,8 @@ class CreationService:
             "messages": [],
             "current_node": None,
             "error": None,
+            "max_outline_sections": max_outline_sections,
+            "max_concurrent_writers": max_concurrent_writers,
         }
 
         config = self._build_config(thread_id)

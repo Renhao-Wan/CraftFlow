@@ -85,10 +85,8 @@ def main():
     # 业务逻辑配置
     # ============================================
     logger.info("\n[业务逻辑配置]")
-    logger.info(f"  最大大纲章节数: {settings.max_outline_sections}")
-    logger.info(f"  最大并发写作节点: {settings.max_concurrent_writers}")
-    logger.info(f"  对抗循环最大迭代: {settings.max_debate_iterations}")
-    logger.info(f"  主编通过分数: {settings.editor_pass_score}")
+    logger.info("  业务参数已迁移至数据库 settings 表")
+    logger.info("  请在前端设置页面查看和修改")
 
     logger.info("\n" + "=" * 60)
     logger.success("✓ 配置验证完成")
