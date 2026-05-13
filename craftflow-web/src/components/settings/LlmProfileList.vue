@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import type { LlmProfile } from '@/api/types/settings'
 
@@ -9,6 +9,31 @@ const emit = defineEmits<{
   edit: [profile: LlmProfile]
   create: []
 }>()
+
+const MAX_PROFILES = 20
+
+const searchQuery = ref('')
+const expandedIds = ref<Set<string>>(new Set())
+
+const canCreate = computed(() => store.profiles.length < MAX_PROFILES)
+
+const filteredProfiles = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return store.profiles
+  return store.profiles.filter(
+    (p) =>
+      p.name.toLowerCase().includes(q) ||
+      p.model.toLowerCase().includes(q),
+  )
+})
+
+function toggleExpand(id: string): void {
+  if (expandedIds.value.has(id)) {
+    expandedIds.value.delete(id)
+  } else {
+    expandedIds.value.add(id)
+  }
+}
 
 onMounted(() => {
   store.fetchProfiles()
@@ -26,15 +51,29 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
 
 <template>
   <div class="profile-list">
-    <div class="profile-list-header">
-      <h3 class="section-title">LLM 配置</h3>
-      <button class="btn-add" @click="emit('create')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
+    <div class="profile-list-sticky">
+      <div class="profile-list-header">
+        <h3 class="section-title">LLM 配置 <span class="profile-count">{{ store.profiles.length }}/{{ MAX_PROFILES }}</span></h3>
+        <button class="btn-add" :disabled="!canCreate" :title="!canCreate ? `最多 ${MAX_PROFILES} 个配置` : ''" @click="emit('create')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          新增配置
+        </button>
+      </div>
+      <div v-if="store.profiles.length > 0" class="search-bar">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
-        新增配置
-      </button>
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="search-input"
+          placeholder="搜索配置名称或模型..."
+        />
+      </div>
     </div>
 
     <div v-if="store.loading && store.profiles.length === 0" class="loading-hint">
@@ -45,45 +84,55 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
       暂无 LLM 配置，请点击上方按钮添加
     </div>
 
+    <div v-else-if="filteredProfiles.length === 0" class="empty-hint">
+      未找到匹配的配置
+    </div>
+
     <div v-else class="profile-cards">
       <div
-        v-for="profile in store.profiles"
+        v-for="profile in filteredProfiles"
         :key="profile.id"
         class="profile-card"
-        :class="{ default: profile.is_default }"
+        :class="{ default: profile.is_default, expanded: expandedIds.has(profile.id) }"
       >
-        <div class="profile-card-header">
+        <div class="profile-card-summary" @click="toggleExpand(profile.id)">
+          <svg class="expand-icon" :class="{ open: expandedIds.has(profile.id) }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
           <span class="profile-name">{{ profile.name }}</span>
           <span v-if="profile.is_default" class="badge-default">默认</span>
+          <span class="profile-model-short">{{ profile.model }}</span>
         </div>
-        <div class="profile-card-body">
-          <div class="profile-field">
-            <span class="field-label">模型</span>
-            <span class="field-value">{{ profile.model }}</span>
+        <div v-if="expandedIds.has(profile.id)" class="profile-card-detail">
+          <div class="profile-card-body">
+            <div class="profile-field">
+              <span class="field-label">模型</span>
+              <span class="field-value">{{ profile.model }}</span>
+            </div>
+            <div class="profile-field">
+              <span class="field-label">温度</span>
+              <span class="field-value">{{ profile.temperature }}</span>
+            </div>
+            <div class="profile-field">
+              <span class="field-label">API Base</span>
+              <span class="field-value">{{ profile.api_base || '默认' }}</span>
+            </div>
           </div>
-          <div class="profile-field">
-            <span class="field-label">温度</span>
-            <span class="field-value">{{ profile.temperature }}</span>
+          <div class="profile-card-actions">
+            <button
+              v-if="!profile.is_default"
+              class="btn-action btn-default"
+              @click.stop="handleSetDefault(profile)"
+            >
+              设为默认
+            </button>
+            <button class="btn-action btn-edit" @click.stop="emit('edit', profile)">
+              编辑
+            </button>
+            <button class="btn-action btn-delete" @click.stop="handleDelete(profile)">
+              删除
+            </button>
           </div>
-          <div class="profile-field">
-            <span class="field-label">API Base</span>
-            <span class="field-value">{{ profile.api_base || '默认' }}</span>
-          </div>
-        </div>
-        <div class="profile-card-actions">
-          <button
-            v-if="!profile.is_default"
-            class="btn-action btn-default"
-            @click="handleSetDefault(profile)"
-          >
-            设为默认
-          </button>
-          <button class="btn-action btn-edit" @click="emit('edit', profile)">
-            编辑
-          </button>
-          <button class="btn-action btn-delete" @click="handleDelete(profile)">
-            删除
-          </button>
         </div>
       </div>
     </div>
@@ -92,7 +141,13 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
 
 <style scoped>
 .profile-list {
-  margin-bottom: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.profile-list-sticky {
+  margin-bottom: var(--space-md);
 }
 
 .profile-list-header {
@@ -109,6 +164,13 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   color: var(--color-text);
 }
 
+.profile-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .btn-add {
   display: flex;
   align-items: center;
@@ -122,8 +184,46 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   transition: background var(--transition-fast);
 }
 
-.btn-add:hover {
+.btn-add:hover:not(:disabled) {
   background: var(--color-accent-hover);
+}
+
+.btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-bar {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) + 22px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  transition: border-color var(--transition-fast);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .loading-hint,
@@ -137,7 +237,7 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
 .profile-cards {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .profile-card {
@@ -156,17 +256,43 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   border-color: var(--color-accent);
 }
 
-.profile-card-header {
+/* ── 折叠态摘要行 ── */
+
+.profile-card-summary {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-md) var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-card-summary:hover {
+  background: var(--color-bg-hover, rgba(0, 0, 0, 0.02));
+}
+
+.expand-icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.expand-icon.open {
+  transform: rotate(90deg);
 }
 
 .profile-name {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--color-text);
+}
+
+.profile-model-short {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  margin-left: auto;
 }
 
 .badge-default {
@@ -176,10 +302,29 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── 展开态详情 ── */
+
+.profile-card-detail {
+  animation: slideDown 150ms ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .profile-card-body {
   padding: 0 var(--space-md) var(--space-md);
+  padding-left: calc(var(--space-md) + 14px + var(--space-sm));
   display: flex;
   gap: var(--space-lg);
   flex-wrap: wrap;
@@ -208,6 +353,7 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   display: flex;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md) var(--space-md);
+  padding-left: calc(var(--space-md) + 14px + var(--space-sm));
   border-top: 1px solid var(--color-border);
 }
 
