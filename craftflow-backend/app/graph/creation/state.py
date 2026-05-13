@@ -43,3 +43,7 @@ class CreationState(TypedDict):
     messages: Annotated[list[BaseMessage], operator.add]
     current_node: Optional[str]
     error: Optional[str]
+
+    # 运行时配置（从数据库 settings 表读取，由 Service 层注入）
+    max_outline_sections: int
+    max_concurrent_writers: int

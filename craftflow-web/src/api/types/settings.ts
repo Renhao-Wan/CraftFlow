@@ -25,10 +25,18 @@ export interface LlmProfileRequest {
 export interface WritingParams {
   max_outline_sections: number
   max_concurrent_writers: number
+  max_debate_iterations: number
+  editor_pass_score: number
+  task_timeout: number
+  tool_call_timeout: number
 }
 
 /** 写作参数更新请求 */
 export interface WritingParamsRequest {
   max_outline_sections?: number
   max_concurrent_writers?: number
+  max_debate_iterations?: number
+  editor_pass_score?: number
+  task_timeout?: number
+  tool_call_timeout?: number
 }

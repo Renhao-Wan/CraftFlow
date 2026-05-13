@@ -215,3 +215,7 @@ class WritingParamsResponse(BaseModel):
 
     max_outline_sections: int = Field(..., description="大纲最大章节数")
     max_concurrent_writers: int = Field(..., description="最大并发写作者数")
+    max_debate_iterations: int = Field(..., description="对抗循环最大迭代次数")
+    editor_pass_score: int = Field(..., description="主编通过分数阈值")
+    task_timeout: int = Field(..., description="任务超时时间（秒）")
+    tool_call_timeout: int = Field(..., description="工具调用超时时间（秒）")

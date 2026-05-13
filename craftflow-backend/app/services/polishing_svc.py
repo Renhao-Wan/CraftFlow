@@ -238,6 +238,11 @@ class PolishingService:
             request_data={"content": content, "mode": mode},
         )
 
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_debate_iterations = int(params.get("max_debate_iterations", 3))
+        editor_pass_score = int(params.get("editor_pass_score", 90))
+
         initial_state = {
             "content": content,
             "mode": mode,
@@ -252,6 +257,8 @@ class PolishingService:
             "overall_score": None,
             "messages": [],
             "task_id": task_id,
+            "max_debate_iterations": max_debate_iterations,
+            "editor_pass_score": editor_pass_score,
         }
 
         config = self._build_config(thread_id)
@@ -483,6 +490,11 @@ class PolishingService:
             },
         )
 
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_debate_iterations = int(params.get("max_debate_iterations", 3))
+        editor_pass_score = int(params.get("editor_pass_score", 90))
+
         initial_state = {
             "content": content,
             "mode": mode,
@@ -497,6 +509,8 @@ class PolishingService:
             "overall_score": None,
             "messages": [],
             "task_id": task_id,
+            "max_debate_iterations": max_debate_iterations,
+            "editor_pass_score": editor_pass_score,
         }
 
         config = self._build_config(thread_id)

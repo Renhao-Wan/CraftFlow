@@ -23,6 +23,7 @@ from app.graph.creation.prompts import (
     WRITER_SYSTEM_PROMPT,
     format_outline_for_display,
     format_sections_for_reducer,
+    get_planner_system_prompt,
 )
 from app.graph.creation.state import CreationState, OutlineItem, SectionContent
 
@@ -138,7 +139,10 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         # 获取 LLM 实例（大纲生成需要更大的 max_tokens 以容纳完整 JSON）
         llm = await get_planner_llm()
 
-        # 构建 Prompt
+        # 构建 Prompt（动态注入章节数上限）
+        max_sections = state.get("max_outline_sections", 8)
+        system_prompt = get_planner_system_prompt(max_sections)
+
         description = state.get("description", "")
         description_section = f"**补充描述**：{description}" if description else ""
 
@@ -149,7 +153,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
         # 调用 LLM
         messages = [
-            SystemMessage(content=PLANNER_SYSTEM_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=human_message),
         ]
 

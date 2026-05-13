@@ -22,6 +22,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const writingParams = ref<WritingParams>({
     max_outline_sections: 5,
     max_concurrent_writers: 3,
+    max_debate_iterations: 3,
+    editor_pass_score: 90,
+    task_timeout: 3600,
+    tool_call_timeout: 30,
   })
   const loading = ref(false)
   const error = ref<string | null>(null)
