@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import type { Theme } from '@/composables/useTheme'
 import { useSettingsStore } from '@/stores/settings'
 import type { LlmProfile } from '@/api/types/settings'
 import LlmProfileList from './LlmProfileList.vue'
@@ -90,9 +91,13 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
 })
 
-const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
-  { key: 'light', label: '浅色', desc: '明亮清爽的界面风格' },
-  { key: 'dark', label: '深色', desc: '柔和暗色的界面风格' },
+const themeOptions: { key: Theme; label: string; desc: string }[] = [
+  { key: 'light', label: '浅色', desc: '明亮清爽' },
+  { key: 'dark', label: '深色', desc: '柔和暗色' },
+  { key: 'frost', label: '霜白', desc: '冷调银蓝' },
+  { key: 'sepia', label: '复古', desc: '纸张质感' },
+  { key: 'midnight', label: '午夜', desc: '深邃靛蓝' },
+  { key: 'rose', label: '玫瑰', desc: '暖粉优雅' },
 ]
 </script>
 
@@ -187,7 +192,7 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
                       <span class="theme-desc">{{ opt.desc }}</span>
                     </div>
                     <div v-if="theme === opt.key" class="theme-check">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
@@ -391,14 +396,14 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
 
 /* --- Theme cards --- */
 .theme-grid {
-  display: flex;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
 }
 
 .theme-card {
   position: relative;
-  width: 200px;
-  padding: var(--space-md);
+  padding: 10px;
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -418,11 +423,11 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
 
 .theme-preview {
   width: 100%;
-  height: 100px;
+  height: 56px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
-  margin-bottom: var(--space-md);
+  margin-bottom: 8px;
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -432,6 +437,22 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
 
 .theme-preview.dark {
   background: #1C1917;
+}
+
+.theme-preview.sepia {
+  background: #F5F0E8;
+}
+
+.theme-preview.midnight {
+  background: #0F172A;
+}
+
+.theme-preview.frost {
+  background: #F8FAFC;
+}
+
+.theme-preview.rose {
+  background: #FFF1F2;
 }
 
 .preview-sidebar {
@@ -447,17 +468,33 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
   background: #0C0A09;
 }
 
+.theme-preview.sepia .preview-sidebar {
+  background: #3D3229;
+}
+
+.theme-preview.midnight .preview-sidebar {
+  background: #020617;
+}
+
+.theme-preview.frost .preview-sidebar {
+  background: #1E293B;
+}
+
+.theme-preview.rose .preview-sidebar {
+  background: #4C0519;
+}
+
 .preview-content {
   flex: 1;
-  padding: 12px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .preview-line {
-  height: 6px;
-  border-radius: 3px;
+  height: 4px;
+  border-radius: 2px;
 }
 
 .theme-preview.light .preview-line {
@@ -468,32 +505,48 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
   background: #44403C;
 }
 
+.theme-preview.sepia .preview-line {
+  background: #DDD5C8;
+}
+
+.theme-preview.midnight .preview-line {
+  background: #334155;
+}
+
+.theme-preview.frost .preview-line {
+  background: #E2E8F0;
+}
+
+.theme-preview.rose .preview-line {
+  background: #FECDD3;
+}
+
 .preview-line.w-70 { width: 70%; }
 .preview-line.w-50 { width: 50%; }
 
 .theme-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .theme-label {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .theme-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
 }
 
 .theme-check {
   position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  width: 24px;
-  height: 24px;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--color-accent);
   color: #fff;
@@ -574,11 +627,7 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
   }
 
   .theme-grid {
-    flex-direction: column;
-  }
-
-  .theme-card {
-    width: 100%;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
