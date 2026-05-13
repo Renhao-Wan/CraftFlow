@@ -489,10 +489,12 @@ X-API-Key: {api_key}  # server 模式
 **响应** (200)：
 ```json
 {
-    "max_outline_sections": 10,
-    "max_concurrent_writers": 5,
+    "max_outline_sections": 5,
+    "max_concurrent_writers": 3,
     "max_debate_iterations": 3,
-    "editor_pass_score": 90
+    "editor_pass_score": 90,
+    "task_timeout": 3600,
+    "tool_call_timeout": 30
 }
 ```
 
@@ -510,7 +512,11 @@ X-API-Key: {api_key}  # server 模式
 ```json
 {
     "max_outline_sections": 15,
-    "max_concurrent_writers": 3
+    "max_concurrent_writers": 3,
+    "max_debate_iterations": 5,
+    "editor_pass_score": 85,
+    "task_timeout": 7200,
+    "tool_call_timeout": 60
 }
 ```
 
@@ -521,8 +527,10 @@ X-API-Key: {api_key}  # server 模式
     "params": {
         "max_outline_sections": 15,
         "max_concurrent_writers": 3,
-        "max_debate_iterations": 3,
-        "editor_pass_score": 90
+        "max_debate_iterations": 5,
+        "editor_pass_score": 85,
+        "task_timeout": 7200,
+        "tool_call_timeout": 60
     }
 }
 ```
@@ -663,7 +671,7 @@ ws://host:port/ws?api_key={api_key}
 
 ---
 
-**文档版本**: v2.0
+**文档版本**: v2.1
 **创建日期**: 2026-05-12
-**最后更新**: 2026-05-12
+**最后更新**: 2026-05-13
 **维护者**: Renhao-Wan

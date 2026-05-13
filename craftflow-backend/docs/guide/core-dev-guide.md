@@ -17,19 +17,7 @@
 * **AI 编排**: LangGraph (核心状态机编排), LangChain (工具与模型抽象)
 * **持久化**: `PostgresSaver` (LangGraph 原生 Checkpointer，前期开发可先用 `MemorySaver` 占位), PostgreSQL (pgvector 可选，用于 RAG)
 * **中间件**: Redis (用于限流、防并发去重)
-* **LLM**: 可配置的基座模型，所有模型同一使用 OpenAI，通过 LangChain 统一封装.从环境变量文件中加载（如：.env）
-
-  ```yaml
-    # 默认配置
-	LLM_API_KEY="sk-your-openai-api-key-here"
-    LLM_API_BASE=""
-    LLM_MODEL="gpt-4-turbo"
-    MAX_TOKENS=4096
-
-    # LLM 差异参数
-    DEFAULT_TEMPERATURE=0.7
-    EDITOR_NODE_TEMPERATURE=0.2    # 主编打分需要低随机性
-  ```
+* **LLM**: 可配置的基座模型，所有模型统一使用 OpenAI 兼容格式，通过 LangChain 统一封装。LLM 配置已迁移至数据库 `llm_profiles` 表，通过前端设置页面管理（支持多 Profile 切换）。写作参数（大纲章节数、并发数、对抗迭代数等）存储在数据库 `settings` 表，支持热更新。
 
 ## 3. 核心图谱设计与状态定义 (Graph & State)
 

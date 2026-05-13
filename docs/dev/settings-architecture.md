@@ -192,11 +192,17 @@ default_temperature: float
 **改造前**（`.env.dev` 示例）：
 ```bash
 APP_MODE=standalone
-LLM_API_KEY=sk-xxx          # ← 删除
-LLM_API_BASE=xxx             # ← 删除
-LLM_MODEL=gpt-4-turbo        # ← 删除
-MAX_TOKENS=4096               # ← 删除
-DEFAULT_TEMPERATURE=0.7       # ← 删除
+LLM_API_KEY=sk-xxx                # ← 删除（迁移至 llm_profiles 表）
+LLM_API_BASE=xxx                   # ← 删除
+LLM_MODEL=gpt-4-turbo              # ← 删除
+MAX_TOKENS=4096                     # ← 删除
+DEFAULT_TEMPERATURE=0.7             # ← 删除
+MAX_OUTLINE_SECTIONS=10             # ← 删除（迁移至 settings 表）
+MAX_CONCURRENT_WRITERS=5            # ← 删除
+MAX_DEBATE_ITERATIONS=3             # ← 删除
+EDITOR_PASS_SCORE=90                # ← 删除
+TASK_TIMEOUT=3600                   # ← 删除
+TOOL_CALL_TIMEOUT=30                # ← 删除
 TASKSTORE_BACKEND=sqlite
 CHECKPOINTER_BACKEND=sqlite
 TAVILY_API_KEY=tvly-xxx
@@ -210,7 +216,7 @@ CHECKPOINTER_BACKEND=sqlite
 TAVILY_API_KEY=tvly-xxx
 ```
 
-`.env` 只保留基础设施和外部工具配置，LLM 相关全部从数据库读取。
+`.env` 只保留基础设施和外部工具配置，LLM 配置和写作参数全部从数据库读取。
 
 ## 五、后端 API 设计
 
@@ -243,8 +249,12 @@ CREATE TABLE IF NOT EXISTS settings (
 存储：
 ```json
 {
-    "max_outline_sections": "10",
-    "max_concurrent_writers": "5",
+    "max_outline_sections": "5",
+    "max_concurrent_writers": "3",
+    "max_debate_iterations": "3",
+    "editor_pass_score": "90",
+    "task_timeout": "3600",
+    "tool_call_timeout": "30",
     "default_profile_id": "a1b2c3d4-..."
 }
 ```
@@ -293,6 +303,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 ---
 
-**文档版本**: v1.0
+**文档版本**: v1.1
 **创建日期**: 2026-05-12
+**最后更新**: 2026-05-13
 **维护者**: Renhao-Wan

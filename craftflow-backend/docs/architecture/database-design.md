@@ -276,8 +276,12 @@ CREATE TABLE IF NOT EXISTS settings (
 
 ```json
 {
-    "max_outline_sections": "10",
-    "max_concurrent_writers": "5",
+    "max_outline_sections": "5",
+    "max_concurrent_writers": "3",
+    "max_debate_iterations": "3",
+    "editor_pass_score": "90",
+    "task_timeout": "3600",
+    "tool_call_timeout": "30",
     "default_profile_id": "a1b2c3d4-..."
 }
 ```
@@ -440,7 +444,7 @@ PostgreSQL 数据由数据库服务管理，不在文件系统中。
 
 ---
 
-**文档版本**: v2.0
+**文档版本**: v2.1
 **创建日期**: 2026-05-12
-**最后更新**: 2026-05-12
+**最后更新**: 2026-05-13
 **维护者**: Renhao-Wan

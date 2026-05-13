@@ -228,32 +228,40 @@ postgresql+asyncpg://user:password@host:port/dbname
 | `REDIS_DB` | int | 0 | Redis 数据库索引 |
 | `REDIS_MAX_CONNECTIONS` | int | 20 | Redis 最大连接数 |
 
-### 3.8 业务逻辑配置
+### 3.8 业务逻辑配置（已迁移至数据库）
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `MAX_OUTLINE_SECTIONS` | int | 10 | 大纲最大章节数（1-50） |
-| `MAX_CONCURRENT_WRITERS` | int | 5 | 并发写作节点数量上限（1-20） |
-| `MAX_DEBATE_ITERATIONS` | int | 3 | 对抗循环最大迭代次数（1-10） |
-| `EDITOR_PASS_SCORE` | int | 90 | 主编通过分数阈值（0-100） |
-| `TASK_TIMEOUT` | int | 3600 | 任务超时时间（秒，60-86400） |
-| `TOOL_CALL_TIMEOUT` | int | 30 | 工具调用超时时间（秒，5-300） |
+> **重要**：业务逻辑配置已从 `.env` 迁移至数据库 `settings` 表，通过前端设置页面或 Settings API 管理，修改后即时生效，无需重启服务。
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `max_outline_sections` | 5 | 大纲最大章节数（1-20） |
+| `max_concurrent_writers` | 3 | 并发写作节点数量上限（1-10） |
+| `max_debate_iterations` | 3 | 对抗循环最大迭代次数（1-10） |
+| `editor_pass_score` | 90 | 主编通过分数阈值（0-100） |
+| `task_timeout` | 3600 | 任务超时时间（秒，60-86400） |
+| `tool_call_timeout` | 30 | 工具调用超时时间（秒，5-300） |
+
+管理方式：
+- **前端**：侧边栏设置按钮 → 写作参数面板
+- **API**：`GET/PATCH /api/v1/settings/writing-params`
 
 ---
 
-## 四、LLM 配置说明
+## 四、数据库配置说明
 
 ### 4.1 配置方式变更
 
-**重要**：LLM 配置已从 `.env` 文件迁移到数据库管理。
+**重要**：LLM 配置和业务逻辑配置已从 `.env` 文件迁移到数据库管理。
 
-| 配置方式 | 旧方案 | 新方案 |
-|----------|--------|--------|
-| 存储位置 | `.env` 文件 | `llm_profiles` 数据库表 |
-| 配置项 | `LLM_API_KEY`, `LLM_API_BASE`, `LLM_MODEL`, `MAX_TOKENS`, `DEFAULT_TEMPERATURE` | 通过 Settings API 管理 |
-| 多配置 | 不支持 | 支持多个 Profile，按需切换 |
-| 热更新 | 需要重启服务 | 无需重启，即时生效 |
-| 管理方式 | 手动编辑文件 | 前端设置页 / API |
+| 配置类型 | 旧方案 | 新方案 | 存储位置 |
+|----------|--------|--------|----------|
+| LLM 配置 | `.env` 文件（`LLM_API_KEY` 等） | 数据库多 Profile 管理 | `llm_profiles` 表 |
+| 写作参数 | `.env` 文件（`MAX_OUTLINE_SECTIONS` 等） | 数据库 key-value 存储 | `settings` 表 |
+
+**优势**：
+- LLM 支持多配置（Profile），按需切换
+- 写作参数热更新，修改后即时生效，无需重启
+- 管理方式统一：前端设置页 / Settings API
 
 ### 4.2 启动引导逻辑
 
@@ -496,17 +504,19 @@ ENABLE_AUTH=false
 3. `.env.dev`（本地开发）
 4. `.env`（生产部署兜底）
 
-### Q5: LLM 配置在哪里管理？
+### Q5: LLM 配置和写作参数在哪里管理？
 
-LLM 配置已从 `.env` 文件迁移到数据库管理：
-- **桌面端**：通过前端设置页管理
+LLM 配置和写作参数已从 `.env` 文件迁移到数据库管理：
+- **桌面端**：通过前端设置页管理（侧边栏设置按钮）
 - **服务端**：通过 Java 管理后台或直接操作数据库
 
-API 接口：`/api/v1/settings/llm-profiles`
+API 接口：
+- LLM Profile：`/api/v1/settings/llm-profiles`
+- 写作参数：`/api/v1/settings/writing-params`
 
 ---
 
-**文档版本**: v2.0
+**文档版本**: v2.1
 **创建日期**: 2026-05-12
-**最后更新**: 2026-05-12
+**最后更新**: 2026-05-13
 **维护者**: Renhao-Wan
