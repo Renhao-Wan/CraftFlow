@@ -78,14 +78,14 @@ const html = computed(() => {
 .markdown-body :deep(pre) {
   margin: 0 0 12px;
   padding: 16px;
-  background: var(--color-text);
+  background: var(--color-code-bg);
   border-radius: 8px;
   overflow-x: auto;
 }
 
 .markdown-body :deep(pre code) {
   background: transparent;
-  color: var(--color-bg);
+  color: var(--color-code-text);
   padding: 0;
 }
 
