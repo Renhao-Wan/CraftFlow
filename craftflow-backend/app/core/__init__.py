@@ -5,6 +5,7 @@
 
 from app.core.auth import verify_api_key, verify_ws_api_key
 from app.core.config import Settings, get_settings, settings
+from app.core import tool_configs
 from app.core.exceptions import (
     CheckpointerError,
     CraftFlowException,
@@ -23,6 +24,7 @@ __all__ = [
     "Settings",
     "get_settings",
     "settings",
+    "tool_configs",
     # 鉴权
     "verify_api_key",
     "verify_ws_api_key",

@@ -6,10 +6,11 @@ import type { LlmProfile } from '@/api/types/settings'
 import LlmProfileList from './LlmProfileList.vue'
 import LlmProfileForm from './LlmProfileForm.vue'
 import WritingParams from './WritingParams.vue'
+import ToolConfigs from './ToolConfigs.vue'
 
 const props = defineProps<{
   visible: boolean
-  initialTab?: 'appearance' | 'llm' | 'writing'
+  initialTab?: 'appearance' | 'llm' | 'writing' | 'tools'
 }>()
 
 const emit = defineEmits<{
@@ -19,12 +20,13 @@ const emit = defineEmits<{
 const { theme, setTheme } = useTheme()
 const settingsStore = useSettingsStore()
 
-type TabKey = 'appearance' | 'llm' | 'writing'
+type TabKey = 'appearance' | 'llm' | 'writing' | 'tools'
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: 'appearance', label: '外观', icon: 'palette' },
   { key: 'llm', label: 'LLM 配置', icon: 'cpu' },
   { key: 'writing', label: '写作参数', icon: 'pen' },
+  { key: 'tools', label: '外部工具', icon: 'wrench' },
 ]
 
 const activeTab = ref<TabKey>(props.initialTab ?? 'appearance')
@@ -64,6 +66,8 @@ watch(activeTab, (tab) => {
     settingsStore.fetchProfiles()
   } else if (tab === 'writing') {
     settingsStore.fetchWritingParams()
+  } else if (tab === 'tools') {
+    settingsStore.fetchToolConfigs()
   }
 })
 
@@ -145,6 +149,10 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
                   <path d="M12 20h9" />
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                 </svg>
+                <!-- Wrench icon -->
+                <svg v-else-if="tab.icon === 'wrench'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
                 <span>{{ tab.label }}</span>
               </button>
             </nav>
@@ -202,6 +210,15 @@ const themeOptions: { key: 'light' | 'dark'; label: string; desc: string }[] = [
                 <p class="panel-desc">调整创作任务的默认参数</p>
                 <div class="panel-body">
                   <WritingParams />
+                </div>
+              </div>
+
+              <!-- Tools tab -->
+              <div v-else-if="activeTab === 'tools'" class="tab-panel">
+                <h3 class="panel-title">外部工具</h3>
+                <p class="panel-desc">配置第三方 API Key，启用搜索和代码沙箱功能</p>
+                <div class="panel-body">
+                  <ToolConfigs />
                 </div>
               </div>
             </div>

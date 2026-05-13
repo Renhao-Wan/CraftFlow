@@ -4,6 +4,8 @@ import client from '@/api/client'
 import type {
   LlmProfile,
   LlmProfileRequest,
+  ToolConfigs,
+  ToolConfigsRequest,
   WritingParams,
   WritingParamsRequest,
 } from '@/api/types/settings'
@@ -52,4 +54,16 @@ export async function updateWritingParams(
   data: WritingParamsRequest,
 ): Promise<WritingParams> {
   return client.patch('/v1/settings/writing-params', data)
+}
+
+/** 获取外部工具配置（脱敏） */
+export async function getToolConfigs(): Promise<ToolConfigs> {
+  return client.get('/v1/settings/tool-configs')
+}
+
+/** 更新外部工具配置 */
+export async function updateToolConfigs(
+  data: ToolConfigsRequest,
+): Promise<ToolConfigs> {
+  return client.patch('/v1/settings/tool-configs', data)
 }
