@@ -22,6 +22,8 @@ from app.schemas.response import LlmProfileResponse, WritingParamsResponse
 
 router = APIRouter(prefix="/settings")
 
+MAX_LLM_PROFILES = 20
+
 
 def _mask_api_key(api_key: str) -> str:
     """脱敏 API Key，只显示前 4 位和后 4 位"""
@@ -54,6 +56,13 @@ async def create_llm_profile(
     adapter: BusinessAdapter = Depends(get_adapter),
 ) -> dict[str, Any]:
     """创建新的 LLM Profile"""
+    existing = await adapter.get_all_llm_profiles()
+    if len(existing) >= MAX_LLM_PROFILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"LLM 配置数量已达上限（{MAX_LLM_PROFILES} 个），请先删除不需要的配置",
+        )
+
     profile_data = request.model_dump()
     try:
         saved = await adapter.save_llm_profile(profile_data)
