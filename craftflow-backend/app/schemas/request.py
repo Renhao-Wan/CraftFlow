@@ -139,3 +139,15 @@ class WritingParamsRequest(BaseModel):
     max_concurrent_writers: Optional[int] = Field(
         default=None, ge=1, le=10, description="最大并发写作者数"
     )
+    max_debate_iterations: Optional[int] = Field(
+        default=None, ge=1, le=10, description="对抗循环最大迭代次数"
+    )
+    editor_pass_score: Optional[int] = Field(
+        default=None, ge=0, le=100, description="主编通过分数阈值"
+    )
+    task_timeout: Optional[int] = Field(
+        default=None, ge=60, le=86400, description="任务超时时间（秒）"
+    )
+    tool_call_timeout: Optional[int] = Field(
+        default=None, ge=5, le=300, description="工具调用超时时间（秒）"
+    )

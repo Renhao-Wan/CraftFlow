@@ -59,3 +59,7 @@ class PolishingState(TypedDict):
 
     # 内部标识（用于进度回调，不参与图逻辑）
     task_id: Optional[str]
+
+    # 运行时配置（从数据库 settings 表读取，由 Service 层注入）
+    max_debate_iterations: int
+    editor_pass_score: int

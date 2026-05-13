@@ -121,6 +121,21 @@ async def set_default_profile(
 # ============================================
 
 
+_PARAM_DEFAULTS: dict[str, int] = {
+    "max_outline_sections": 5,
+    "max_concurrent_writers": 3,
+    "max_debate_iterations": 3,
+    "editor_pass_score": 90,
+    "task_timeout": 3600,
+    "tool_call_timeout": 30,
+}
+
+
+def _build_params_response(params: dict[str, Any]) -> dict[str, int]:
+    """从原始 key-value 构建响应字典"""
+    return {key: int(params.get(key, default)) for key, default in _PARAM_DEFAULTS.items()}
+
+
 @router.get("/writing-params", response_model=WritingParamsResponse)
 async def get_writing_params(
     caller: dict[str, Any] = Depends(verify_api_key),
@@ -128,10 +143,7 @@ async def get_writing_params(
 ) -> dict[str, int]:
     """获取写作参数"""
     params = await adapter.get_writing_params()
-    return {
-        "max_outline_sections": int(params.get("max_outline_sections", 5)),
-        "max_concurrent_writers": int(params.get("max_concurrent_writers", 3)),
-    }
+    return _build_params_response(params)
 
 
 @router.patch("/writing-params", response_model=WritingParamsResponse)
@@ -141,22 +153,15 @@ async def update_writing_params(
     adapter: BusinessAdapter = Depends(get_adapter),
 ) -> dict[str, int]:
     """更新写作参数"""
-    update_data = {}
-    if request.max_outline_sections is not None:
-        update_data["max_outline_sections"] = request.max_outline_sections
-    if request.max_concurrent_writers is not None:
-        update_data["max_concurrent_writers"] = request.max_concurrent_writers
+    update_data: dict[str, Any] = {}
+    for field in _PARAM_DEFAULTS:
+        value = getattr(request, field, None)
+        if value is not None:
+            update_data[field] = value
 
     if not update_data:
-        # 无更新，直接返回当前值
         params = await adapter.get_writing_params()
-        return {
-            "max_outline_sections": int(params.get("max_outline_sections", 5)),
-            "max_concurrent_writers": int(params.get("max_concurrent_writers", 3)),
-        }
+        return _build_params_response(params)
 
     params = await adapter.update_writing_params(update_data)
-    return {
-        "max_outline_sections": int(params.get("max_outline_sections", 5)),
-        "max_concurrent_writers": int(params.get("max_concurrent_writers", 3)),
-    }
+    return _build_params_response(params)
