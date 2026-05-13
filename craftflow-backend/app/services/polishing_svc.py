@@ -399,10 +399,14 @@ class PolishingService:
         # 1. 先查内存（running / interrupted 任务）
         task = self._tasks.get(task_id)
 
-        # 2. 内存未找到，查 TaskStore（仅查 polishing 类型）
+        # 2. 内存未找到，查 TaskStore
         if task is None:
             row = await self.adapter.get_task(task_id)
             if row is None:
+                raise TaskNotFoundError(task_id=task_id)
+
+            # 检查 graph_type，如果不是 polishing 类型则跳过
+            if row.get("graph_type") != "polishing":
                 raise TaskNotFoundError(task_id=task_id)
 
             # 中断任务的 awaiting 字段（Polishing 无 HITL，但防御性处理）
@@ -440,12 +444,21 @@ class PolishingService:
         config = self._build_config(thread_id)
         graph = self._get_graph()
 
+        # 从 request 中提取原始参数，用于前端重试
+        request = task.get("request", {})
+        data = None
+        if request.get("content") or request.get("mode"):
+            data = {
+                "original_content": request.get("content", ""),
+                "mode": request.get("mode"),
+            }
+
         response = TaskStatusResponse(
             task_id=task_id,
             status=task["status"],
             current_node=None,
             awaiting=None,
-            data=None,
+            data=data,
             result=None,
             error=task.get("error"),
             progress=None,

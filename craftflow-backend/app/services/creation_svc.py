@@ -520,19 +520,30 @@ class CreationService:
         # 1. 先查内存（running / interrupted 任务）
         task = self._tasks.get(task_id)
 
-        # 2. 内存未找到，查 TaskStore（仅查 creation 类型）
+        # 2. 内存未找到，查 TaskStore
         if task is None:
             row = await self.adapter.get_task(task_id)
             if row is None:
                 raise TaskNotFoundError(task_id=task_id)
 
+            # 检查 graph_type，如果不是 creation 类型则跳过
+            if row.get("graph_type") != "creation":
+                raise TaskNotFoundError(task_id=task_id)
+
             # 从 TaskStore 行构建响应
-            data = None
+            data: dict[str, Any] = {}
             if row.get("outline"):
                 try:
-                    data = {"outline": json.loads(row["outline"])}
+                    data["outline"] = json.loads(row["outline"])
                 except (json.JSONDecodeError, TypeError):
                     pass
+            # 保留原始参数，用于前端重试
+            if row.get("topic"):
+                data["topic"] = row["topic"]
+            if row.get("description"):
+                data["description"] = row["description"]
+            if data is not None and len(data) == 0:
+                data = None
 
             # 中断任务的 awaiting 字段
             awaiting = None
@@ -560,13 +571,25 @@ class CreationService:
         config = self._build_config(thread_id)
         graph = self._get_graph()
 
+        # 从 request 中提取原始参数，用于前端重试
+        request = task.get("request", {})
+        data: dict[str, Any] = {}
+        if request.get("topic"):
+            data["topic"] = request["topic"]
+        if request.get("description"):
+            data["description"] = request["description"]
+        # 大纲数据（中断状态时）
+        outline = task.get("outline")
+        if outline:
+            data["outline"] = outline
+
         response = TaskStatusResponse(
             task_id=task_id,
             status=task["status"],
             current_node=None,
             current_node_label=None,
             awaiting=None,
-            data=None,
+            data=data if data else None,
             result=None,
             error=task.get("error"),
             progress=None,

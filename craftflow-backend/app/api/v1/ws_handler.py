@@ -198,11 +198,14 @@ async def _handle_get_task_status(
     polishing_svc = get_polishing_service()
 
     try:
-        # 服务层内部已实现：内存 → TaskStore 的查询链
+        # 先尝试 creation 服务，再尝试 polishing 服务
         status = None
         try:
             status = await creation_svc.get_task_status(msg.task_id)
         except Exception:
+            pass
+
+        if status is None:
             try:
                 status = await polishing_svc.get_task_status(msg.task_id)
             except Exception:
