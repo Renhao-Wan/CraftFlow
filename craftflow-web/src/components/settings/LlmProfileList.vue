@@ -11,9 +11,26 @@ const emit = defineEmits<{
 }>()
 
 const MAX_PROFILES = 20
+const ACCORDION_STORAGE_KEY = 'craftflow:llm-profile-accordion'
 
 const searchQuery = ref('')
 const expandedIds = ref<Set<string>>(new Set())
+const accordionMode = ref(loadAccordionMode())
+const showTooltip = ref(false)
+
+function loadAccordionMode(): boolean {
+  const stored = localStorage.getItem(ACCORDION_STORAGE_KEY)
+  return stored === null ? true : stored === 'true'
+}
+
+function toggleAccordionMode(): void {
+  accordionMode.value = !accordionMode.value
+  localStorage.setItem(ACCORDION_STORAGE_KEY, String(accordionMode.value))
+  if (accordionMode.value && expandedIds.value.size > 1) {
+    const first = expandedIds.value.values().next().value
+    expandedIds.value = new Set(first ? [first] : [])
+  }
+}
 
 const canCreate = computed(() => store.profiles.length < MAX_PROFILES)
 
@@ -29,9 +46,11 @@ const filteredProfiles = computed(() => {
 
 function toggleExpand(id: string): void {
   if (expandedIds.value.has(id)) {
-    expandedIds.value.delete(id)
+    expandedIds.value = new Set([...expandedIds.value].filter((i) => i !== id))
   } else {
-    expandedIds.value.add(id)
+    expandedIds.value = accordionMode.value
+      ? new Set([id])
+      : new Set([...expandedIds.value, id])
   }
 }
 
@@ -54,13 +73,41 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
     <div class="profile-list-sticky">
       <div class="profile-list-header">
         <h3 class="section-title">LLM 配置 <span class="profile-count">{{ store.profiles.length }}/{{ MAX_PROFILES }}</span></h3>
-        <button class="btn-add" :disabled="!canCreate" :title="!canCreate ? `最多 ${MAX_PROFILES} 个配置` : ''" @click="emit('create')">
+        <div class="header-actions">
+          <div
+            class="tooltip-wrapper"
+            @mouseenter="showTooltip = true"
+            @mouseleave="showTooltip = false"
+          >
+            <button
+              class="btn-accordion-toggle"
+              @click="toggleAccordionMode"
+            >
+              <svg v-if="accordionMode" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+              </svg>
+              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="3" y1="15" x2="21" y2="15" />
+              </svg>
+            </button>
+            <Transition name="tooltip">
+              <div v-if="showTooltip" class="tooltip-bubble">
+                {{ accordionMode ? '手风琴模式' : '独立展开模式' }}
+                <span class="tooltip-hint">点击切换</span>
+              </div>
+            </Transition>
+          </div>
+          <button class="btn-add" :disabled="!canCreate" :title="!canCreate ? `最多 ${MAX_PROFILES} 个配置` : ''" @click="emit('create')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           新增配置
         </button>
+        </div>
       </div>
       <div v-if="store.profiles.length > 0" class="search-bar">
         <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -169,6 +216,87 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tooltip-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.btn-accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-accordion-toggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.tooltip-bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-tooltip-text);
+  background: var(--color-tooltip-bg);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  z-index: 50;
+}
+
+.tooltip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-tooltip-bg);
+}
+
+.tooltip-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-tooltip-text-muted);
+}
+
+.tooltip-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tooltip-leave-active {
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+
+.tooltip-enter-from,
+.tooltip-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
 }
 
 .btn-add {
