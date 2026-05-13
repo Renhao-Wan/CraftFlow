@@ -206,7 +206,7 @@ async def get_default_llm() -> BaseChatModel:
 | `/api/v1/settings/writing-params` | GET | 获取写作参数 |
 | `/api/v1/settings/writing-params` | PATCH | 更新写作参数 |
 
-**写入参数存储**：新增 `settings` 表（key-value），存储 `max_outline_sections`、`max_concurrent_writers` 等。
+**写入参数存储**：新增 `settings` 表（key-value），存储 `max_outline_sections`、`max_concurrent_writers`、`max_debate_iterations`、`editor_pass_score`、`task_timeout`、`tool_call_timeout`。
 
 **修改文件**：
 - `app/api/v1/router.py` — 注册 settings 路由
@@ -228,19 +228,19 @@ async def get_default_llm() -> BaseChatModel:
 **新增文件**：
 ```
 craftflow-web/src/
-├── views/Settings.vue                    # 设置页主视图
 ├── components/settings/
-│   ├── LlmProfileList.vue               # LLM 配置列表
-│   ├── LlmProfileForm.vue               # 新增/编辑表单
-│   ├── WritingParams.vue                # 写作参数设置
-│   └── AppearanceSettings.vue           # 外观设置（主题）
-├── stores/settings.ts                    # Pinia settings store
-└── api/settings.ts                       # Settings API 调用
+│   ├── SettingsModal.vue                # 设置浮窗主组件（Obsidian 风格）
+│   ├── LlmProfileList.vue              # LLM 配置列表
+│   ├── LlmProfileForm.vue              # 新增/编辑表单
+│   └── WritingParams.vue               # 写作参数设置（6 项参数）
+├── stores/settings.ts                   # Pinia settings store
+├── api/settings.ts                      # Settings API 调用
+└── api/types/settings.ts                # 类型定义
 ```
 
 **修改文件**：
-- `src/router/index.ts` — 新增 `/settings` 路由
-- `src/components/layout/AppSidebar.vue` — footer 区域新增设置按钮
+- `src/components/layout/AppSidebar.vue` — footer 区域新增设置按钮，触发 `open-settings` 事件
+- `src/components/layout/AppLayout.vue` — 集成 SettingsModal 浮窗
 
 **设置页功能**：
 
@@ -248,7 +248,7 @@ craftflow-web/src/
 |------|------|------|
 | 外观 | 主题切换（浅色/深色/跟随系统） | 从侧边栏迁入 |
 | LLM 配置 | Profile 列表 + 新增/编辑/删除/设为默认 | 核心功能 |
-| 写作参数 | 大纲章节数、并发写作者数 | 滑块/数字输入 |
+| 写作参数 | 大纲章节数、并发写作者数、对抗迭代数、主编通过分、任务超时、工具超时 | 数字输入 |
 
 **验证**：
 - 设置页可正常访问
@@ -267,13 +267,13 @@ craftflow-web/src/
 **目标**：删除 `.env` 中的 LLM 字段，简化 Settings 类。
 
 **修改文件**：
-- `craftflow-backend/.env.dev` — 删除 `LLM_API_KEY`、`LLM_API_BASE`、`LLM_MODEL`、`MAX_TOKENS`、`DEFAULT_TEMPERATURE`
+- `craftflow-backend/.env.dev` — 删除 LLM 和业务逻辑配置字段
 - `craftflow-backend/.env.example` — 同上
 - `craftflow-backend/.env.standalone` — 同上
 - `craftflow-backend/.env.server` — 同上
-- `craftflow-backend/app/core/config.py` — 删除对应的 Settings 字段
+- `craftflow-backend/app/core/config.py` — 删除 LLM 和业务逻辑 Settings 字段
 - `craftflow-backend/docs/deployment/env-configuration-guide.md` — 更新文档
-- `craftflow-backend/CLAUDE.md` — 更新 LLM 配置说明
+- `craftflow-backend/CLAUDE.md` — 更新配置说明
 
 **保留的 `.env` 字段**（纯基础设施）：
 ```
