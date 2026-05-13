@@ -27,6 +27,7 @@ from app.graph.creation.builder import get_creation_graph
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
 from app.adapters.base import BusinessAdapter
+from app.services.error_formatter import format_error_message
 
 logger = get_logger(__name__)
 
@@ -102,7 +103,7 @@ class CreationService:
         return {"configurable": {"thread_id": thread_id}}
 
     async def _ensure_default_llm(self) -> None:
-        """检查是否存在默认 LLM Profile，不存在则抛出 ValidationError"""
+        """检查是否存在默认 LLM Profile 且 API Key 有效，否则抛出 ValidationError"""
         profile = await self.adapter.get_llm_profile()
         if profile is None:
             all_profiles = await self.adapter.get_all_llm_profiles()
@@ -116,6 +117,14 @@ class CreationService:
                     message="未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认",
                     field="llm_profile",
                 )
+
+        # 检查 API Key 是否有效
+        api_key = profile.get("api_key", "")
+        if not api_key or not api_key.strip():
+            raise ValidationError(
+                message="默认 LLM 配置的 API Key 为空，请在设置页面补充 API Key",
+                field="llm_api_key",
+            )
 
     async def _persist_interrupted(self, task_id: str) -> None:
         """将中断状态的任务保存到 SQLite
@@ -308,10 +317,26 @@ class CreationService:
             result = await graph.ainvoke(initial_state, config)
 
             # 如果 ainvoke 正常返回（无中断），说明图已执行完成
+            graph_state = result or {}
+
+            # 检查图状态中是否有错误
+            graph_error = graph_state.get("error")
+            final_result = graph_state.get("final_draft", "")
+
+            if graph_error or not final_result:
+                error_msg = graph_error or "创作任务未生成有效内容"
+                self._update_task(task_id, status="failed", error=error_msg)
+                logger.error(f"创作任务结果异常 - task_id: {task_id}, error: {error_msg}")
+                await self._persist_and_cleanup(
+                    task_id, thread_id, "failed", error=error_msg,
+                )
+                raise GraphExecutionError(
+                    message=error_msg,
+                    details={"task_id": task_id, "topic": topic},
+                )
+
             self._update_task(task_id, status="completed")
             created_at = self._tasks[task_id]["created_at"]
-            graph_state = result or {}
-            final_result = graph_state.get("final_draft", "")
 
             # 提取大纲数据用于持久化
             outline_for_db = None
@@ -353,7 +378,8 @@ class CreationService:
             )
 
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"创作任务失败 - task_id: {task_id}, error: {str(e)}")
 
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
@@ -361,11 +387,11 @@ class CreationService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
             raise GraphExecutionError(
-                message=f"创作任务执行失败: {str(e)}",
+                message=friendly_msg,
                 details={"task_id": task_id, "topic": topic},
             ) from e
 
@@ -716,35 +742,49 @@ class CreationService:
                     },
                 )
             else:
-                # 正常完成
-                self._update_task(task_id, status="completed")
-                logger.info(f"创作任务流式完成 - task_id: {task_id}")
-
                 # 从 checkpoint 读取最终状态（比 astream 的 final_state 更可靠）
                 graph_state = snapshot.values if snapshot else {}
 
+                # 检查图状态中是否有错误
+                graph_error = graph_state.get("error")
                 result = graph_state.get("final_draft", "")
-                created_at = self._tasks[task_id]["created_at"]
 
-                # 提取大纲数据用于持久化
-                outline_for_db = None
-                raw_outline = graph_state.get("outline")
-                if raw_outline:
-                    outline_for_db = [
-                        {"title": item.get("title", ""), "summary": item.get("summary", "")}
-                        for item in raw_outline
-                    ]
+                if graph_error or not result:
+                    # 图"完成"但结果异常（节点返回了错误状态或空结果）
+                    error_msg = graph_error or "创作任务未生成有效内容"
+                    self._update_task(task_id, status="failed", error=error_msg)
+                    logger.error(f"创作任务结果异常 - task_id: {task_id}, error: {error_msg}")
 
-                # 持久化到 SQLite + 释放内存
-                await self._persist_and_cleanup(
-                    task_id,
-                    thread_id,
-                    "completed",
-                    result=result or "",
-                    outline_data=outline_for_db,
-                )
+                    await self._persist_and_cleanup(
+                        task_id, thread_id, "failed", error=error_msg,
+                    )
+                    await broadcaster.broadcast_error(task_id, error_msg)
+                else:
+                    # 正常完成
+                    self._update_task(task_id, status="completed")
+                    logger.info(f"创作任务流式完成 - task_id: {task_id}")
 
-                await broadcaster.broadcast_result(task_id, result or "", created_at)
+                    created_at = self._tasks[task_id]["created_at"]
+
+                    # 提取大纲数据用于持久化
+                    outline_for_db = None
+                    raw_outline = graph_state.get("outline")
+                    if raw_outline:
+                        outline_for_db = [
+                            {"title": item.get("title", ""), "summary": item.get("summary", "")}
+                            for item in raw_outline
+                        ]
+
+                    # 持久化到 SQLite + 释放内存
+                    await self._persist_and_cleanup(
+                        task_id,
+                        thread_id,
+                        "completed",
+                        result=result or "",
+                        outline_data=outline_for_db,
+                    )
+
+                    await broadcaster.broadcast_result(task_id, result or "", created_at)
 
         except GraphInterrupt:
             self._update_task(task_id, status="interrupted")
@@ -775,7 +815,8 @@ class CreationService:
             )
 
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"创作任务流式失败 - task_id: {task_id}, error: {e}")
 
             # 持久化到 SQLite + 释放内存
@@ -783,10 +824,10 @@ class CreationService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
-            await broadcaster.broadcast_error(task_id, str(e))
+            await broadcaster.broadcast_error(task_id, friendly_msg)
 
     async def resume_task_streaming(
         self,
@@ -937,7 +978,8 @@ class CreationService:
             )
 
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"创作任务恢复流式失败 - task_id: {task_id}, error: {e}")
 
             # 持久化到 SQLite + 释放内存
@@ -945,10 +987,10 @@ class CreationService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
-            await broadcaster.broadcast_error(task_id, str(e))
+            await broadcaster.broadcast_error(task_id, friendly_msg)
 
     # ============================================
     # 内部辅助方法

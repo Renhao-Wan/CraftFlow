@@ -137,6 +137,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例（大纲生成需要更大的 max_tokens 以容纳完整 JSON）
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_planner_llm()
 
         # 构建 Prompt（动态注入章节数上限）
@@ -200,11 +201,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"PlannerNode 执行失败: {str(e)}")
-        return {
-            "error": f"大纲生成失败: {str(e)}",
-            "messages": [AIMessage(content=f"大纲生成失败: {str(e)}")],
-            "current_node": "PlannerNode",
-        }
+        raise
 
 
 async def writer_node(state: CreationState) -> dict[str, Any]:
@@ -238,6 +235,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_writer_llm()
 
         # 构建 Prompt
@@ -276,10 +274,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"WriterNode 执行失败 - 第 {current_index + 1} 章: {str(e)}")
-        return {
-            "error": f"第 {current_index + 1} 章撰写失败: {str(e)}",
-            "messages": [AIMessage(content=f"第 {current_index + 1} 章撰写失败: {str(e)}")],
-        }
+        raise
 
 
 async def reducer_node(state: CreationState) -> dict[str, Any]:
@@ -308,6 +303,7 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_default_llm()
 
         # 格式化章节内容
@@ -341,8 +337,4 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"ReducerNode 执行失败: {str(e)}")
-        return {
-            "error": f"文章合并失败: {str(e)}",
-            "messages": [AIMessage(content=f"文章合并失败: {str(e)}")],
-            "current_node": "ReducerNode",
-        }
+        raise
