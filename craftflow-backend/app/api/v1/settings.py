@@ -15,11 +15,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.adapters.base import BusinessAdapter
-from app.api.dependencies import get_adapter
+from app.api.dependencies import get_adapter, get_chat_service
 from app.core import tool_configs
 from app.core.auth import verify_api_key
+from app.schemas.chat import TestProfileResponse
 from app.schemas.request import LlmProfileRequest, ToolConfigsRequest, WritingParamsRequest
 from app.schemas.response import LlmProfileResponse, ToolConfigsResponse, WritingParamsResponse
+from app.services.chat_svc import ChatService
 
 router = APIRouter(prefix="/settings")
 
@@ -136,6 +138,30 @@ async def set_default_profile(
     if not success:
         raise HTTPException(status_code=404, detail=f"Profile {profile_id} 不存在")
     return {"success": True, "profile_id": profile_id}
+
+
+@router.post(
+    "/llm-profiles/{profile_id}/test",
+    response_model=TestProfileResponse,
+)
+async def test_llm_profile(
+    profile_id: str,
+    caller: dict[str, Any] = Depends(verify_api_key),
+    service: ChatService = Depends(get_chat_service),
+) -> TestProfileResponse:
+    """测试 LLM Profile 连接。
+
+    发送固定测试消息，返回完整响应和延迟，用于快速验证配置。
+    """
+    # 先验证 Profile 存在
+    from app.api.dependencies import get_adapter as _get_adapter
+
+    adapter = _get_adapter()
+    existing = await adapter.get_llm_profile(profile_id)
+    if existing is None:
+        return TestProfileResponse(success=False, error=f"Profile {profile_id} 不存在")
+
+    return await service.test_profile(profile_id)
 
 
 # ============================================

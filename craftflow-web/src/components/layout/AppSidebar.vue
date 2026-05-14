@@ -15,6 +15,7 @@ const emit = defineEmits<{
 const navItems = [
   { label: '创作', path: '/creation', icon: 'pen' },
   { label: '润色', path: '/polishing', icon: 'sparkle' },
+  { label: '对话', path: '/chat', icon: 'chat' },
   { label: '历史', path: '/history', icon: 'clock' },
 ]
 
@@ -23,6 +24,7 @@ const currentPath = computed(() => route.path)
 const pathToSource: Record<string, string> = {
   '/creation': 'creation',
   '/polishing': 'polishing',
+  '/chat': 'chat',
   '/history': 'history',
 }
 
@@ -96,6 +98,10 @@ function navigateTo(path: string): void {
             <!-- Sparkle icon -->
             <svg v-else-if="item.icon === 'sparkle'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
+            </svg>
+            <!-- Chat icon -->
+            <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
             <!-- Clock icon -->
             <svg v-else-if="item.icon === 'clock'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

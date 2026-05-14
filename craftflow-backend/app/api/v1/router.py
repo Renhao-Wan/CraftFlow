@@ -6,6 +6,7 @@
 
 from fastapi import APIRouter
 
+from app.api.v1.chat import router as chat_router
 from app.api.v1.creation import router as creation_router
 from app.api.v1.polishing import router as polishing_router
 from app.api.v1.settings import router as settings_router
@@ -17,3 +18,4 @@ router.include_router(creation_router, tags=["Creation"])
 router.include_router(polishing_router, tags=["Polishing"])
 router.include_router(tasks_router, tags=["Tasks"])
 router.include_router(settings_router, tags=["Settings"])
+router.include_router(chat_router, tags=["Chat"])

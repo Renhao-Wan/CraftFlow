@@ -1,6 +1,7 @@
 /** 设置 API — REST 通道 */
 
 import client from '@/api/client'
+import type { TestProfileResponse } from '@/api/types/chat'
 import type {
   LlmProfile,
   LlmProfileRequest,
@@ -66,4 +67,11 @@ export async function updateToolConfigs(
   data: ToolConfigsRequest,
 ): Promise<ToolConfigs> {
   return client.patch('/v1/settings/tool-configs', data)
+}
+
+/** 测试 LLM Profile 连接 */
+export async function testLlmProfile(
+  profileId: string,
+): Promise<TestProfileResponse> {
+  return client.post(`/v1/settings/llm-profiles/${profileId}/test`)
 }
