@@ -26,6 +26,7 @@ const form = ref<LlmProfileRequest>({
 
 const submitting = ref(false)
 const formError = ref<string | null>(null)
+const fieldErrors = ref<Record<string, string>>({})
 
 watch(
   () => props.visible,
@@ -50,22 +51,47 @@ watch(
       }
     }
     formError.value = null
+    fieldErrors.value = {}
   },
 )
 
-// 用户修改名称时清除错误（允许重试）
+// 用户修改字段时清除对应错误和后端错误
 watch(
   () => form.value.name,
-  () => {
-    formError.value = null
-  },
+  () => { fieldErrors.value.name = ''; formError.value = null },
+)
+watch(
+  () => form.value.api_key,
+  () => { fieldErrors.value.api_key = ''; formError.value = null },
+)
+watch(
+  () => form.value.model,
+  () => { fieldErrors.value.model = ''; formError.value = null },
 )
 
+function validate(): boolean {
+  const errors: Record<string, string> = {}
+  if (!form.value.name.trim()) {
+    errors.name = '请输入配置名称'
+  }
+  if (!props.profile && !form.value.api_key) {
+    errors.api_key = '请输入 API Key'
+  }
+  if (!form.value.model.trim()) {
+    errors.model = '请输入模型名称'
+  }
+  fieldErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
 async function handleSubmit(): Promise<void> {
+  if (!validate()) return
   submitting.value = true
   try {
     if (props.profile) {
-      await store.editProfile(props.profile.id, form.value)
+      const data: LlmProfileRequest = { ...form.value }
+      if (!data.api_key) delete data.api_key
+      await store.editProfile(props.profile.id, data)
     } else {
       await store.addProfile(form.value)
     }
@@ -94,16 +120,17 @@ async function handleSubmit(): Promise<void> {
           </button>
         </div>
 
-        <form class="modal-body" @submit.prevent="handleSubmit">
+        <form class="modal-body" novalidate @submit.prevent="handleSubmit">
           <div class="form-group">
             <label class="form-label">配置名称 *</label>
             <input
               v-model="form.name"
               type="text"
               class="form-input"
+              :class="{ invalid: fieldErrors.name }"
               placeholder="如：GPT-4、DeepSeek"
-              required
             />
+            <span v-if="fieldErrors.name" class="field-error">{{ fieldErrors.name }}</span>
           </div>
 
           <div class="form-group">
@@ -112,9 +139,10 @@ async function handleSubmit(): Promise<void> {
               v-model="form.api_key"
               type="password"
               class="form-input"
+              :class="{ invalid: fieldErrors.api_key }"
               :placeholder="profile ? '留空则不修改' : 'sk-...'"
-              :required="!profile"
             />
+            <span v-if="fieldErrors.api_key" class="field-error">{{ fieldErrors.api_key }}</span>
           </div>
 
           <div class="form-group">
@@ -134,9 +162,10 @@ async function handleSubmit(): Promise<void> {
               v-model="form.model"
               type="text"
               class="form-input"
+              :class="{ invalid: fieldErrors.model }"
               placeholder="gpt-4、deepseek-chat"
-              required
             />
+            <span v-if="fieldErrors.model" class="field-error">{{ fieldErrors.model }}</span>
           </div>
 
           <div class="form-group">
@@ -209,7 +238,12 @@ async function handleSubmit(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-lg) var(--space-lg) var(--space-md);
+  padding: var(--space-xl) var(--space-lg) var(--space-md);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-header h3 {
@@ -230,12 +264,12 @@ async function handleSubmit(): Promise<void> {
 }
 
 .btn-close:hover {
-  background: var(--color-bg-surface);
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
 .modal-body {
-  padding: 0 var(--space-lg) var(--space-lg);
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
 }
 
 .form-group {
@@ -264,6 +298,21 @@ async function handleSubmit(): Promise<void> {
 .form-input:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+.form-input.invalid {
+  border-color: var(--color-error);
+}
+
+.form-input.invalid:focus {
+  border-color: var(--color-error);
+}
+
+.field-error {
+  display: block;
+  font-size: 12px;
+  color: var(--color-error);
+  margin-top: 2px;
 }
 
 .form-hint {

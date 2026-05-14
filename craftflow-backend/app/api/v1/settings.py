@@ -57,6 +57,9 @@ async def create_llm_profile(
     adapter: BusinessAdapter = Depends(get_adapter),
 ) -> dict[str, Any]:
     """创建新的 LLM Profile"""
+    if not request.api_key:
+        raise HTTPException(status_code=422, detail="创建配置时 API Key 为必填项")
+
     existing = await adapter.get_all_llm_profiles()
     if len(existing) >= MAX_LLM_PROFILES:
         raise HTTPException(
@@ -93,6 +96,9 @@ async def update_llm_profile(
 
     profile_data = request.model_dump()
     profile_data["id"] = profile_id
+    # 留空则保留原 API Key
+    if not profile_data.get("api_key"):
+        profile_data["api_key"] = existing["api_key"]
     try:
         saved = await adapter.save_llm_profile(profile_data)
     except ValueError as e:
