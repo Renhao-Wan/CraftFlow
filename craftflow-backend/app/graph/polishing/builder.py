@@ -81,9 +81,7 @@ async def debate_node(state: PolishingState) -> dict:
         "error": None,
     }
 
-    logger.info(
-        f"Debate 子图启动 - 最大迭代: {max_iterations}, 通过分数: {pass_score}"
-    )
+    logger.info(f"Debate 子图启动 - 最大迭代: {max_iterations}, 通过分数: {pass_score}")
 
     try:
         # 调用编译后的 Debate Subgraph

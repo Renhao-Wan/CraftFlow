@@ -301,7 +301,7 @@ class TestSetDefaultProfile:
     @pytest.mark.asyncio
     async def test_only_one_default_exists(self, adapter):
         """测试同一时刻最多一个默认 Profile"""
-        p1 = await adapter.save_llm_profile(_sample_profile(name="p1", is_default=1))
+        await adapter.save_llm_profile(_sample_profile(name="p1", is_default=1))
         p2 = await adapter.save_llm_profile(_sample_profile(name="p2"))
         p3 = await adapter.save_llm_profile(_sample_profile(name="p3"))
 

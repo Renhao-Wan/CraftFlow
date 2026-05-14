@@ -145,15 +145,12 @@ class LLMFactory:
             ValueError: Adapter 未设置或 Profile 不存在时抛出
         """
         if cls._adapter is None:
-            raise ValueError(
-                "LLMFactory 未绑定 BusinessAdapter，请确保应用已正确启动。"
-            )
+            raise ValueError("LLMFactory 未绑定 BusinessAdapter，请确保应用已正确启动。")
 
         profile = await cls._adapter.get_llm_profile(profile_id)
         if profile is None:
             raise ValueError(
-                "未找到 LLM Profile，请在设置页面配置 LLM。"
-                f"(profile_id={profile_id or '默认'})"
+                "未找到 LLM Profile，请在设置页面配置 LLM。" f"(profile_id={profile_id or '默认'})"
             )
         return {
             "api_key": profile["api_key"],

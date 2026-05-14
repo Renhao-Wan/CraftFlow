@@ -10,12 +10,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
+from app.adapters.base import BusinessAdapter
 from app.api.dependencies import (
     get_adapter,
     get_creation_service,
     get_polishing_service,
 )
-from app.adapters.base import BusinessAdapter
 from app.core.auth import verify_api_key
 from app.core.exceptions import TaskNotFoundError
 from app.schemas.response import TaskStatusResponse

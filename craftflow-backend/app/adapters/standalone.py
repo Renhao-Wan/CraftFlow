@@ -74,9 +74,7 @@ class StandaloneAdapter(BusinessAdapter):
                 "SELECT * FROM llm_profiles WHERE id = ?", (profile_id,)
             )
         else:
-            cursor = await self._db.execute(
-                "SELECT * FROM llm_profiles WHERE is_default = 1"
-            )
+            cursor = await self._db.execute("SELECT * FROM llm_profiles WHERE is_default = 1")
         row = await cursor.fetchone()
         if row is None:
             return None
@@ -87,17 +85,13 @@ class StandaloneAdapter(BusinessAdapter):
         if self._db is None:
             raise RuntimeError("StandaloneAdapter 未初始化")
 
-        cursor = await self._db.execute(
-            "SELECT * FROM llm_profiles ORDER BY created_at DESC"
-        )
+        cursor = await self._db.execute("SELECT * FROM llm_profiles ORDER BY created_at DESC")
         rows = await cursor.fetchall()
         return [_profile_row_to_dict(cursor, row) for row in rows]
 
     async def _check_profile_name_exists(self, name: str) -> bool:
         """检查是否存在同名 Profile"""
-        cursor = await self._db.execute(
-            "SELECT 1 FROM llm_profiles WHERE name = ?", (name,)
-        )
+        cursor = await self._db.execute("SELECT 1 FROM llm_profiles WHERE name = ?", (name,))
         return await cursor.fetchone() is not None
 
     async def save_llm_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
@@ -203,9 +197,7 @@ class StandaloneAdapter(BusinessAdapter):
         if self._db is None:
             raise RuntimeError("StandaloneAdapter 未初始化")
 
-        cursor = await self._db.execute(
-            "DELETE FROM llm_profiles WHERE id = ?", (profile_id,)
-        )
+        cursor = await self._db.execute("DELETE FROM llm_profiles WHERE id = ?", (profile_id,))
         await self._db.commit()
         deleted = cursor.rowcount > 0
         if deleted:
@@ -250,7 +242,7 @@ class StandaloneAdapter(BusinessAdapter):
             self._TOOL_CONFIG_KEYS,
         )
         rows = await cursor.fetchall()
-        result = {key: "" for key in self._TOOL_CONFIG_KEYS}
+        result = dict.fromkeys(self._TOOL_CONFIG_KEYS, "")
         for row in rows:
             result[row[0]] = row[1]
         return result

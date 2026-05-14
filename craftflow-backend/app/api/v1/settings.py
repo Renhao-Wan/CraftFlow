@@ -71,7 +71,7 @@ async def create_llm_profile(
     try:
         saved = await adapter.save_llm_profile(profile_data)
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
     # 如果设为默认，执行切换
     if request.is_default:
@@ -102,7 +102,7 @@ async def update_llm_profile(
     try:
         saved = await adapter.save_llm_profile(profile_data)
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
     if request.is_default:
         await adapter.set_default_profile(profile_id)

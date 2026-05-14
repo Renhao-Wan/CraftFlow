@@ -113,11 +113,7 @@ def create_task_store() -> AbstractTaskStore:
         raise ValueError(f"不支持的 TaskStore 后端: {backend}")
 
 
-# 向后兼容：保留 TaskStore 别名，现有代码无需立即修改
-from app.services.task_store_sqlite import SqliteTaskStore as TaskStore  # noqa: E402
-
 __all__ = [
     "AbstractTaskStore",
-    "TaskStore",  # 向后兼容
     "create_task_store",
 ]
