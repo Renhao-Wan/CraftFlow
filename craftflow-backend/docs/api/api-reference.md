@@ -21,6 +21,8 @@
 | POST | `/api/v1/settings/llm-profiles/{id}/set-default` | 设为默认 Profile | ✅ |
 | GET | `/api/v1/settings/writing-params` | 获取写作参数 | ✅ |
 | PATCH | `/api/v1/settings/writing-params` | 更新写作参数 | ✅ |
+| POST | `/api/v1/settings/llm-profiles/{id}/test` | 测试 LLM Profile 连接 | ✅ |
+| POST | `/api/v1/chat` | SSE 流式对话 | ✅ |
 | GET | `/health` | 健康检查 | ❌ |
 
 ### WebSocket
@@ -538,6 +540,136 @@ X-API-Key: {api_key}  # server 模式
 **说明**：
 - 修改后立即生效，无需重启服务
 - 下次创建任务时使用新参数
+
+---
+
+### 2.15 测试 LLM Profile 连接
+
+```
+POST /api/v1/settings/llm-profiles/{id}/test
+X-API-Key: {api_key}  # server 模式
+```
+
+**用途**：快速验证 LLM Profile 的 API Key、Base URL、Model 配置是否正确。
+
+**响应** (200)：
+```json
+{
+    "success": true,
+    "reply": "OK. 连接正常。",
+    "error": null
+}
+```
+
+**错误响应** (200)：
+```json
+{
+    "success": false,
+    "reply": null,
+    "error": "API Key 无效，请检查配置"
+}
+```
+
+**说明**：
+- 发送固定测试消息："请回复OK，确认连接正常。"
+- 使用 REST 请求（非 SSE），等待完整响应
+- 错误场景：API Key 无效、Base URL 不可达、模型不存在、请求超时（30s）
+
+---
+
+### 2.16 SSE 流式对话
+
+```
+POST /api/v1/chat
+Content-Type: application/json
+X-API-Key: {api_key}  # server 模式
+```
+
+**用途**：与 LLM 进行流式对话，用于快速验证配置或通用对话场景。
+
+**请求体**：
+```json
+{
+    "messages": [
+        {"role": "user", "content": "你好，请介绍一下自己"}
+    ],
+    "profile_id": "optional-llm-profile-id"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `messages` | ChatMessage[] | ✅ | 完整对话历史（多轮上下文由前端维护，后端无状态） |
+| `profile_id` | string | ❌ | 指定 LLM Profile，不传则使用默认 Profile |
+
+**响应** (200, `text/event-stream`)：
+```
+data: {"content": "你", "done": false}
+
+data: {"content": "好", "done": false}
+
+data: {"content": "！", "done": false}
+
+data: {"content": "", "done": true}
+
+data: [DONE]
+```
+
+**SSE 格式说明**：
+- `content`：本次 chunk 的文本内容
+- `done`：是否生成完毕（`true` 时前端停止读取）
+- 末尾以 `data: [DONE]\n\n` 结束（OpenAI SSE 惯例）
+
+**错误响应**：
+
+| 状态码 | 场景 | 响应体 |
+|--------|------|--------|
+| 400 | messages 为空或格式错误 | `{"error": "messages is required"}` |
+| 404 | profile_id 不存在 | `{"error": "profile not found"}` |
+| 500 | LLM 调用失败 | `{"error": "LLM provider error", "detail": "..."}` |
+| 503 | LLM 未配置 | `{"error": "no LLM profile configured"}` |
+
+**流中途错误**：
+如果流已经开始（已返回 200），中途 LLM 报错：
+- 发送 `data: {"error": "...", "done": true}` 通知前端
+- 前端展示错误信息，标记该条消息为失败
+
+**响应头**：
+```
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+X-Accel-Buffering: no  # 禁用 Nginx 缓冲
+```
+
+**前端实现示例**：
+```typescript
+const response = await fetch('/api/v1/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ messages, profile_id })
+})
+const reader = response.body!.getReader()
+const decoder = new TextDecoder()
+
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+
+  const text = decoder.decode(value)
+  const lines = text.split('\n')
+
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6)
+      if (data === '[DONE]') return
+
+      const chunk = JSON.parse(data)
+      // 追加到消息列表
+    }
+  }
+}
+```
 
 ---
 
