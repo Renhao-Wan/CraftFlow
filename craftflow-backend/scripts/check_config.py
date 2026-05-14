@@ -47,19 +47,16 @@ def main():
     # LLM 配置
     # ============================================
     logger.info("\n[LLM 配置]")
-    logger.info(f"  LLM 模型: {settings.llm_model}")
-    logger.info(f"  LLM API Key: {'已配置' if settings.llm_api_key else '未配置'}")
-    logger.info(f"  最大 Token 数: {settings.max_tokens}")
-    logger.info(f"  默认温度: {settings.default_temperature}")
+    logger.info("  LLM 配置已迁移至数据库 llm_profiles 表")
+    logger.info("  请在前端设置页面管理 LLM Profile")
 
     # ============================================
     # 状态持久化配置
     # ============================================
     logger.info("\n[状态持久化配置]")
     logger.info(f"  Checkpointer 后端: {settings.checkpointer_backend}")
-    logger.info(f"  Checkpoint DB 路径: {settings.checkpoint_db_path}")
     logger.info(f"  TaskStore 后端: {settings.taskstore_backend}")
-    logger.info(f"  TaskStore DB 路径: {settings.taskstore_db_path}")
+    logger.info("  SQLite 路径: 基于代码位置自动推导（data/sqlite/、data/checkpoints/）")
     if settings.checkpointer_backend == "postgres" or settings.taskstore_backend == "postgres":
         logger.info(f"  数据库 URL: {settings.database_url}")
 
@@ -67,8 +64,8 @@ def main():
     # 外部工具配置
     # ============================================
     logger.info("\n[外部工具配置]")
-    logger.info(f"  Tavily API Key: {'已配置' if settings.tavily_api_key else '未配置'}")
-    logger.info(f"  E2B API Key: {'已配置' if settings.e2b_api_key else '未配置'}")
+    logger.info("  外部工具 API Key 已迁移至数据库 settings 表")
+    logger.info("  请在前端设置页面管理 Tavily / E2B API Key")
 
     # ============================================
     # 向量数据库配置
@@ -88,10 +85,8 @@ def main():
     # 业务逻辑配置
     # ============================================
     logger.info("\n[业务逻辑配置]")
-    logger.info(f"  最大大纲章节数: {settings.max_outline_sections}")
-    logger.info(f"  最大并发写作节点: {settings.max_concurrent_writers}")
-    logger.info(f"  对抗循环最大迭代: {settings.max_debate_iterations}")
-    logger.info(f"  主编通过分数: {settings.editor_pass_score}")
+    logger.info("  业务参数已迁移至数据库 settings 表")
+    logger.info("  请在前端设置页面查看和修改")
 
     logger.info("\n" + "=" * 60)
     logger.success("✓ 配置验证完成")

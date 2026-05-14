@@ -50,10 +50,12 @@ START → router → formatter → END
 
 ### 对抗参数
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `max_iterations` | 3 | 最大对抗轮次 |
-| `pass_score` | 90 | 通过分数（满分 100） |
+| 参数 | 默认值 | 说明 | 配置方式 |
+|------|--------|------|----------|
+| `max_iterations` | 3 | 最大对抗轮次 | 前端设置页 `max_debate_iterations` |
+| `pass_score` | 90 | 通过分数（满分 100） | 前端设置页 `editor_pass_score` |
+
+> 这些参数通过数据库 `settings` 表存储，可在前端设置页面实时修改，无需重启服务。
 
 ### 评分维度
 

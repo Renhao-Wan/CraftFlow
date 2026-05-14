@@ -36,30 +36,30 @@ async def test_llm_creation():
     try:
         # 测试默认 LLM
         logger.info("创建默认 LLM 实例...")
-        default_llm = get_default_llm()
+        default_llm = await get_default_llm()
         logger.info(f"✅ 默认 LLM: {type(default_llm).__name__}")
 
         # 测试编辑器 LLM
         logger.info("创建编辑器 LLM 实例...")
-        editor_llm = get_editor_llm()
+        editor_llm = await get_editor_llm()
         logger.info(f"✅ 编辑器 LLM: {type(editor_llm).__name__}")
 
         # 测试自定义参数 LLM
         logger.info("创建自定义参数 LLM 实例...")
-        custom_llm = get_custom_llm(temperature=0.5, max_tokens=2000)
+        custom_llm = await get_custom_llm(temperature=0.5, max_tokens=2000)
         logger.info(f"✅ 自定义 LLM: {type(custom_llm).__name__}")
 
         # 测试节点专用 LLM
         logger.info("创建 Planner LLM 实例...")
-        planner_llm = get_planner_llm()
+        planner_llm = await get_planner_llm()
         logger.info(f"✅ Planner LLM: {type(planner_llm).__name__}")
 
         logger.info("创建 Writer LLM 实例...")
-        writer_llm = get_writer_llm()
+        writer_llm = await get_writer_llm()
         logger.info(f"✅ Writer LLM: {type(writer_llm).__name__}")
 
         logger.info("创建 FactChecker LLM 实例...")
-        factchecker_llm = get_factchecker_llm()
+        factchecker_llm = await get_factchecker_llm()
         logger.info(f"✅ FactChecker LLM: {type(factchecker_llm).__name__}")
 
     except Exception as e:
@@ -80,8 +80,8 @@ async def test_llm_caching():
     logger.info("已清空缓存")
 
     # 创建两个相同参数的实例
-    llm1 = LLMFactory.create_llm(temperature=0.7)
-    llm2 = LLMFactory.create_llm(temperature=0.7)
+    llm1 = await LLMFactory.create_llm(temperature=0.7)
+    llm2 = await LLMFactory.create_llm(temperature=0.7)
 
     if llm1 is llm2:
         logger.info("✅ 缓存机制正常：相同参数返回同一实例")
@@ -89,7 +89,7 @@ async def test_llm_caching():
         logger.warning("⚠️ 缓存机制异常：相同参数返回不同实例")
 
     # 创建不同参数的实例
-    llm3 = LLMFactory.create_llm(temperature=0.3)
+    llm3 = await LLMFactory.create_llm(temperature=0.3)
 
     if llm1 is not llm3:
         logger.info("✅ 缓存机制正常：不同参数返回不同实例")
@@ -103,13 +103,9 @@ async def test_llm_invocation():
     logger.info("测试 3: LLM 基本调用")
     logger.info("=" * 60)
 
-    if not settings.llm_api_key:
-        logger.warning("⚠️ 未配置 LLM_API_KEY，跳过调用测试")
-        return
-
     try:
-        llm = get_default_llm()
-        logger.info(f"使用模型: {settings.llm_model}")
+        llm = await get_default_llm()
+        logger.info(f"LLM 实例创建成功")
 
         # 简单的测试调用
         messages = [("human", "请用一句话介绍 Python 编程语言。")]
@@ -161,14 +157,27 @@ async def test_prompt_templates():
 
 async def main():
     """主测试函数"""
+    from app.adapters.standalone import StandaloneAdapter
+    from app.graph.common.llm_factory import EDITOR_NODE_TEMPERATURE, LLMFactory
+
     logger.info("开始测试 LLM 工厂模块")
-    logger.info(f"当前配置:")
-    logger.info(f"  - LLM Model: {settings.llm_model}")
-    logger.info(f"  - Default Temperature: {settings.default_temperature}")
-    from app.graph.common.llm_factory import EDITOR_NODE_TEMPERATURE
+
+    # 初始化 Adapter 并绑定到 LLMFactory
+    adapter = StandaloneAdapter()
+    await adapter.init()
+    LLMFactory.set_adapter(adapter)
+
+    # 显示已配置的 Profile
+    profiles = await adapter.get_all_llm_profiles()
+    if profiles:
+        logger.info(f"已配置 {len(profiles)} 个 LLM Profile:")
+        for p in profiles:
+            default_mark = " (默认)" if p["is_default"] else ""
+            logger.info(f"  - {p['name']}: {p['model']}{default_mark}")
+    else:
+        logger.warning("⚠️ 未配置任何 LLM Profile，请在前端设置页面添加")
+
     logger.info(f"  - Editor Temperature: {EDITOR_NODE_TEMPERATURE}")
-    logger.info(f"  - Max Tokens: {settings.max_tokens}")
-    logger.info(f"  - API Key 已配置: {'是' if settings.llm_api_key else '否'}")
 
     # 运行所有测试
     await test_llm_creation()
@@ -176,6 +185,7 @@ async def main():
     await test_llm_invocation()
     await test_prompt_templates()
 
+    await adapter.close()
     logger.info("\n" + "=" * 60)
     logger.info("所有测试完成")
     logger.info("=" * 60)

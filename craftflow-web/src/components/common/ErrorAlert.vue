@@ -14,7 +14,7 @@ defineEmits<{
     <div class="error-icon">!</div>
     <div class="error-content">
       <p class="error-message">{{ message }}</p>
-      <button v-if="retryable" class="retry-btn" @click="$emit('retry')">
+      <button v-if="retryable" type="button" class="retry-btn" @click="$emit('retry')">
         重试
       </button>
     </div>

@@ -17,13 +17,14 @@ from uuid import uuid4
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from app.core.exceptions import GraphExecutionError, TaskNotFoundError
+from app.adapters.base import BusinessAdapter
+from app.core.exceptions import GraphExecutionError, TaskNotFoundError, ValidationError
 from app.core.logger import get_logger
 from app.graph.polishing.builder import get_polishing_graph
 from app.graph.polishing.nodes import register_progress_callback, unregister_progress_callback
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.services.task_store import AbstractTaskStore
+from app.services.error_formatter import format_error_message
 
 logger = get_logger(__name__)
 
@@ -63,15 +64,15 @@ class PolishingService:
         _tasks: 任务元数据存储
     """
 
-    def __init__(self, checkpointer: BaseCheckpointSaver, task_store: AbstractTaskStore) -> None:
+    def __init__(self, checkpointer: BaseCheckpointSaver, adapter: BusinessAdapter) -> None:
         """初始化 Polishing Service
 
         Args:
             checkpointer: LangGraph Checkpointer 实例
-            task_store: SQLite 任务持久化存储
+            adapter: 业务适配器
         """
         self.checkpointer = checkpointer
-        self.task_store = task_store
+        self.adapter = adapter
         self._graph = None
         self._tasks: dict[str, dict[str, Any]] = {}
 
@@ -114,6 +115,30 @@ class PolishingService:
         """构建 LangGraph 执行配置"""
         return {"configurable": {"thread_id": thread_id}}
 
+    async def _ensure_default_llm(self) -> None:
+        """检查是否存在默认 LLM Profile 且 API Key 有效，否则抛出 ValidationError"""
+        profile = await self.adapter.get_llm_profile()
+        if profile is None:
+            all_profiles = await self.adapter.get_all_llm_profiles()
+            if len(all_profiles) == 0:
+                raise ValidationError(
+                    message="尚未配置 LLM 模型，请先在设置页面添加至少一个 LLM 配置",
+                    field="llm_profile",
+                )
+            else:
+                raise ValidationError(
+                    message="未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认",
+                    field="llm_profile",
+                )
+
+        # 检查 API Key 是否有效
+        api_key = profile.get("api_key", "")
+        if not api_key or not api_key.strip():
+            raise ValidationError(
+                message="默认 LLM 配置的 API Key 为空，请在设置页面补充 API Key",
+                field="llm_api_key",
+            )
+
     async def _persist_and_cleanup(
         self,
         task_id: str,
@@ -150,7 +175,7 @@ class PolishingService:
                 "updated_at": str(datetime.now()),
             }
             logger.debug(f"保存数据: {save_data}")
-            await self.task_store.save_task(save_data)
+            await self.adapter.save_task(save_data)
             logger.info(f"SQLite 保存成功 - task_id: {task_id}")
         except Exception as e:
             logger.error(f"保存任务到 SQLite 失败 - task_id: {task_id}, error: {e}", exc_info=True)
@@ -169,7 +194,7 @@ class PolishingService:
         Returns:
             加载的任务数量
         """
-        interrupted = await self.task_store.get_interrupted_tasks()
+        interrupted = await self.adapter.get_interrupted_tasks()
         if not interrupted:
             return 0
 
@@ -228,6 +253,9 @@ class PolishingService:
         Raises:
             GraphExecutionError: 图执行失败时抛出
         """
+        # 前置检查：确保有默认 LLM Profile
+        await self._ensure_default_llm()
+
         task_id = self._generate_task_id()
         thread_id = task_id
 
@@ -237,6 +265,11 @@ class PolishingService:
             status="running",
             request_data={"content": content, "mode": mode},
         )
+
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_debate_iterations = int(params.get("max_debate_iterations", 3))
+        editor_pass_score = int(params.get("editor_pass_score", 90))
 
         initial_state = {
             "content": content,
@@ -252,6 +285,8 @@ class PolishingService:
             "overall_score": None,
             "messages": [],
             "task_id": task_id,
+            "max_debate_iterations": max_debate_iterations,
+            "editor_pass_score": editor_pass_score,
         }
 
         config = self._build_config(thread_id)
@@ -287,7 +322,23 @@ class PolishingService:
 
             # 从图状态提取结果
             graph_state = result or {}
-            final_result = self._extract_result(graph_state) or ""
+            final_result = self._extract_result(graph_state)
+
+            if not final_result:
+                error_msg = "润色任务未生成有效内容"
+                self._update_task(task_id, status="failed", error=error_msg)
+                logger.error(f"润色任务结果为空 - task_id: {task_id}")
+                await self._persist_and_cleanup(
+                    task_id,
+                    thread_id,
+                    "failed",
+                    error=error_msg,
+                )
+                raise GraphExecutionError(
+                    message=error_msg,
+                    details={"task_id": task_id, "mode": mode},
+                )
+
             fact_check_result = graph_state.get("fact_check_result")
 
             # 持久化 + 清理 + 释放内存
@@ -310,7 +361,8 @@ class PolishingService:
         except GraphExecutionError:
             raise
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"润色任务异常 - task_id: {task_id}, error: {str(e)}")
 
             # 持久化 + 清理 + 释放内存
@@ -318,11 +370,11 @@ class PolishingService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
             raise GraphExecutionError(
-                message=f"润色任务执行异常: {str(e)}",
+                message=friendly_msg,
                 details={"task_id": task_id, "mode": mode},
             ) from e
 
@@ -350,10 +402,14 @@ class PolishingService:
         # 1. 先查内存（running / interrupted 任务）
         task = self._tasks.get(task_id)
 
-        # 2. 内存未找到，查 TaskStore（仅查 polishing 类型）
+        # 2. 内存未找到，查 TaskStore
         if task is None:
-            row = await self.task_store.get_task(task_id, graph_type="polishing")
+            row = await self.adapter.get_task(task_id)
             if row is None:
+                raise TaskNotFoundError(task_id=task_id)
+
+            # 检查 graph_type，如果不是 polishing 类型则跳过
+            if row.get("graph_type") != "polishing":
                 raise TaskNotFoundError(task_id=task_id)
 
             # 中断任务的 awaiting 字段（Polishing 无 HITL，但防御性处理）
@@ -391,12 +447,21 @@ class PolishingService:
         config = self._build_config(thread_id)
         graph = self._get_graph()
 
+        # 从 request 中提取原始参数，用于前端重试
+        request = task.get("request", {})
+        data = None
+        if request.get("content") or request.get("mode"):
+            data = {
+                "original_content": request.get("content", ""),
+                "mode": request.get("mode"),
+            }
+
         response = TaskStatusResponse(
             task_id=task_id,
             status=task["status"],
             current_node=None,
             awaiting=None,
-            data=None,
+            data=data,
             result=None,
             error=task.get("error"),
             progress=None,
@@ -458,6 +523,9 @@ class PolishingService:
             client_id: 客户端 ID
             request_id: 请求 ID（可选，用于请求-响应配对）
         """
+        # 前置检查：确保有默认 LLM Profile
+        await self._ensure_default_llm()
+
         task_id = self._generate_task_id()
         thread_id = task_id
 
@@ -483,6 +551,11 @@ class PolishingService:
             },
         )
 
+        # 从数据库读取运行时配置
+        params = await self.adapter.get_writing_params()
+        max_debate_iterations = int(params.get("max_debate_iterations", 3))
+        editor_pass_score = int(params.get("editor_pass_score", 90))
+
         initial_state = {
             "content": content,
             "mode": mode,
@@ -497,6 +570,8 @@ class PolishingService:
             "overall_score": None,
             "messages": [],
             "task_id": task_id,
+            "max_debate_iterations": max_debate_iterations,
+            "editor_pass_score": editor_pass_score,
         }
 
         config = self._build_config(thread_id)
@@ -564,36 +639,54 @@ class PolishingService:
 
                     logger.debug(f"节点完成 - {node_name} ({label}), progress: {progress}")
 
-            # 正常返回 = 图已完成
-            self._update_task(task_id, status="completed")
-            logger.info(f"润色任务流式完成 - task_id: {task_id}")
-
             # 从 checkpoint 读取最终状态（比 astream 的 final_state 更可靠）
             snapshot = await graph.aget_state(config)
             graph_state = snapshot.values if snapshot else {}
 
+            # 检查图状态中是否有错误
+            graph_error = graph_state.get("error")
             result = self._extract_result(graph_state)
-            fact_check_result = graph_state.get("fact_check_result")
-            created_at = self._tasks[task_id]["created_at"]
 
-            # 持久化到 SQLite + 释放内存
-            await self._persist_and_cleanup(
-                task_id,
-                thread_id,
-                "completed",
-                result=result or "",
-                fact_check_result=fact_check_result,
-            )
+            if graph_error or not result:
+                # 图"完成"但结果异常（节点返回了错误状态或空结果）
+                error_msg = graph_error or "润色任务未生成有效内容"
+                self._update_task(task_id, status="failed", error=error_msg)
+                logger.error(f"润色任务结果异常 - task_id: {task_id}, error: {error_msg}")
 
-            await broadcaster.broadcast_result(
-                task_id,
-                result or "",
-                created_at,
-                fact_check_result=fact_check_result,
-            )
+                await self._persist_and_cleanup(
+                    task_id,
+                    thread_id,
+                    "failed",
+                    error=error_msg,
+                )
+                await broadcaster.broadcast_error(task_id, error_msg)
+            else:
+                # 正常完成
+                self._update_task(task_id, status="completed")
+                logger.info(f"润色任务流式完成 - task_id: {task_id}")
+
+                fact_check_result = graph_state.get("fact_check_result")
+                created_at = self._tasks[task_id]["created_at"]
+
+                # 持久化到 SQLite + 释放内存
+                await self._persist_and_cleanup(
+                    task_id,
+                    thread_id,
+                    "completed",
+                    result=result or "",
+                    fact_check_result=fact_check_result,
+                )
+
+                await broadcaster.broadcast_result(
+                    task_id,
+                    result or "",
+                    created_at,
+                    fact_check_result=fact_check_result,
+                )
 
         except Exception as e:
-            self._update_task(task_id, status="failed", error=str(e))
+            friendly_msg = format_error_message(e)
+            self._update_task(task_id, status="failed", error=friendly_msg)
             logger.error(f"润色任务流式失败 - task_id: {task_id}, error: {e}")
 
             # 持久化到 SQLite + 释放内存
@@ -601,10 +694,10 @@ class PolishingService:
                 task_id,
                 thread_id,
                 "failed",
-                error=str(e),
+                error=friendly_msg,
             )
 
-            await broadcaster.broadcast_error(task_id, str(e))
+            await broadcaster.broadcast_error(task_id, friendly_msg)
         finally:
             unregister_progress_callback(task_id)
 

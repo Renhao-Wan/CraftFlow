@@ -194,3 +194,35 @@ class ErrorResponse(BaseModel):
                 "path": "/api/v1/creation",
             }
         }
+
+
+class LlmProfileResponse(BaseModel):
+    """LLM Profile 响应模型"""
+
+    id: str = Field(..., description="Profile ID")
+    name: str = Field(..., description="配置名称")
+    api_key: str = Field(..., description="API Key（脱敏）")
+    api_base: str = Field(default="", description="API Base URL")
+    model: str = Field(..., description="模型名称")
+    temperature: float = Field(..., description="温度参数")
+    is_default: bool = Field(..., description="是否为默认配置")
+    created_at: str = Field(..., description="创建时间")
+    updated_at: str = Field(..., description="更新时间")
+
+
+class ToolConfigsResponse(BaseModel):
+    """外部工具配置响应模型（API Key 已脱敏）"""
+
+    tavily_api_key: str = Field(..., description="Tavily API Key（脱敏）")
+    e2b_api_key: str = Field(..., description="E2B API Key（脱敏）")
+
+
+class WritingParamsResponse(BaseModel):
+    """写作参数响应模型"""
+
+    max_outline_sections: int = Field(..., description="大纲最大章节数")
+    max_concurrent_writers: int = Field(..., description="最大并发写作者数")
+    max_debate_iterations: int = Field(..., description="对抗循环最大迭代次数")
+    editor_pass_score: int = Field(..., description="主编通过分数阈值")
+    task_timeout: int = Field(..., description="任务超时时间（秒）")
+    tool_call_timeout: int = Field(..., description="工具调用超时时间（秒）")
