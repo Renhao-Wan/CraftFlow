@@ -64,6 +64,7 @@ watch(
   () => scrollToBottom(),
 )
 
+// 流式期间监听最后一条消息的 content 变化（直接修改 content 属性）
 watch(
   () => messages.value[messages.value.length - 1]?.content,
   () => scrollToBottom(),
@@ -179,6 +180,7 @@ function copyConversation(): void {
       >
         <div class="message-bubble">
           <template v-if="msg.role === 'assistant'">
+            <!-- 流式期间和结束后都渲染 Markdown -->
             <MarkdownRenderer v-if="msg.content" :content="msg.content" />
             <span v-else-if="isStreaming && index === messages.length - 1" class="typing-cursor" />
           </template>
