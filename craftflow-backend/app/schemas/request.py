@@ -123,7 +123,7 @@ class LlmProfileRequest(BaseModel):
     """LLM Profile 创建/更新请求模型"""
 
     name: str = Field(..., min_length=1, max_length=100, description="配置名称")
-    api_key: str = Field(..., min_length=1, description="API Key")
+    api_key: Optional[str] = Field(default=None, min_length=1, description="API Key")
     api_base: str = Field(default="", description="API Base URL")
     model: str = Field(..., min_length=1, max_length=100, description="模型名称")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="温度参数")

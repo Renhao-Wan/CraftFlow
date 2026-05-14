@@ -14,7 +14,7 @@ export interface LlmProfile {
 /** LLM Profile 创建/更新请求 */
 export interface LlmProfileRequest {
   name: string
-  api_key: string
+  api_key?: string
   api_base?: string
   model: string
   temperature?: number
