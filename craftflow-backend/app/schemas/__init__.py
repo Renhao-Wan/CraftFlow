@@ -4,6 +4,12 @@
 本模块导出所有 API 请求和响应模型，供路由层使用。
 """
 
+from app.schemas.chat import (
+    ChatChunk,
+    ChatMessage,
+    ChatRequest,
+    TestProfileResponse,
+)
 from app.schemas.request import (
     CreationRequest,
     PolishingRequest,
@@ -16,6 +22,11 @@ from app.schemas.response import (
 )
 
 __all__ = [
+    # 对话模型
+    "ChatMessage",
+    "ChatRequest",
+    "ChatChunk",
+    "TestProfileResponse",
     # 请求模型
     "CreationRequest",
     "PolishingRequest",

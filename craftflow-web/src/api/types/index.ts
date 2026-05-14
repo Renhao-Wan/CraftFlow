@@ -5,3 +5,9 @@ export { POLISHING_MODE_META } from './polishing'
 export type { ResumeAction, ResumeRequest } from './resume'
 export type { ErrorResponse } from './errors'
 export { ApiError } from './errors'
+export type {
+  ChatMessage,
+  ChatRequest,
+  ChatChunk,
+  TestProfileResponse,
+} from './chat'
