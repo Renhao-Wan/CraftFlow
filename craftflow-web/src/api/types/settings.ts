@@ -1,0 +1,54 @@
+/** LLM Profile — GET /api/v1/settings/llm-profiles */
+export interface LlmProfile {
+  id: string
+  name: string
+  api_key: string
+  api_base: string
+  model: string
+  temperature: number
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** LLM Profile 创建/更新请求 */
+export interface LlmProfileRequest {
+  name: string
+  api_key?: string
+  api_base?: string
+  model: string
+  temperature?: number
+  is_default?: boolean
+}
+
+/** 写作参数 — GET /api/v1/settings/writing-params */
+export interface WritingParams {
+  max_outline_sections: number
+  max_concurrent_writers: number
+  max_debate_iterations: number
+  editor_pass_score: number
+  task_timeout: number
+  tool_call_timeout: number
+}
+
+/** 外部工具配置 — GET /api/v1/settings/tool-configs */
+export interface ToolConfigs {
+  tavily_api_key: string
+  e2b_api_key: string
+}
+
+/** 外部工具配置更新请求 */
+export interface ToolConfigsRequest {
+  tavily_api_key?: string
+  e2b_api_key?: string
+}
+
+/** 写作参数更新请求 */
+export interface WritingParamsRequest {
+  max_outline_sections?: number
+  max_concurrent_writers?: number
+  max_debate_iterations?: number
+  editor_pass_score?: number
+  task_timeout?: number
+  tool_call_timeout?: number
+}

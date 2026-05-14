@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import AppSidebar from './AppSidebar.vue'
+import SettingsModal from '@/components/settings/SettingsModal.vue'
+import { useSettingsStore } from '@/stores/settings'
+
+const settingsStore = useSettingsStore()
+
+function openSettings(): void {
+  settingsStore.openSettingsModal()
+}
 </script>
 
 <template>
   <div class="app-layout">
-    <AppSidebar />
+    <AppSidebar @open-settings="openSettings" />
     <main class="app-content">
       <router-view v-slot="{ Component }">
         <transition name="page-fade" mode="out-in">
@@ -13,6 +21,12 @@ import AppSidebar from './AppSidebar.vue'
       </router-view>
     </main>
   </div>
+
+  <SettingsModal
+    :visible="settingsStore.settingsModalVisible"
+    :initial-tab="settingsStore.settingsInitialTab"
+    @close="settingsStore.closeSettingsModal()"
+  />
 </template>
 
 <style scoped>

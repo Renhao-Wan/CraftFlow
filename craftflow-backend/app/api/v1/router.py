@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.api.v1.creation import router as creation_router
 from app.api.v1.polishing import router as polishing_router
+from app.api.v1.settings import router as settings_router
 from app.api.v1.tasks import router as tasks_router
 
 router = APIRouter(prefix="/api/v1")
@@ -15,3 +16,4 @@ router = APIRouter(prefix="/api/v1")
 router.include_router(creation_router, tags=["Creation"])
 router.include_router(polishing_router, tags=["Polishing"])
 router.include_router(tasks_router, tags=["Tasks"])
+router.include_router(settings_router, tags=["Settings"])

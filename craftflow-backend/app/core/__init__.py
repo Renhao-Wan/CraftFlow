@@ -3,6 +3,7 @@
 提供全局配置、日志系统、鉴权和异常处理功能。
 """
 
+from app.core import tool_configs
 from app.core.auth import verify_api_key, verify_ws_api_key
 from app.core.config import Settings, get_settings, settings
 from app.core.exceptions import (
@@ -23,6 +24,7 @@ __all__ = [
     "Settings",
     "get_settings",
     "settings",
+    "tool_configs",
     # 鉴权
     "verify_api_key",
     "verify_ws_api_key",

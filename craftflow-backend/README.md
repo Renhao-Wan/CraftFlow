@@ -69,9 +69,10 @@ cp .env.server .env.dev
 ```
 
 编辑 `.env.dev`，填写必要的 API Key：
-- `LLM_API_KEY`：LLM API 密钥（必填）
 - `TAVILY_API_KEY`：Tavily 搜索 API（可选）
 - `E2B_API_KEY`：E2B 代码沙箱 API（可选）
+
+> LLM 配置通过前端设置页面管理（侧边栏设置按钮 → LLM 配置），无需在 `.env` 中填写。
 
 4. **启动开发服务器**
 
@@ -232,8 +233,9 @@ cp .env.server .env
 2. 编辑 `.env`，修改以下关键配置：
    - `API_KEY`：设置强密钥（Java 后端调用时需要携带）
    - `DATABASE_URL`：PostgreSQL 连接串
-   - `LLM_API_KEY`：LLM API 密钥
    - `ENVIRONMENT=production`：隐藏 API 文档
+
+   > LLM 配置通过 Settings API 或前端设置页面管理。
 
 3. 使用 Gunicorn 部署：
 
@@ -279,7 +281,6 @@ Docker 支持尚在规划中，敬请期待。
 详细架构文档请参考：
 
 - [后端架构总览](docs/architecture/architecture-overview.md) — 后端整体架构设计
-- [架构改造记录](docs/architecture/architecture-refactor-record.md) — 配置驱动架构改造实施记录
 - [数据存储架构](docs/architecture/database-design.md) — 四层存储架构设计
 - [API 接口参考](docs/api/api-reference.md) — REST 和 WebSocket 接口详细说明
 - [接口流程图解](docs/api/api-flow.md) — API 接口流程图
@@ -321,6 +322,6 @@ Docker 支持尚在规划中，敬请期待。
 
 ---
 
-**文档版本**: v2.0
-**最后更新**: 2026-05-12
+**文档版本**: v2.1
+**最后更新**: 2026-05-13
 **维护者**: Renhao-Wan

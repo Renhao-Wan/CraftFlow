@@ -265,7 +265,11 @@ class TestCreationGraphIntegration:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.creation.nodes.get_planner_llm", return_value=mock_llm):
+        with patch(
+            "app.graph.creation.nodes.get_planner_llm",
+            new_callable=AsyncMock,
+            return_value=mock_llm,
+        ):
             graph = get_creation_graph()
 
             # 初始状态

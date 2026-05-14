@@ -25,15 +25,12 @@ app/core/
 from app.core import settings
 
 # 访问配置
-print(f"LLM 模型: {settings.llm_model}")
 print(f"运行环境: {settings.environment}")
 print(f"是否生产环境: {settings.is_production}")
-
-# 所有配置项都有类型提示和验证
-max_tokens: int = settings.max_tokens  # IDE 会提供自动补全
+print(f"运行模式: {settings.app_mode}")
 ```
 
-**配置来源**: `.env.dev` 文件（开发环境）或环境变量
+**配置来源**: `.env.dev` 文件（开发环境）或环境变量。`config.py` 仅保留基础设施配置（APP_MODE、鉴权、持久化后端、外部工具等）。LLM 配置已迁移至数据库 `llm_profiles` 表，写作参数已迁移至数据库 `settings` 表，均通过前端设置页面管理。
 
 ### 2. 日志系统
 
@@ -112,14 +109,6 @@ register_exception_handlers(app)
 - `debug`: 调试模式
 - `log_level`: 日志级别（DEBUG/INFO/WARNING/ERROR）
 
-### LLM 配置
-- `llm_api_key`: LLM API 密钥
-- `llm_api_base`: LLM API 基础 URL（可选）
-- `llm_model`: 默认 LLM 模型
-- `max_tokens`: 最大 Token 数
-- `default_temperature`: 默认温度参数
-- `editor_node_temperature`: 编辑节点温度参数
-
 ### 持久化配置
 - `use_persistent_checkpointer`: 是否使用持久化 Checkpointer
 - `database_url`: PostgreSQL 数据库连接 URL
@@ -135,13 +124,20 @@ register_exception_handlers(app)
 - `port`: 服务监听端口
 - `cors_origins`: 允许的跨域来源（逗号分隔）
 
-### 业务配置
-- `max_outline_sections`: 大纲最大章节数
-- `max_concurrent_writers`: 并发写作节点数量上限
-- `max_debate_iterations`: 对抗循环最大迭代次数
-- `editor_pass_score`: 主编通过分数阈值
-- `task_timeout`: 任务超时时间（秒）
-- `tool_call_timeout`: 工具调用超时时间（秒）
+### 已迁移至数据库的配置
+
+以下配置已从 `config.py` / `.env` 迁移至数据库，通过前端设置页面或 Settings API 管理：
+
+**LLM 配置**（`llm_profiles` 表）：
+- `api_key`、`api_base`、`model`、`temperature` 等，支持多 Profile 管理
+
+**写作参数**（`settings` 表）：
+- `max_outline_sections`：大纲最大章节数
+- `max_concurrent_writers`：并发写作节点数量上限
+- `max_debate_iterations`：对抗循环最大迭代次数
+- `editor_pass_score`：主编通过分数阈值
+- `task_timeout`：任务超时时间（秒）
+- `tool_call_timeout`：工具调用超时时间（秒）
 
 ---
 
@@ -214,7 +210,6 @@ from app.core.config import Settings
 
 # 手动创建配置实例（用于测试）
 test_settings = Settings(
-    llm_api_key="test-key",
     environment="development"
 )
 ```
@@ -276,5 +271,5 @@ python tests/test_exceptions.py
 
 ---
 
-**维护者**: Renhao-Wan  
-**最后更新**: 2026-05-01
+**维护者**: Renhao-Wan
+**最后更新**: 2026-05-13

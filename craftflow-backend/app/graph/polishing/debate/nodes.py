@@ -110,7 +110,8 @@ async def author_node(state: DebateState) -> dict[str, Any]:
     logger.info(f"AuthorNode 开始执行 - 当前评分: {editor_score}")
 
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         # 首轮：没有编辑反馈时，给出针对性的首轮指令
         if not editor_feedback:
@@ -155,10 +156,7 @@ async def author_node(state: DebateState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"AuthorNode 执行失败: {str(e)}")
-        return {
-            "error": f"文章重写失败: {str(e)}",
-            "messages": [AIMessage(content=f"文章重写失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================
@@ -184,7 +182,8 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
     logger.info(f"EditorNode 开始执行 - 第 {current_iteration} 轮评估")
 
     try:
-        llm = get_editor_llm()  # 使用更低温度的 LLM
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_editor_llm()  # 使用更低温度的 LLM
 
         human_message = EDITOR_HUMAN_PROMPT.format(
             content=content,
@@ -237,12 +236,7 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"EditorNode 执行失败: {str(e)}")
-        return {
-            "error": f"评估失败: {str(e)}",
-            "editor_score": 0,
-            "is_passed": False,
-            "messages": [AIMessage(content=f"评估失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================

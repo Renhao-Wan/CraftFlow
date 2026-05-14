@@ -11,7 +11,8 @@ name: Frontend CI
 
 on:
   push:
-    branches: [ "main", "master", "feature-dev" ]
+    # branches: [ "main", "master", "feature-dev" ]
+    branches: [ "main", "master" ]
     paths:
       - "craftflow-web/**"
       - ".github/workflows/frontend.yml"

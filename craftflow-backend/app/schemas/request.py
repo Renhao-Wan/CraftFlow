@@ -117,3 +117,48 @@ class ResumeRequest(BaseModel):
                 },
             }
         }
+
+
+class LlmProfileRequest(BaseModel):
+    """LLM Profile 创建/更新请求模型"""
+
+    name: str = Field(..., min_length=1, max_length=100, description="配置名称")
+    api_key: Optional[str] = Field(default=None, min_length=1, description="API Key")
+    api_base: str = Field(default="", description="API Base URL")
+    model: str = Field(..., min_length=1, max_length=100, description="模型名称")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="温度参数")
+    is_default: bool = Field(default=False, description="是否为默认配置")
+
+
+class ToolConfigsRequest(BaseModel):
+    """外部工具配置更新请求模型"""
+
+    tavily_api_key: Optional[str] = Field(
+        default=None, max_length=200, description="Tavily Search API Key"
+    )
+    e2b_api_key: Optional[str] = Field(
+        default=None, max_length=200, description="E2B Code Sandbox API Key"
+    )
+
+
+class WritingParamsRequest(BaseModel):
+    """写作参数更新请求模型"""
+
+    max_outline_sections: Optional[int] = Field(
+        default=None, ge=1, le=20, description="大纲最大章节数"
+    )
+    max_concurrent_writers: Optional[int] = Field(
+        default=None, ge=1, le=10, description="最大并发写作者数"
+    )
+    max_debate_iterations: Optional[int] = Field(
+        default=None, ge=1, le=10, description="对抗循环最大迭代次数"
+    )
+    editor_pass_score: Optional[int] = Field(
+        default=None, ge=0, le=100, description="主编通过分数阈值"
+    )
+    task_timeout: Optional[int] = Field(
+        default=None, ge=60, le=86400, description="任务超时时间（秒）"
+    )
+    tool_call_timeout: Optional[int] = Field(
+        default=None, ge=5, le=300, description="工具调用超时时间（秒）"
+    )

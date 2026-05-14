@@ -37,7 +37,8 @@ def _get_env_file() -> str:
     优先级：
     1. 环境变量 CRAFTFLOW_ENV_FILE（显式指定）
     2. 桌面版：%APPDATA%/CraftFlow/.env
-    3. 开发环境：.env.dev（可根据 APP_MODE 选择 .env.standalone 或 .env.server）
+    3. .env.dev（本地开发）
+    4. .env（生产部署兜底）
     """
     import os
 
@@ -52,18 +53,14 @@ def _get_env_file() -> str:
 
         return str(get_env_file())
 
-    # 3. 开发环境：根据 APP_MODE 选择配置文件
+    # 3. 本地开发：.env.dev
     base_dir = _get_base_dir()
-    app_mode = os.environ.get("APP_MODE", "standalone")
+    dev_env_file = base_dir / ".env.dev"
+    if dev_env_file.is_file():
+        return str(dev_env_file)
 
-    # 尝试加载模式专属配置文件
-    mode_env_file = base_dir / f".env.{app_mode}"
-    if mode_env_file.is_file():
-        return str(mode_env_file)
-
-    # 回退到默认配置文件
-    default_env_file = base_dir / ".env.dev"
-    return str(default_env_file)
+    # 4. 生产部署：.env
+    return str(base_dir / ".env")
 
 
 # 项目根目录
@@ -114,25 +111,16 @@ class Settings(BaseSettings):
     )
 
     # ============================================
-    # LLM 配置
+    # LLM 配置（已迁移至数据库 llm_profiles 表）
     # ============================================
-    llm_api_key: str = Field(default="", description="LLM API 密钥")
-    llm_api_base: str = Field(default="", description="LLM API 基础 URL（可选）")
-    llm_model: str = Field(default="gpt-4-turbo", description="默认 LLM 模型")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="最大 Token 数")
-
-    # LLM 温度参数
-    default_temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="默认温度参数")
+    # LLM 配置现在通过 Settings 页面管理，存储在 SQLite 的 llm_profiles 表中。
+    # 首次使用时请在前端设置页面添加 LLM Profile。
 
     # ============================================
     # 状态持久化配置
     # ============================================
     checkpointer_backend: Literal["memory", "sqlite", "postgres"] = Field(
         default="sqlite", description="Checkpointer 后端（memory / sqlite / postgres）"
-    )
-    checkpoint_db_path: str = Field(
-        default="data/checkpoints/checkpoints.db",
-        description="SQLite Checkpointer 数据库路径（仅 checkpointer_backend=sqlite 时生效）",
     )
     database_url: str = Field(
         default="",
@@ -147,16 +135,6 @@ class Settings(BaseSettings):
     taskstore_backend: Literal["sqlite", "postgres"] = Field(
         default="sqlite", description="TaskStore 存储后端（sqlite / postgres）"
     )
-    taskstore_db_path: str = Field(
-        default="data/sqlite/craftflow.db",
-        description="SQLite TaskStore 数据库路径（仅 taskstore_backend=sqlite 时生效）",
-    )
-
-    # ============================================
-    # 外部工具 API 配置
-    # ============================================
-    tavily_api_key: str = Field(default="", description="Tavily Search API 密钥")
-    e2b_api_key: str = Field(default="", description="E2B Code Interpreter API 密钥")
 
     # ============================================
     # 向量数据库配置
@@ -202,14 +180,11 @@ class Settings(BaseSettings):
     redis_max_connections: int = Field(default=20, ge=1, le=100, description="Redis 最大连接数")
 
     # ============================================
-    # 业务逻辑配置
+    # 业务逻辑配置（已迁移至数据库 settings 表）
     # ============================================
-    max_outline_sections: int = Field(default=10, ge=1, le=50, description="大纲最大章节数")
-    max_concurrent_writers: int = Field(default=5, ge=1, le=20, description="并发写作节点数量上限")
-    max_debate_iterations: int = Field(default=3, ge=1, le=10, description="对抗循环最大迭代次数")
-    editor_pass_score: int = Field(default=90, ge=0, le=100, description="主编通过分数阈值")
-    task_timeout: int = Field(default=3600, ge=60, le=86400, description="任务超时时间（秒）")
-    tool_call_timeout: int = Field(default=30, ge=5, le=300, description="工具调用超时时间（秒）")
+    # max_outline_sections, max_concurrent_writers, max_debate_iterations,
+    # editor_pass_score, task_timeout, tool_call_timeout
+    # 现在通过前端设置页面管理，存储在 SQLite 的 settings 表中。
 
     @field_validator("cors_origins")
     @classmethod

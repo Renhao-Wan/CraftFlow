@@ -59,14 +59,18 @@ async def debate_node(state: PolishingState) -> dict:
     fact_check_result = state.get("fact_check_result")
     messages_before = len(state.get("messages", []))
 
+    # 从主图状态读取运行时配置（由 Service 层从数据库注入）
+    max_iterations = state.get("max_debate_iterations", DEFAULT_MAX_ITERATIONS)
+    pass_score = state.get("pass_score", DEFAULT_PASS_SCORE)
+
     # 构建 DebateState 输入
     debate_input: DebateState = {
         "content": content,
         "topic": None,
         "fact_check_result": fact_check_result,
         "current_iteration": 0,
-        "max_iterations": DEFAULT_MAX_ITERATIONS,
-        "pass_score": DEFAULT_PASS_SCORE,
+        "max_iterations": max_iterations,
+        "pass_score": pass_score,
         "author_output": None,
         "editor_feedback": None,
         "editor_score": 0,
@@ -77,9 +81,7 @@ async def debate_node(state: PolishingState) -> dict:
         "error": None,
     }
 
-    logger.info(
-        f"Debate 子图启动 - 最大迭代: {DEFAULT_MAX_ITERATIONS}, " f"通过分数: {DEFAULT_PASS_SCORE}"
-    )
+    logger.info(f"Debate 子图启动 - 最大迭代: {max_iterations}, 通过分数: {pass_score}")
 
     try:
         # 调用编译后的 Debate Subgraph

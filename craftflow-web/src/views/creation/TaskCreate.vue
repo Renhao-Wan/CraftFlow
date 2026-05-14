@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useTaskLifecycle } from '@/composables/useTaskLifecycle'
+import { useSettingsStore } from '@/stores/settings'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const { submitCreation, submitting, submitError } = useTaskLifecycle()
+const settingsStore = useSettingsStore()
 
 const topic = ref('')
 const description = ref('')
+const noLlmError = ref(false)
+const noLlmErrorMsg = ref('尚未配置 LLM 模型，请先添加至少一个配置')
 
 const TOPIC_MAX = 500
 const DESC_MAX = 2000
@@ -29,7 +33,25 @@ const canSubmit = computed(() => {
 
 async function onSubmit(): Promise<void> {
   if (!canSubmit.value) return
+
+  const hasProfiles = await settingsStore.checkProfiles()
+  if (!hasProfiles) {
+    noLlmErrorMsg.value = '尚未配置 LLM 模型，请先添加至少一个配置'
+    noLlmError.value = true
+    return
+  }
+  const hasDefault = await settingsStore.checkHasDefault()
+  if (!hasDefault) {
+    noLlmErrorMsg.value = '未设置默认 LLM 配置，请在设置页面将其中一个配置设为默认'
+    noLlmError.value = true
+    return
+  }
+  noLlmError.value = false
   await submitCreation(topic.value.trim(), description.value.trim() || undefined)
+}
+
+function goToLlmSettings(): void {
+  settingsStore.openSettingsModal('llm')
 }
 
 function onRetry(): void {
@@ -85,6 +107,18 @@ function onRetry(): void {
             {{ descLength }}/{{ DESC_MAX }}
           </span>
         </div>
+      </div>
+
+      <div v-if="noLlmError" class="llm-warning">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span class="llm-warning-text">{{ noLlmErrorMsg }}</span>
+        <button type="button" class="llm-warning-btn" @click="goToLlmSettings">
+          前往设置
+        </button>
       </div>
 
       <ErrorAlert
@@ -245,6 +279,40 @@ function onRetry(): void {
 .submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* LLM 未配置警告 */
+.llm-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 12px 16px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  color: var(--color-warning);
+}
+
+.llm-warning-text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.llm-warning-btn {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+
+.llm-warning-btn:hover {
+  background: var(--color-accent-hover);
 }
 
 @media (max-width: 768px) {

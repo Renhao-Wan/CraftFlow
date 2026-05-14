@@ -128,7 +128,8 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
 
     # 使用 LLM 分析并推荐模式
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         human_message = ROUTER_HUMAN_PROMPT.format(content=content[:2000])  # 限制长度
 
@@ -157,6 +158,9 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
                 ],
             }
 
+    except ValueError:
+        # 配置错误（API Key 未配置等）向上传播，由 start_task_streaming 处理
+        raise
     except Exception as e:
         logger.warning(f"模式推荐失败，使用默认模式 2: {str(e)}")
 
@@ -189,7 +193,8 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
     logger.info("FormatterNode 开始执行")
 
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         human_message = FORMATTER_HUMAN_PROMPT.format(content=content)
 
@@ -214,11 +219,7 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"FormatterNode 执行失败: {str(e)}")
-        return {
-            "error": f"格式化失败: {str(e)}",
-            "current_node": "formatter",
-            "messages": [AIMessage(content=f"格式化失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================
@@ -253,7 +254,8 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     await _report_progress(task_id, "fact_checker", "事实核查", fc_start)
 
     try:
-        llm = get_factchecker_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_factchecker_llm()
         llm_with_tools = llm.bind_tools(SEARCH_TOOLS)
 
         human_message = FACT_CHECKER_HUMAN_PROMPT.format(content=content)
@@ -378,12 +380,7 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"FactCheckerNode 执行失败: {str(e)}")
-        return {
-            "error": f"事实核查失败: {str(e)}",
-            "needs_revision": False,
-            "current_node": "fact_checker",
-            "messages": [AIMessage(content=f"事实核查失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================

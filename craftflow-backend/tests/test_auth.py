@@ -156,13 +156,13 @@ class TestRestAuthIntegration:
         """创建测试用 FastAPI 应用"""
         from unittest.mock import AsyncMock
 
-        from app.api.dependencies import get_creation_service, get_polishing_service, get_task_store
+        from app.adapters.base import BusinessAdapter
+        from app.api.dependencies import get_adapter, get_creation_service, get_polishing_service
         from app.api.v1.creation import router as creation_router
         from app.api.v1.tasks import router as tasks_router
         from app.core.exceptions import register_exception_handlers
         from app.services.creation_svc import CreationService
         from app.services.polishing_svc import PolishingService
-        from app.services.task_store import AbstractTaskStore
 
         application = FastAPI()
         register_exception_handlers(application)
@@ -174,13 +174,13 @@ class TestRestAuthIntegration:
         mock_creation._tasks = {}
         mock_polishing = AsyncMock(spec=PolishingService)
         mock_polishing._tasks = {}
-        mock_store = AsyncMock(spec=AbstractTaskStore)
-        mock_store.get_task.return_value = None
-        mock_store.get_task_list.return_value = ([], 0)
+        mock_adapter = AsyncMock(spec=BusinessAdapter)
+        mock_adapter.get_task.return_value = None
+        mock_adapter.get_task_list.return_value = ([], 0)
 
         application.dependency_overrides[get_creation_service] = lambda: mock_creation
         application.dependency_overrides[get_polishing_service] = lambda: mock_polishing
-        application.dependency_overrides[get_task_store] = lambda: mock_store
+        application.dependency_overrides[get_adapter] = lambda: mock_adapter
 
         return application
 
