@@ -400,9 +400,42 @@ async def lifespan(app: FastAPI):
 | Graph (编译后) | 是 | `StateGraph.compile()` 结果在启动时创建并全局共享 |
 | State / ThreadState | 否 | 每个 `thread_id` 独立，通过 `config` 隔离 |
 
+## 十一、流式输出架构
+
+### 11.1 通信协议分层
+
+CraftFlow 采用三种通信协议，各司其职：
+
+| 协议 | 用途 | 特征 | 典型场景 |
+|------|------|------|----------|
+| **WebSocket** | 任务生命周期 | 长连接、双向、发布/订阅 | 任务创建、订阅、中断恢复 |
+| **REST** | CRUD 操作 | 短连接、请求/响应 | 设置、任务列表、删除 |
+| **SSE** | 流式输出 | 短连接、单向流 | LLM 对话、流式生成 |
+
+### 11.2 SSE 流式对话
+
+**端点**：`POST /api/v1/chat`
+
+**数据流**：
+```
+standalone 模式：
+Frontend ──SSE──→ Python 后端 ──chunk──→ Frontend
+
+server 模式：
+Frontend ──SSE──→ Java 后端 ──SSE──→ Python 后端 ──chunk──→ Java ──chunk──→ Frontend
+```
+
+**两个入口**：
+| 入口 | 位置 | 用途 | 协议 |
+|------|------|------|------|
+| 设置页测试 | Profile 卡片内 | 快速验证配置 | REST |
+| 对话页 | 侧边栏独立页面 | 通用对话 | SSE |
+
+**详细设计**：参考 [streaming-architecture.md](streaming-architecture.md)
+
 ---
 
-**文档版本**: v2.1
+**文档版本**: v2.2
 **创建日期**: 2026-05-12
-**最后更新**: 2026-05-13
+**最后更新**: 2026-05-14
 **维护者**: Renhao-Wan
