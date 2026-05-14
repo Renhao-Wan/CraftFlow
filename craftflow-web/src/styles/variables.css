@@ -70,7 +70,8 @@
   --space-3xl: 64px;
 
   /* Layout */
-  --sidebar-width: 240px;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 60px;
   --header-height: 56px;
 
   /* Radius */

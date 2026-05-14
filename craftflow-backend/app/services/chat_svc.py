@@ -68,6 +68,7 @@ class ChatService:
         """SSE 流式对话生成器。
 
         调用 LLMFactory.create_llm 获取 LLM 实例，使用 astream() 流式输出。
+        将 LLM 返回的 chunk 拆分为单字符逐个输出，实现平滑的打字机效果。
 
         Args:
             request: 对话请求，包含消息历史和可选的 profile_id
