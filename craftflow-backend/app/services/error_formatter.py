@@ -3,8 +3,6 @@
 将后端异常转换为用户友好的错误消息，避免暴露内部实现细节。
 """
 
-import re
-
 
 def format_error_message(error: Exception) -> str:
     """将异常转换为用户友好的错误消息
@@ -37,7 +35,9 @@ def format_error_message(error: Exception) -> str:
         return "指定的模型不存在，请在设置页面检查模型名称"
 
     # 网络连接错误
-    if any(kw in raw.lower() for kw in ["connectionerror", "connection refused", "connect timeout"]):
+    if any(
+        kw in raw.lower() for kw in ["connectionerror", "connection refused", "connect timeout"]
+    ):
         return "无法连接到 LLM 服务，请检查网络连接或 API 地址配置"
 
     # 请求超时

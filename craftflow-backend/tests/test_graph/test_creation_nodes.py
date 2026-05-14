@@ -77,7 +77,11 @@ class TestPlannerNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.creation.nodes.get_planner_llm", new_callable=AsyncMock, return_value=mock_llm):
+        with patch(
+            "app.graph.creation.nodes.get_planner_llm",
+            new_callable=AsyncMock,
+            return_value=mock_llm,
+        ):
             state: CreationState = {
                 "topic": "人工智能",
                 "description": "讨论 AI 的发展趋势",
@@ -106,7 +110,11 @@ class TestPlannerNode:
         mock_llm = AsyncMock()
         mock_llm.ainvoke.return_value = mock_response
 
-        with patch("app.graph.creation.nodes.get_planner_llm", new_callable=AsyncMock, return_value=mock_llm):
+        with patch(
+            "app.graph.creation.nodes.get_planner_llm",
+            new_callable=AsyncMock,
+            return_value=mock_llm,
+        ):
             state: CreationState = {
                 "topic": "测试主题",
                 "description": None,
@@ -135,7 +143,9 @@ class TestWriterNode:
             content="## 第一章内容\n\n这是第一章的详细内容..."
         )
 
-        with patch("app.graph.creation.nodes.get_writer_llm", new_callable=AsyncMock, return_value=mock_llm):
+        with patch(
+            "app.graph.creation.nodes.get_writer_llm", new_callable=AsyncMock, return_value=mock_llm
+        ):
             state: CreationState = {
                 "topic": "人工智能",
                 "description": None,
@@ -188,7 +198,11 @@ class TestReducerNode:
             content="# 人工智能\n\n## 引言\n\n介绍内容...\n\n## 总结\n\n归纳内容..."
         )
 
-        with patch("app.graph.creation.nodes.get_default_llm", new_callable=AsyncMock, return_value=mock_llm):
+        with patch(
+            "app.graph.creation.nodes.get_default_llm",
+            new_callable=AsyncMock,
+            return_value=mock_llm,
+        ):
             state: CreationState = {
                 "topic": "人工智能",
                 "description": None,

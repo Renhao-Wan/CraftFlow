@@ -16,7 +16,6 @@ from app.core.logger import get_logger
 from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
 from app.graph.creation.prompts import (
     PLANNER_HUMAN_PROMPT,
-    PLANNER_SYSTEM_PROMPT,
     REDUCER_HUMAN_PROMPT,
     REDUCER_SYSTEM_PROMPT,
     WRITER_HUMAN_PROMPT,
