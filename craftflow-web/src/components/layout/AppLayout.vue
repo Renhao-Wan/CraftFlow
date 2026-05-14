@@ -60,7 +60,8 @@ function openSettings(): void {
 .app-content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   background: var(--color-bg);
   padding: var(--space-xl) var(--space-2xl);
   transition: margin-left var(--transition-normal);
