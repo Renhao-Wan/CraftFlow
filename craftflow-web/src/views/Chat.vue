@@ -15,6 +15,8 @@ const { messages, isStreaming, error, send, cancel, clear } = useChat()
 const inputText = ref('')
 const selectedProfileId = ref<string>('')
 const messagesContainer = ref<HTMLElement | null>(null)
+const inputField = ref<HTMLTextAreaElement | null>(null)
+const hoveredIndex = ref<number | null>(null)
 
 const profileOptions = computed<SelectOption[]>(() =>
   settingsStore.profiles.map((p) => ({
@@ -70,6 +72,13 @@ watch(
   () => scrollToBottom(),
 )
 
+// 流式输出结束后重新聚焦输入框
+watch(isStreaming, (val) => {
+  if (!val) {
+    nextTick(() => inputField.value?.focus())
+  }
+})
+
 // ─── 发送消息 ──────────────────────────────────────────────
 
 async function handleSend(): Promise<void> {
@@ -79,26 +88,51 @@ async function handleSend(): Promise<void> {
   await send(text, selectedProfileId.value || undefined)
 }
 
+/** 复制消息内容到剪贴板 */
+async function copyMessage(content: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(content)
+  } catch {
+    // 降级方案
+    const textarea = document.createElement('textarea')
+    textarea.value = content
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+}
+
+/** 重试该条 AI 回复对应的用户消息 */
+async function retryMessage(index: number): Promise<void> {
+  if (isStreaming.value) return
+
+  // 找到该 AI 消息之前的最近一条用户消息
+  let userIndex = -1
+  for (let i = index - 1; i >= 0; i--) {
+    if (messages.value[i].role === 'user') {
+      userIndex = i
+      break
+    }
+  }
+  if (userIndex === -1) return
+
+  const userContent = messages.value[userIndex].content
+
+  // 删除从用户消息开始到当前 AI 消息的所有消息
+  messages.value.splice(userIndex, index - userIndex + 1)
+
+  // 重新发送
+  await send(userContent, selectedProfileId.value || undefined)
+}
+
 function handleKeydown(e: KeyboardEvent): void {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleSend()
   }
-}
-
-// ─── 复制对话 ──────────────────────────────────────────────
-
-function copyConversation(): void {
-  const text = messages.value
-    .map((m) => {
-      const label = m.role === 'user' ? '**用户**' : '**AI**'
-      return `${label}\n${m.content}`
-    })
-    .join('\n\n---\n\n')
-
-  navigator.clipboard.writeText(text).catch(() => {
-    // 静默失败
-  })
 }
 </script>
 
@@ -114,18 +148,6 @@ function copyConversation(): void {
           placeholder="选择模型"
         />
         <button
-          v-if="messages.length > 0"
-          class="header-btn"
-          title="复制对话"
-          @click="copyConversation"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-        </button>
-        <button
-          v-if="messages.length > 0"
           class="header-btn"
           title="清空对话"
           @click="clear"
@@ -169,6 +191,7 @@ function copyConversation(): void {
         </div>
         <p class="welcome-title">开始对话</p>
         <p class="welcome-desc">输入消息，与 AI 模型自由交流</p>
+        <p class="welcome-hint">临时对话，关闭页面后聊天记录不会保存</p>
       </div>
 
       <!-- 消息列表 -->
@@ -177,16 +200,36 @@ function copyConversation(): void {
         :key="index"
         class="message-row"
         :class="msg.role"
+        @mouseenter="hoveredIndex = index"
+        @mouseleave="hoveredIndex = null"
       >
         <div class="message-bubble">
           <template v-if="msg.role === 'assistant'">
-            <!-- 流式期间和结束后都渲染 Markdown -->
             <MarkdownRenderer v-if="msg.content" :content="msg.content" />
-            <span v-else-if="isStreaming && index === messages.length - 1" class="typing-cursor" />
+            <span v-if="isStreaming && index === messages.length - 1" class="typing-cursor" />
           </template>
           <template v-else>
             <p class="user-text">{{ msg.content }}</p>
           </template>
+        </div>
+        <!-- 消息操作按钮（始终占位，悬浮时显示） -->
+        <div
+          v-if="msg.content && !isStreaming"
+          class="message-actions"
+          :class="{ visible: hoveredIndex === index }"
+        >
+          <button class="action-btn" title="复制" @click.stop="copyMessage(msg.content)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+          <button v-if="msg.role === 'assistant'" class="action-btn" title="重试" @click.stop="retryMessage(index)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -205,6 +248,7 @@ function copyConversation(): void {
     <div v-if="settingsStore.profiles.length > 0" class="input-area">
       <div class="input-wrapper">
         <textarea
+          ref="inputField"
           v-model="inputText"
           class="input-field"
           placeholder="输入消息...（Enter 发送，Shift+Enter 换行）"
@@ -243,7 +287,7 @@ function copyConversation(): void {
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100vh - var(--space-xl) * 2);
   max-width: 800px;
   margin: 0 auto;
 }
@@ -261,7 +305,7 @@ function copyConversation(): void {
 
 .chat-title {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--color-text);
   margin: 0;
@@ -369,27 +413,36 @@ function copyConversation(): void {
   margin: 0;
 }
 
+.welcome-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-sm);
+  padding: 6px 12px;
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-md);
+}
+
 /* ─── 消息气泡 ──────────────────────────────────────────── */
 
 .message-row {
   display: flex;
-  margin-bottom: var(--space-md);
+  flex-direction: column;
+  margin-bottom: var(--space-lg);
   animation: fadeSlideIn 200ms ease-out;
 }
 
 .message-row.user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .message-row.assistant {
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .message-bubble {
-  max-width: 85%;
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
-  line-height: 1.7;
+  max-width: 70%;
+  padding: 10px 14px;
+  line-height: 1.6;
   font-size: 14px;
   word-break: break-word;
 }
@@ -397,14 +450,62 @@ function copyConversation(): void {
 .message-row.user .message-bubble {
   background: var(--color-accent);
   color: var(--color-bg-surface);
-  border-bottom-right-radius: var(--radius-sm);
+  border-radius: 18px 18px 4px 18px;
 }
 
 .message-row.assistant .message-bubble {
-  background: var(--color-bg-surface);
+  background: var(--color-accent-soft);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-bottom-left-radius: var(--radius-sm);
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* AI 消息内容样式 */
+.message-row.assistant .message-bubble :deep(p) {
+  margin: 0 0 10px;
+}
+
+.message-row.assistant .message-bubble :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.message-row.assistant .message-bubble :deep(ul),
+.message-row.assistant .message-bubble :deep(ol) {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.message-row.assistant .message-bubble :deep(li) {
+  margin-bottom: 3px;
+}
+
+.message-row.assistant .message-bubble :deep(code) {
+  background: var(--color-bg-surface);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.message-row.assistant .message-bubble :deep(pre) {
+  background: var(--color-code-bg);
+  color: var(--color-code-text);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.message-row.assistant .message-bubble :deep(pre code) {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+.message-row.assistant .message-bubble :deep(blockquote) {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 10px;
+  margin: 10px 0;
+  color: var(--color-text-secondary);
 }
 
 .user-text {
@@ -412,20 +513,68 @@ function copyConversation(): void {
   white-space: pre-wrap;
 }
 
-/* ─── 打字光标 ──────────────────────────────────────────── */
+/* ─── 消息操作按钮 ──────────────────────────────────────── */
 
-.typing-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 16px;
-  background: var(--color-accent);
-  vertical-align: text-bottom;
-  animation: blink 1s step-end infinite;
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  padding-left: 2px;
+  height: 28px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.message-actions.visible {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── 加载动画（呼吸光环） ─────────────────────────────── */
+
+.typing-cursor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.typing-cursor::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ─── 错误提示 ──────────────────────────────────────────── */
