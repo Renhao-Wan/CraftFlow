@@ -21,12 +21,12 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.errors import GraphInterrupt
 from langgraph.types import Command
 
+from app.adapters.base import BusinessAdapter
 from app.core.exceptions import GraphExecutionError, TaskNotFoundError, ValidationError
 from app.core.logger import get_logger
 from app.graph.creation.builder import get_creation_graph
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.checkpointer import cleanup_checkpoint
-from app.adapters.base import BusinessAdapter
 from app.services.error_formatter import format_error_message
 
 logger = get_logger(__name__)
@@ -328,7 +328,10 @@ class CreationService:
                 self._update_task(task_id, status="failed", error=error_msg)
                 logger.error(f"创作任务结果异常 - task_id: {task_id}, error: {error_msg}")
                 await self._persist_and_cleanup(
-                    task_id, thread_id, "failed", error=error_msg,
+                    task_id,
+                    thread_id,
+                    "failed",
+                    error=error_msg,
                 )
                 raise GraphExecutionError(
                     message=error_msg,
@@ -779,7 +782,10 @@ class CreationService:
                     logger.error(f"创作任务结果异常 - task_id: {task_id}, error: {error_msg}")
 
                     await self._persist_and_cleanup(
-                        task_id, thread_id, "failed", error=error_msg,
+                        task_id,
+                        thread_id,
+                        "failed",
+                        error=error_msg,
                     )
                     await broadcaster.broadcast_error(task_id, error_msg)
                 else:

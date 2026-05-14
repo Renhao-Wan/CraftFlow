@@ -255,9 +255,7 @@ class TestWritingParamsApi:
         )
 
         assert response.status_code == 200
-        mock_adapter.update_writing_params.assert_called_once_with(
-            {"max_outline_sections": 10}
-        )
+        mock_adapter.update_writing_params.assert_called_once_with({"max_outline_sections": 10})
 
     @pytest.mark.asyncio
     async def test_update_empty_writing_params(self, client, mock_adapter):

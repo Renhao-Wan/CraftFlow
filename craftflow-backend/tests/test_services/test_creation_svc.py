@@ -38,6 +38,12 @@ def mock_adapter():
     adapter.get_task = AsyncMock(return_value=None)
     adapter.get_task_list = AsyncMock(return_value=([], 0))
     adapter.get_writing_params = AsyncMock(return_value=_DEFAULT_WRITING_PARAMS)
+    adapter.get_llm_profile = AsyncMock(
+        return_value={"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}
+    )
+    adapter.get_all_llm_profiles = AsyncMock(
+        return_value=[{"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}]
+    )
     return adapter
 
 
@@ -95,8 +101,9 @@ class TestStartTask:
         _setup_graph_mocks(
             mock_graph,
             {
-                "current_node": "outline_confirmation",
-                "outline": [],
+                "current_node": "reducer",
+                "final_draft": "这是一篇关于人工智能的测试文章。",
+                "outline": [{"title": "引言", "summary": "介绍 AI"}],
             },
         )
 
@@ -126,7 +133,13 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_task_saves_metadata(self, service, mock_graph, mock_adapter):
         """测试任务元数据正确保存到 TaskStore"""
-        _setup_graph_mocks(mock_graph, {"current_node": "reducer"})
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "current_node": "reducer",
+                "final_draft": "测试内容",
+            },
+        )
 
         result = await service.start_task(topic="测试主题")
 
@@ -156,7 +169,13 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_task_passes_correct_state(self, service, mock_graph):
         """测试传递正确的初始状态给 Graph"""
-        _setup_graph_mocks(mock_graph, {})
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "current_node": "reducer",
+                "final_draft": "测试内容",
+            },
+        )
 
         await service.start_task(topic="Python 编程", description="入门教程")
 
@@ -301,9 +320,7 @@ class TestGetTaskStatus:
         assert status.awaiting == "outline_confirmation"
 
     @pytest.mark.asyncio
-    async def test_get_status_completed_task_with_result(
-        self, service, mock_graph, mock_adapter
-    ):
+    async def test_get_status_completed_task_with_result(self, service, mock_graph, mock_adapter):
         """测试查询已完成任务的状态包含结果（从 TaskStore 查询）"""
         _setup_graph_mocks(
             mock_graph,

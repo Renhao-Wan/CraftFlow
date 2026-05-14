@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS llm_profiles (
 
 ### 3.3 存储位置
 
-LLM Profile 存储在 **TaskStore 同一个数据库**中（`craftflow.db` / PostgreSQL），不新建独立数据库。
+LLM Profile 存储在 **tasks 表同一个数据库**中（`craftflow.db` / PostgreSQL），不新建独立数据库。
 
 | 模式 | 数据库 | 说明 |
 |------|--------|------|

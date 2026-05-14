@@ -37,6 +37,12 @@ def mock_adapter():
     adapter.get_task = AsyncMock(return_value=None)
     adapter.get_task_list = AsyncMock(return_value=([], 0))
     adapter.get_writing_params = AsyncMock(return_value=_DEFAULT_WRITING_PARAMS)
+    adapter.get_llm_profile = AsyncMock(
+        return_value={"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}
+    )
+    adapter.get_all_llm_profiles = AsyncMock(
+        return_value=[{"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}]
+    )
     return adapter
 
 
@@ -124,6 +130,7 @@ class TestStartTask:
             mock_graph,
             {
                 "fact_check_result": "事实核查完成，准确性: high",
+                "final_content": "# 测试内容\n\n核查后的内容",
                 "current_node": "fact_checker",
             },
         )
@@ -178,7 +185,12 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_task_passes_correct_state(self, service, mock_graph):
         """测试传递正确的初始状态"""
-        _setup_graph_mocks(mock_graph, {})
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "final_content": "测试结果",
+            },
+        )
 
         content = "# 测试文章\n\n这是正文内容"
         await service.start_task(content=content, mode=2)
@@ -267,6 +279,7 @@ class TestGetTaskStatus:
             mock_graph,
             {
                 "fact_check_result": "核查通过",
+                "final_content": "# 测试内容\n\n核查后的内容",
                 "current_node": "fact_checker",
             },
         )
