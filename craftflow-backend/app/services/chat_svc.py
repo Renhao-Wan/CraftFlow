@@ -46,6 +46,7 @@ def _map_stream_error(error: Exception) -> str:
         return str(error)
     return "对话请求失败，请稍后重试"
 
+
 logger = get_logger(__name__)
 
 
