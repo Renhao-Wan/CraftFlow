@@ -31,6 +31,54 @@ function applyTheme(theme: Theme): void {
   options.forEach(option => {
     option.classList.toggle('active', option.dataset.theme === theme)
   })
+
+  // Update screenshot based on theme
+  updateScreenshotForTheme(theme)
+}
+
+function updateScreenshotForTheme(theme: Theme): void {
+  const screenshot = document.querySelector<HTMLImageElement>('.hero__screenshot')
+  if (!screenshot) return
+
+  const themeSrcs = screenshot.dataset.themeSrcs
+  if (!themeSrcs) return
+
+  try {
+    const srcMap = JSON.parse(themeSrcs)
+    const newSrc = srcMap[theme] || srcMap['light']
+
+    // Only update if src changed
+    if (screenshot.src !== new URL(newSrc, window.location.origin).href) {
+      screenshot.src = newSrc
+    }
+  } catch {
+    // Fallback: keep current src
+  }
+}
+
+function initScreenshotFallback(): void {
+  const screenshot = document.querySelector<HTMLImageElement>('.hero__screenshot')
+  const fallback = document.querySelector<HTMLElement>('.hero__fallback')
+
+  if (!screenshot || !fallback) return
+
+  // Show fallback if image fails to load
+  screenshot.addEventListener('error', () => {
+    screenshot.style.display = 'none'
+    fallback.classList.add('active')
+  })
+
+  // Hide fallback if image loads successfully
+  screenshot.addEventListener('load', () => {
+    screenshot.style.display = 'block'
+    fallback.classList.remove('active')
+  })
+
+  // Check if image already failed (cached error)
+  if (screenshot.complete && !screenshot.naturalWidth) {
+    screenshot.style.display = 'none'
+    fallback.classList.add('active')
+  }
 }
 
 function initThemeToggle(): void {
@@ -199,4 +247,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initSmoothScroll()
   initScrollReveal()
   initOnlineAccess()
+  initScreenshotFallback()
 })
