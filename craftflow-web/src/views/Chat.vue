@@ -112,14 +112,14 @@ async function retryMessage(index: number): Promise<void> {
   // 找到该 AI 消息之前的最近一条用户消息
   let userIndex = -1
   for (let i = index - 1; i >= 0; i--) {
-    if (messages.value[i].role === 'user') {
+    if (messages.value[i]!.role === 'user') {
       userIndex = i
       break
     }
   }
   if (userIndex === -1) return
 
-  const userContent = messages.value[userIndex].content
+  const userContent = messages.value[userIndex]!.content
 
   // 删除从用户消息开始到当前 AI 消息的所有消息
   messages.value.splice(userIndex, index - userIndex + 1)
