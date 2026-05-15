@@ -1,0 +1,137 @@
+# ============================================================
+# Release CI — 多平台构建并发布到 GitHub Release
+# ============================================================
+# 触发条件：
+#   - 推送 v* 标签（如 v0.1.0）
+# 流程：
+#   1. prepare.js 同步源码到 craftflow-desktop/
+#   2. 构建前端（Vue）
+#   3. 构建后端（PyInstaller，平台特定）
+#   4. 打包 Electron 应用（electron-builder）
+#   5. 上传产物到 GitHub Release
+#
+# 平台矩阵：
+#   - Windows x64
+#   - macOS x64 (macos-13)
+#   - macOS arm64 (macos-14)
+#   - Linux x64
+# ============================================================
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# 允许创建 Release
+permissions:
+  contents: write
+
+jobs:
+  # ── 构建并发布 ─────────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.os }} / ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            arch: x64
+            electron_arch: x64
+          - os: macos-13
+            platform: mac
+            arch: x64
+            electron_arch: x64
+          - os: macos-14
+            platform: mac
+            arch: arm64
+            electron_arch: arm64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            electron_arch: x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Node.js 环境 ──
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # ── Python 环境 ──
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── uv 包管理器 ──
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # ── Step 1: 同步源码 ──
+      - name: Prepare source files
+        run: node scripts/prepare.js
+
+      # ── Step 2: 安装 Electron 依赖 ──
+      - name: Install Electron dependencies
+        working-directory: craftflow-desktop
+        run: npm ci
+
+      # ── Step 3: 构建前端 ──
+      - name: Install frontend dependencies
+        working-directory: craftflow-desktop/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: craftflow-desktop/frontend
+        run: npm run build
+
+      # ── Step 4: 构建后端（PyInstaller）──
+      - name: Install backend dependencies
+        working-directory: craftflow-desktop/backend
+        run: uv sync --extra build
+
+      - name: Build backend with PyInstaller
+        working-directory: craftflow-desktop/backend
+        run: uv run python -m PyInstaller craftflow.spec --distpath dist --workpath build --clean
+
+      # ── Step 5: 打包 Electron 应用 ──
+      - name: Package Electron app (Windows)
+        if: matrix.platform == 'win'
+        working-directory: craftflow-desktop
+        run: npx electron-builder --win --${{ matrix.electron_arch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package Electron app (macOS)
+        if: matrix.platform == 'mac'
+        working-directory: craftflow-desktop
+        run: npx electron-builder --mac --${{ matrix.electron_arch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package Electron app (Linux)
+        if: matrix.platform == 'linux'
+        working-directory: craftflow-desktop
+        run: npx electron-builder --linux --${{ matrix.electron_arch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Step 6: 上传产物到 Release ──
+      - name: Upload artifacts to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            craftflow-desktop/release/*.exe
+            craftflow-desktop/release/*.dmg
+            craftflow-desktop/release/*.AppImage
+            craftflow-desktop/release/*.yml
+            craftflow-desktop/release/*.yaml
+            craftflow-desktop/release/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
