@@ -24,12 +24,12 @@ withDefaults(
         cx="12"
         cy="12"
         r="10"
-        stroke="#e5e7eb"
+        stroke="var(--color-border)"
         stroke-width="3"
       />
       <path
         d="M12 2a10 10 0 0 1 10 10"
-        stroke="#2563eb"
+        stroke="var(--color-accent)"
         stroke-width="3"
         stroke-linecap="round"
       />
@@ -51,7 +51,7 @@ withDefaults(
 
 .spinner-label {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 @keyframes spin {

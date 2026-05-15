@@ -1,116 +1,37 @@
-"""SQLite 任务持久化存储
+"""TaskStore 抽象接口与工厂
 
-使用 aiosqlite 将终态任务（completed / failed）和中断任务（interrupted）持久化到 SQLite。
-运行中任务（running）继续用 _tasks dict 内存管理。
-
-数据库路径：data/sqlite/craftflow.db（相对于 craftflow-backend/）
-桌面版：%APPDATA%/CraftFlow/sqlite/craftflow.db
+定义 TaskStore 的抽象接口，通过工厂函数根据配置创建具体的存储实现：
+- SqliteTaskStore：桌面端/开发环境，使用 aiosqlite
+- PostgresTaskStore：服务端/生产环境，使用 asyncpg
 """
 
-import sys
-from pathlib import Path
+from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-import aiosqlite
 
-from app.core.logger import get_logger
+class AbstractTaskStore(ABC):
+    """TaskStore 抽象接口
 
-logger = get_logger(__name__)
-
-
-def _get_db_dir() -> Path:
-    """获取 SQLite 数据库目录
-
-    桌面版：使用 %APPDATA%/CraftFlow/sqlite/
-    开发环境：使用 data/sqlite/
-    """
-    if getattr(sys, 'frozen', False):
-        from desktop_config import get_sqlite_dir
-        return get_sqlite_dir()
-    return Path(__file__).resolve().parent.parent.parent / "data" / "sqlite"
-
-
-# 数据库文件路径
-_DB_DIR = _get_db_dir()
-_DB_PATH = _DB_DIR / "craftflow.db"
-
-_CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS tasks (
-    task_id TEXT PRIMARY KEY,
-    graph_type TEXT NOT NULL,
-    status TEXT NOT NULL,
-    topic TEXT,
-    description TEXT,
-    content TEXT,
-    mode INTEGER,
-    result TEXT,
-    error TEXT,
-    progress REAL DEFAULT 100.0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);
-"""
-
-_CREATE_INDEX_SQL = """
-CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
-"""
-
-
-class TaskStore:
-    """SQLite 任务持久化存储（终态任务）
-
-    任务完成后调用 save_task() 将结果写入 SQLite。
-    历史页面通过 get_task_list() 一次查询获取全部任务。
+    定义任务持久化存储的标准接口，所有具体实现必须继承此类。
     """
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
-        self._db_path = db_path or _DB_PATH
-        self._db: Optional[aiosqlite.Connection] = None
-
+    @abstractmethod
     async def init_db(self) -> None:
         """初始化数据库连接和表结构"""
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = await aiosqlite.connect(str(self._db_path))
-        await self._db.execute(_CREATE_TABLE_SQL)
-        await self._db.execute(_CREATE_INDEX_SQL)
-        await self._db.commit()
-        logger.info(f"SQLite TaskStore 初始化完成 - {self._db_path}")
 
+    @abstractmethod
     async def save_task(self, task: dict[str, Any]) -> None:
-        """保存或更新任务记录（INSERT OR REPLACE）
+        """保存或更新任务记录
 
         Args:
             task: 任务数据字典，必须包含 task_id, graph_type, status, created_at, updated_at
-                  可选: topic, description, content, mode, result, error, progress
         """
-        if self._db is None:
-            raise RuntimeError("TaskStore 未初始化，请先调用 init_db()")
 
-        await self._db.execute(
-            """INSERT OR REPLACE INTO tasks
-            (task_id, graph_type, status, topic, description, content, mode,
-             result, error, progress, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                task["task_id"],
-                task["graph_type"],
-                task["status"],
-                task.get("topic"),
-                task.get("description"),
-                task.get("content"),
-                task.get("mode"),
-                task.get("result"),
-                task.get("error"),
-                task.get("progress", 100.0),
-                task["created_at"],
-                task["updated_at"],
-            ),
-        )
-        await self._db.commit()
-        logger.debug(f"任务已保存到 SQLite - task_id: {task['task_id']}")
-
+    @abstractmethod
     async def get_task(
-        self, task_id: str, graph_type: Optional[str] = None,
+        self,
+        task_id: str,
+        graph_type: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
         """根据 task_id 查询单个任务
 
@@ -121,41 +42,20 @@ class TaskStore:
         Returns:
             任务数据字典，不存在时返回 None
         """
-        if self._db is None:
-            raise RuntimeError("TaskStore 未初始化")
 
-        if graph_type:
-            cursor = await self._db.execute(
-                "SELECT * FROM tasks WHERE task_id = ? AND graph_type = ?",
-                (task_id, graph_type),
-            )
-        else:
-            cursor = await self._db.execute(
-                "SELECT * FROM tasks WHERE task_id = ?", (task_id,),
-            )
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        return _row_to_dict(cursor, row)
-
+    @abstractmethod
     async def get_interrupted_tasks(self) -> list[dict[str, Any]]:
         """查询所有中断状态的任务（用于服务重启后恢复到内存）
 
         Returns:
             中断状态的任务数据字典列表，按创建时间降序
         """
-        if self._db is None:
-            raise RuntimeError("TaskStore 未初始化")
 
-        cursor = await self._db.execute(
-            "SELECT * FROM tasks WHERE status = ? ORDER BY created_at DESC",
-            ("interrupted",),
-        )
-        rows = await cursor.fetchall()
-        return [_row_to_dict(cursor, row) for row in rows]
-
+    @abstractmethod
     async def get_task_list(
-        self, limit: int = 50, offset: int = 0,
+        self,
+        limit: int = 50,
+        offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
         """查询任务列表（按创建时间降序）
 
@@ -166,49 +66,54 @@ class TaskStore:
         Returns:
             (任务数据字典列表, 总数)
         """
-        if self._db is None:
-            raise RuntimeError("TaskStore 未初始化")
 
-        # 查询总数
-        cursor = await self._db.execute("SELECT COUNT(*) FROM tasks")
-        row = await cursor.fetchone()
-        total = row[0] if row else 0
-
-        # 查询分页数据
-        cursor = await self._db.execute(
-            "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
-        rows = await cursor.fetchall()
-        return [_row_to_dict(cursor, row) for row in rows], total
-
+    @abstractmethod
     async def delete_task(self, task_id: str) -> bool:
         """删除任务记录
 
         Returns:
             是否成功删除（True=有记录被删除，False=记录不存在）
         """
-        if self._db is None:
-            raise RuntimeError("TaskStore 未初始化")
 
-        cursor = await self._db.execute(
-            "DELETE FROM tasks WHERE task_id = ?", (task_id,),
-        )
-        await self._db.commit()
-        deleted = cursor.rowcount > 0
-        if deleted:
-            logger.debug(f"任务已从 SQLite 删除 - task_id: {task_id}")
-        return deleted
-
+    @abstractmethod
     async def close(self) -> None:
         """关闭数据库连接"""
-        if self._db is not None:
-            await self._db.close()
-            self._db = None
-            logger.info("SQLite TaskStore 连接已关闭")
 
 
-def _row_to_dict(cursor: aiosqlite.Cursor, row: aiosqlite.Row) -> dict[str, Any]:
-    """将数据库行转换为字典"""
-    columns = [desc[0] for desc in cursor.description]
-    return dict(zip(columns, row))
+def create_task_store() -> AbstractTaskStore:
+    """根据配置创建 TaskStore 实例
+
+    读取 settings.taskstore_backend 决定使用哪种存储后端：
+    - sqlite：使用 SqliteTaskStore（默认，适用于桌面端和开发环境）
+    - postgres：使用 PostgresTaskStore（适用于服务端生产环境）
+
+    SQLite 路径使用 _get_default_db_path() 基于文件位置推导绝对路径，
+    不依赖当前工作目录。
+
+    Returns:
+        AbstractTaskStore 的具体实现实例
+    """
+    from app.core.config import settings
+
+    backend = settings.taskstore_backend
+
+    if backend == "sqlite":
+        from app.services.task_store_sqlite import SqliteTaskStore
+
+        return SqliteTaskStore()  # 使用 _get_default_db_path()，绝对路径
+
+    elif backend == "postgres":
+        from app.services.task_store_postgres import PostgresTaskStore
+
+        if not settings.database_url:
+            raise ValueError("PostgreSQL 模式下必须配置 DATABASE_URL")
+        return PostgresTaskStore(database_url=settings.database_url)
+
+    else:
+        raise ValueError(f"不支持的 TaskStore 后端: {backend}")
+
+
+__all__ = [
+    "AbstractTaskStore",
+    "create_task_store",
+]

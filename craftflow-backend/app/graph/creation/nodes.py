@@ -13,16 +13,16 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_custom_llm
+from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
 from app.graph.creation.prompts import (
     PLANNER_HUMAN_PROMPT,
-    PLANNER_SYSTEM_PROMPT,
     REDUCER_HUMAN_PROMPT,
     REDUCER_SYSTEM_PROMPT,
     WRITER_HUMAN_PROMPT,
     WRITER_SYSTEM_PROMPT,
     format_outline_for_display,
     format_sections_for_reducer,
+    get_planner_system_prompt,
 )
 from app.graph.creation.state import CreationState, OutlineItem, SectionContent
 
@@ -136,9 +136,13 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例（大纲生成需要更大的 max_tokens 以容纳完整 JSON）
-        llm = get_custom_llm(max_tokens=8192)
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_planner_llm()
 
-        # 构建 Prompt
+        # 构建 Prompt（动态注入章节数上限）
+        max_sections = state.get("max_outline_sections", 8)
+        system_prompt = get_planner_system_prompt(max_sections)
+
         description = state.get("description", "")
         description_section = f"**补充描述**：{description}" if description else ""
 
@@ -149,12 +153,14 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
         # 调用 LLM
         messages = [
-            SystemMessage(content=PLANNER_SYSTEM_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=human_message),
         ]
 
         response = await llm.ainvoke(messages)
-        response_content = response.content if isinstance(response.content, str) else str(response.content)
+        response_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         # 解析大纲（支持多种 JSON 结构）
         outline_data = _extract_json_from_response(response_content)
@@ -163,9 +169,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         if outline_data:
             outline = _normalize_outline(outline_data)
             if not outline:
-                logger.warning(
-                    f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}"
-                )
+                logger.warning(f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}")
 
         if outline:
             logger.info(f"大纲生成成功，共 {len(outline)} 个章节")
@@ -173,7 +177,9 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
             # 返回状态更新
             return {
                 "outline": outline,
-                "messages": [AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")],
+                "messages": [
+                    AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")
+                ],
                 "current_node": "PlannerNode",
             }
         else:
@@ -194,11 +200,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"PlannerNode 执行失败: {str(e)}")
-        return {
-            "error": f"大纲生成失败: {str(e)}",
-            "messages": [AIMessage(content=f"大纲生成失败: {str(e)}")],
-            "current_node": "PlannerNode",
-        }
+        raise
 
 
 async def writer_node(state: CreationState) -> dict[str, Any]:
@@ -232,7 +234,8 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_writer_llm()
 
         # 构建 Prompt
         human_message = WRITER_HUMAN_PROMPT.format(
@@ -270,10 +273,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"WriterNode 执行失败 - 第 {current_index + 1} 章: {str(e)}")
-        return {
-            "error": f"第 {current_index + 1} 章撰写失败: {str(e)}",
-            "messages": [AIMessage(content=f"第 {current_index + 1} 章撰写失败: {str(e)}")],
-        }
+        raise
 
 
 async def reducer_node(state: CreationState) -> dict[str, Any]:
@@ -302,7 +302,8 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
 
     try:
         # 获取 LLM 实例
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         # 格式化章节内容
         sections_content = format_sections_for_reducer(sections)
@@ -320,7 +321,9 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        final_draft = response.content if isinstance(response.content, str) else str(response.content)
+        final_draft = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         logger.info("文章合并完成")
 
@@ -333,8 +336,4 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"ReducerNode 执行失败: {str(e)}")
-        return {
-            "error": f"文章合并失败: {str(e)}",
-            "messages": [AIMessage(content=f"文章合并失败: {str(e)}")],
-            "current_node": "ReducerNode",
-        }
+        raise

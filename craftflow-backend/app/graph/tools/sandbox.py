@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-from app.core.config import settings
+from app.core import tool_configs
 from app.core.exceptions import ToolExecutionError
 from app.core.logger import logger
 
@@ -40,10 +40,10 @@ class E2BSandboxManager:
                 message="e2b_code_interpreter 未安装，请运行: pip install e2b-code-interpreter",
             )
 
-        if not settings.e2b_api_key:
+        if not tool_configs.get("e2b_api_key"):
             raise ToolExecutionError(
                 tool_name="E2BSandbox",
-                message="E2B_API_KEY 未配置，请在 .env 文件中设置",
+                message="E2B API Key 未配置，请在设置页面配置",
             )
 
     @staticmethod
@@ -79,9 +79,7 @@ class E2BSandboxManager:
         try:
             logger.info(f"创建 E2B 沙箱，准备执行代码（超时: {timeout}s）")
 
-            # 使用 Sandbox.create() 创建沙箱实例（新版 API）
-            # 注意：新版 E2B SDK 使用 Sandbox.create() 而不是直接初始化
-            sandbox = E2BSandbox.create(api_key=settings.e2b_api_key)
+            sandbox = E2BSandbox.create(api_key=tool_configs.get("e2b_api_key"))
 
             # 执行代码
             execution = sandbox.run_code(code, timeout=timeout)
@@ -115,7 +113,7 @@ class E2BSandboxManager:
         except asyncio.TimeoutError:
             error_msg = f"代码执行超时（{timeout}s）"
             logger.error(error_msg)
-            raise ToolExecutionError(tool_name="E2BSandbox", message=error_msg)
+            raise ToolExecutionError(tool_name="E2BSandbox", message=error_msg) from None
 
         except Exception as e:
             error_msg = f"沙箱执行失败: {str(e)}"
@@ -153,7 +151,7 @@ def execute_python_code(code: str, timeout: int = 30) -> dict[str, Any]:
         >>> result = execute_python_code("print('Hello, World!')")
         >>> print(result["output"])
         "Hello, World!"
-        
+
     Note:
         如果 E2B 不可用或执行失败，将返回降级响应，不会抛出异常。
     """
@@ -208,7 +206,7 @@ def validate_code_snippet(code: str, expected_output: str | None = None) -> dict
         ... )
         >>> print(result["valid"])
         True
-        
+
     Note:
         如果 E2B 不可用或执行失败，将返回降级响应，不会抛出异常。
     """
@@ -216,7 +214,9 @@ def validate_code_snippet(code: str, expected_output: str | None = None) -> dict
 
     try:
         # 执行代码
-        exec_result = asyncio.run(E2BSandboxManager.execute_code(code, timeout=15, language="python"))
+        exec_result = asyncio.run(
+            E2BSandboxManager.execute_code(code, timeout=15, language="python")
+        )
 
         # 构建验证结果
         result = {

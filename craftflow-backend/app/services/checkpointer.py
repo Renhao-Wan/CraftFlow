@@ -37,8 +37,9 @@ def _get_data_dir() -> Path:
     桌面版：使用 %APPDATA%/CraftFlow/
     开发环境：使用 data/
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         from desktop_config import get_data_dir
+
         return get_data_dir()
     return Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -60,8 +61,7 @@ class _Closer(ABC):
     """Checkpointer 资源释放接口"""
 
     @abstractmethod
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
 
 class CheckpointerFactory(ABC):

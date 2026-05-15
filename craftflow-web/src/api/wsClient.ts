@@ -69,7 +69,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 let pongTimer: ReturnType<typeof setTimeout> | null = null
 
 const handlers = new Map<string, Set<MessageHandler>>()
-const pendingRequests = new Map<string, { resolve: (value: WsMessage) => void; timer: ReturnType<typeof setTimeout> }>()
+const pendingRequests = new Map<string, { resolve: (value: WsMessage) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 const pendingMessages: PendingMessage[] = []
 
 // ─── URL 计算 ──────────────────────────────────────
@@ -213,7 +213,12 @@ function handleMessage(message: WsMessage): void {
     if (pending) {
       clearTimeout(pending.timer)
       pendingRequests.delete(message.requestId)
-      pending.resolve(message)
+      // 错误消息 reject，成功消息 resolve
+      if (message.type === 'error') {
+        pending.reject(new Error(message.message as string ?? '请求失败'))
+      } else {
+        pending.resolve(message)
+      }
       // 不 return，继续触发 type 监听器（某些场景两者都需要）
     }
   }
@@ -265,7 +270,7 @@ function sendAndWait(
       reject(new Error(`WebSocket 请求超时: ${type} (${timeoutMs}ms)`))
     }, timeoutMs)
 
-    pendingRequests.set(requestId, { resolve, timer })
+    pendingRequests.set(requestId, { resolve, reject, timer })
 
     const sent = send({ type, requestId, ...payload })
     if (!sent) {

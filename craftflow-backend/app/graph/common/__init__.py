@@ -10,6 +10,9 @@ from app.graph.common.llm_factory import (
     get_custom_llm,
     get_default_llm,
     get_editor_llm,
+    get_factchecker_llm,
+    get_planner_llm,
+    get_writer_llm,
 )
 from app.graph.common.prompts import (
     ANTI_HALLUCINATION_RULES,
@@ -32,6 +35,9 @@ __all__ = [
     "LLMFactory",
     "get_default_llm",
     "get_editor_llm",
+    "get_planner_llm",
+    "get_writer_llm",
+    "get_factchecker_llm",
     "get_custom_llm",
     # 角色定义
     "PROFESSIONAL_WRITER_ROLE",

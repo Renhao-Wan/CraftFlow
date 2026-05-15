@@ -5,19 +5,19 @@
 mock 服务层以隔离 Graph 执行。
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock
 
-from httpx import AsyncClient, ASGITransport
+import pytest
+from httpx import ASGITransport, AsyncClient
 
-from app.api.dependencies import get_creation_service, get_polishing_service, get_task_store
+from app.adapters.base import BusinessAdapter
+from app.api.dependencies import get_adapter, get_creation_service, get_polishing_service
 from app.api.v1.creation import router as creation_router
 from app.api.v1.tasks import router as tasks_router
 from app.schemas.response import TaskResponse, TaskStatusResponse
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
-from app.services.task_store import TaskStore
 
 
 @pytest.fixture
@@ -33,18 +33,19 @@ def mock_polishing_service():
 
 
 @pytest.fixture
-def mock_task_store():
-    """创建 mock TaskStore"""
-    store = AsyncMock(spec=TaskStore)
-    store.get_task.return_value = None
-    store.get_task_list.return_value = []
-    return store
+def mock_adapter():
+    """创建 mock BusinessAdapter"""
+    adapter = AsyncMock(spec=BusinessAdapter)
+    adapter.get_task.return_value = None
+    adapter.get_task_list.return_value = ([], 0)
+    return adapter
 
 
 @pytest.fixture
-def app(mock_service, mock_polishing_service, mock_task_store):
+def app(mock_service, mock_polishing_service, mock_adapter):
     """创建测试用 FastAPI 应用，覆盖所有服务依赖"""
     from fastapi import FastAPI
+
     from app.core.exceptions import register_exception_handlers
 
     application = FastAPI()
@@ -53,7 +54,7 @@ def app(mock_service, mock_polishing_service, mock_task_store):
     application.include_router(tasks_router, prefix="/api/v1")
     application.dependency_overrides[get_creation_service] = lambda: mock_service
     application.dependency_overrides[get_polishing_service] = lambda: mock_polishing_service
-    application.dependency_overrides[get_task_store] = lambda: mock_task_store
+    application.dependency_overrides[get_adapter] = lambda: mock_adapter
     return application
 
 
@@ -238,7 +239,9 @@ class TestGetTaskStatus:
         from app.core.exceptions import TaskNotFoundError
 
         mock_service.get_task_status.side_effect = TaskNotFoundError(task_id="nonexistent")
-        mock_polishing_service.get_task_status.side_effect = TaskNotFoundError(task_id="nonexistent")
+        mock_polishing_service.get_task_status.side_effect = TaskNotFoundError(
+            task_id="nonexistent"
+        )
 
         response = await client.get("/api/v1/tasks/nonexistent")
 
@@ -300,7 +303,7 @@ class TestResumeTask:
         mock_service.resume_task.assert_called_once_with(
             task_id="creation_abc123",
             action="update_outline",
-            data={"outline": new_outline },
+            data={"outline": new_outline},
         )
 
     @pytest.mark.asyncio

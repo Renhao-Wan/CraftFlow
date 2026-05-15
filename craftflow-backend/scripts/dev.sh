@@ -10,8 +10,8 @@ source .venv/Scripts/activate
 # 检查 .env.dev 是否存在
 if [ ! -f ".env.dev" ]; then
     echo "⚠️  未找到 .env.dev 文件"
-    echo "正在从 .env.example 复制..."
-    cp .env.example .env.dev
+    echo "正在从 .env.standalone 复制..."
+    cp .env.standalone .env.dev
     echo "✅ 已创建 .env.dev，请编辑并填写 API Key"
     echo ""
 fi

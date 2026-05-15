@@ -1,6 +1,7 @@
 """WebSocket 端点
 
 提供 /ws WebSocket 入口，管理连接生命周期，将消息分发给 ws_handler。
+支持 API Key 鉴权（server 模式下通过查询参数 api_key 验证）。
 """
 
 import json
@@ -9,6 +10,7 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.api.v1.ws_handler import handle_message
+from app.core.auth import verify_ws_api_key
 from app.core.logger import get_logger
 from app.services.task_broadcaster import ConnectionManager, TaskBroadcaster
 
@@ -45,8 +47,16 @@ async def ws_endpoint(websocket: WebSocket) -> None:
     """WebSocket 入口
 
     连接建立后进入消息循环，接收 JSON 消息并分发给 handler。
+    server 模式下需要通过查询参数 api_key 提供有效的 API Key。
     连接断开时清理订阅和连接。
+
+    客户端连接示例：
+        ws://localhost:8000/ws?api_key=your-api-key
     """
+    # API Key 验证（standalone 模式自动跳过）
+    if not await verify_ws_api_key(websocket):
+        return
+
     manager = get_ws_manager()
     broadcaster = get_ws_broadcaster()
     client_id = f"ws_{uuid4().hex[:8]}"
