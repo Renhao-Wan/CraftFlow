@@ -120,16 +120,30 @@
       </div>
 
       <div class="hero__preview reveal" style="transition-delay: 0.2s;">
-        <div class="hero__preview-image" style="background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-xl); min-height: 400px; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted);">
-          <!-- 产品截图占位 -->
-          <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="10" y="20" width="100" height="80" rx="8" stroke="currentColor" stroke-width="2"/>
-            <rect x="20" y="35" width="40" height="4" rx="2" fill="currentColor" opacity="0.3"/>
-            <rect x="20" y="45" width="60" height="4" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="20" y="55" width="50" height="4" rx="2" fill="currentColor" opacity="0.2"/>
-            <rect x="20" y="65" width="70" height="4" rx="2" fill="currentColor" opacity="0.15"/>
-            <circle cx="90" cy="50" r="15" stroke="currentColor" stroke-width="2" opacity="0.3"/>
-          </svg>
+        <div class="hero__preview-image">
+          <!-- 产品截图：放在 public/screenshots/ 目录下 -->
+          <!-- 命名规则：screenshot-{theme}.png，如 screenshot-light.png -->
+          <img
+            src="/screenshots/screenshot-light.png"
+            alt="CraftFlow 产品界面截图"
+            class="hero__screenshot"
+            data-theme-srcs='{"light":"/screenshots/screenshot-light.png","dark":"/screenshots/screenshot-dark.png","sepia":"/screenshots/screenshot-sepia.png","midnight":"/screenshots/screenshot-midnight.png","frost":"/screenshots/screenshot-frost.png","rose":"/screenshots/screenshot-rose.png"}'
+          >
+          <!-- 兜底占位内容：当截图加载失败时显示 -->
+          <div class="hero__fallback">
+            <div class="hero__fallback-content">
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="16" width="64" height="48" rx="6" stroke="currentColor" stroke-width="2" opacity="0.4"/>
+                <rect x="16" y="28" width="28" height="3" rx="1.5" fill="currentColor" opacity="0.2"/>
+                <rect x="16" y="36" width="40" height="3" rx="1.5" fill="currentColor" opacity="0.15"/>
+                <rect x="16" y="44" width="32" height="3" rx="1.5" fill="currentColor" opacity="0.15"/>
+                <circle cx="56" cy="38" r="10" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                <path d="M20 52L32 40L44 52" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+              </svg>
+              <p class="hero__fallback-text">CraftFlow 产品界面预览</p>
+              <p class="hero__fallback-hint">截图即将上线</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
