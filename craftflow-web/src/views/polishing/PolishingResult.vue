@@ -6,7 +6,6 @@ import { useTaskLifecycle } from '@/composables/useTaskLifecycle'
 import { POLISHING_MODE_META } from '@/api/types/polishing'
 import type { PolishingMode } from '@/api/types/polishing'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
-import ProgressBar from '@/components/common/ProgressBar.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
@@ -17,7 +16,7 @@ const props = defineProps<{ taskId: string }>()
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { retryPolishing, loadTask, stop, submitting } = useTaskLifecycle()
+const { retryPolishing, loadTask, stop } = useTaskLifecycle()
 
 const copied = ref(false)
 const viewMode = ref<'result' | 'compare' | 'factCheck'>('result')
@@ -34,6 +33,25 @@ const currentNode = computed(() => task.value?.current_node_label ?? task.value?
 const result = computed(() => task.value?.result ?? '')
 const error = computed(() => task.value?.error ?? '未知错误')
 const factCheckResult = computed(() => task.value?.fact_check_result ?? '')
+const streamingContent = computed(() => taskStore.streamingContent)
+
+/**
+ * 显示阶段：解耦 UI 状态与任务 status，避免 status 先于 result 到达导致闪烁
+ * - 'waiting'：无内容，显示居中等待
+ * - 'streaming'：有流式内容，显示实时渲染
+ * - 'completed'：有最终结果，显示完成视图
+ * - 'failed'：失败
+ */
+type DisplayPhase = 'waiting' | 'streaming' | 'completed' | 'failed'
+const displayPhase = computed<DisplayPhase>(() => {
+  if (result.value) return 'completed'
+  if (streamingContent.value) return 'streaming'
+  if (status.value === 'failed') return 'failed'
+  return 'waiting'
+})
+
+/** 渲染内容：优先用最终结果，回退到流式内容 */
+const displayContent = computed(() => result.value || streamingContent.value)
 
 const originalContent = computed(() => {
   const raw = task.value?.data
@@ -115,6 +133,13 @@ function onBack(): void {
   router.back()
 }
 
+// 流式输出时自动滚动到底部（页面级滚动）
+watch(streamingContent, () => {
+  if (streamingContent.value) {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }
+})
+
 onMounted(() => {
   if (!task.value || task.value.task_id !== props.taskId) {
     loadTask(props.taskId)
@@ -173,61 +198,65 @@ onUnmounted(() => {
 
     <!-- 任务内容 -->
     <template v-else-if="task">
-      <!-- running -->
-      <div v-if="status === 'running'" class="state-running">
-        <div class="running-header">
-          <LoadingSpinner :size="28" label="" />
-          <div>
-            <h2 class="state-title">正在润色中...</h2>
-            <p class="running-info">
-              <span v-if="modeLabel">模式：{{ modeLabel }}</span>
-              <span v-if="currentNode"> | 阶段：{{ currentNode }}</span>
-            </p>
-          </div>
-        </div>
-        <ProgressBar :percentage="progress" :show-text="true" :height="10" />
+      <!-- failed: 错误（独立视图） -->
+      <div v-if="displayPhase === 'failed'" class="state-failed">
+        <h2 class="state-title">润色失败</h2>
+        <ErrorAlert :message="error" :retryable="true" @retry="onRetry" />
       </div>
 
-      <!-- completed -->
-      <div v-else-if="status === 'completed'" class="state-completed">
+      <!-- waiting / streaming / completed: 统一容器，标题栏固定 -->
+      <div v-else class="state-completed">
         <div class="result-header">
-          <h2 class="state-title">润色完成</h2>
-          <div class="result-actions">
-            <div class="view-toggle">
-              <button
-                class="toggle-btn"
-                :class="{ active: viewMode === 'result' }"
-                @click="viewMode = 'result'"
-              >
-                结果
+          <div class="header-left">
+            <div class="header-spinner" :class="{ visible: displayPhase !== 'completed' }">
+              <LoadingSpinner :size="20" label="" />
+            </div>
+            <h2 class="state-title">
+              {{ displayPhase === 'completed' ? '润色完成' : '正在润色中...' }}
+            </h2>
+            <span v-if="modeLabel" class="mode-tag">{{ modeLabel }}</span>
+            <span v-if="currentNode || progress > 0" class="current-node-tag" :class="{ visible: displayPhase !== 'completed' }">
+              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? progress + '%' : '' }}
+            </span>
+          </div>
+          <div class="header-right">
+            <div class="result-actions" :class="{ visible: displayPhase === 'completed' }">
+              <div class="view-toggle">
+                <button
+                  class="toggle-btn"
+                  :class="{ active: viewMode === 'result' }"
+                  @click="viewMode = 'result'"
+                >
+                  结果
+                </button>
+                <button
+                  class="toggle-btn"
+                  :class="{ active: viewMode === 'compare' }"
+                  @click="viewMode = 'compare'"
+                >
+                  对比
+                </button>
+                <button
+                  v-if="isMode3 && factCheckResult"
+                  class="toggle-btn"
+                  :class="{ active: viewMode === 'factCheck' }"
+                  @click="viewMode = 'factCheck'"
+                >
+                  核查报告
+                </button>
+              </div>
+              <button class="action-btn" @click="onCopy">
+                {{ copied ? '已复制' : '复制全文' }}
               </button>
-              <button
-                class="toggle-btn"
-                :class="{ active: viewMode === 'compare' }"
-                @click="viewMode = 'compare'"
-              >
-                对比
-              </button>
-              <button
-                v-if="isMode3 && factCheckResult"
-                class="toggle-btn"
-                :class="{ active: viewMode === 'factCheck' }"
-                @click="viewMode = 'factCheck'"
-              >
-                核查报告
+              <button class="action-btn" :disabled="exporting || viewMode !== 'result'" @click="onExport">
+                {{ exporting ? '导出中...' : '导出 PDF' }}
               </button>
             </div>
-            <button class="copy-btn" @click="onCopy">
-              {{ copied ? '已复制' : '复制全文' }}
-            </button>
-            <button class="copy-btn" :disabled="exporting || viewMode !== 'result'" @click="onExport">
-              {{ exporting ? '导出中...' : '导出 PDF' }}
-            </button>
           </div>
         </div>
 
-        <!-- 模式三：核查摘要 -->
-        <div v-if="isMode3 && accuracyLevel && viewMode !== 'factCheck'" class="fact-check-summary" :class="accuracyClass">
+        <!-- 模式三：核查摘要（仅 completed 时显示） -->
+        <div v-if="displayPhase === 'completed' && isMode3 && accuracyLevel && viewMode !== 'factCheck'" class="fact-check-summary" :class="accuracyClass">
           <div class="summary-header">
             <span class="summary-icon">{{ accuracyLevel === 'high' ? '✓' : accuracyLevel === 'medium' ? '⚠' : '✗' }}</span>
             <span class="summary-title">{{ accuracyDescription }}</span>
@@ -235,14 +264,9 @@ onUnmounted(() => {
           <p class="summary-desc">{{ accuracyExplanation }}</p>
         </div>
 
-        <!-- 单栏结果 -->
-        <div v-if="viewMode === 'result'" ref="resultBodyRef" class="result-body">
-          <MarkdownRenderer v-if="result" :content="result" />
-          <p v-else class="empty-hint">暂无润色结果</p>
-        </div>
-
-        <!-- 双栏对比 -->
-        <div v-else-if="viewMode === 'compare'" class="compare-view">
+        <!-- 内容区 -->
+        <div v-if="displayPhase === 'completed' && viewMode === 'compare'" class="compare-view">
+          <!-- 双栏对比 -->
           <div class="compare-panel">
             <h3 class="compare-label">原文</h3>
             <div class="compare-body">
@@ -259,19 +283,23 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 核查报告详情 -->
-        <div v-else-if="viewMode === 'factCheck' && factCheckResult" class="fact-check-detail">
+        <div v-else-if="displayPhase === 'completed' && viewMode === 'factCheck' && factCheckResult" class="fact-check-detail">
+          <!-- 核查报告详情 -->
           <h3 class="detail-title">事实核查报告</h3>
           <div class="detail-body">
             <MarkdownRenderer :content="factCheckResult" />
           </div>
         </div>
-      </div>
 
-      <!-- failed -->
-      <div v-else-if="status === 'failed'" class="state-failed">
-        <h2 class="state-title">润色失败</h2>
-        <ErrorAlert :message="error" :retryable="true" @retry="onRetry" />
+        <div v-else ref="resultBodyRef" class="result-body">
+          <!-- 单栏结果 / 流式内容 / 等待 -->
+          <MarkdownRenderer v-if="displayContent" :content="displayContent" />
+          <span v-if="displayPhase === 'streaming'" class="typing-cursor" />
+          <div v-else-if="displayPhase === 'waiting'" class="waiting-hint">
+            <LoadingSpinner :size="24" label="" />
+          </div>
+          <p v-else-if="!displayContent" class="empty-hint">暂无润色结果</p>
+        </div>
       </div>
     </template>
 
@@ -348,29 +376,6 @@ onUnmounted(() => {
   padding: var(--space-lg);
 }
 
-/* running */
-.state-running {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-xl);
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.running-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.running-info {
-  font-size: 14px;
-  color: var(--color-text-muted);
-  margin: 4px 0 0;
-}
-
 /* completed */
 .state-completed {
   display: flex;
@@ -384,10 +389,55 @@ onUnmounted(() => {
   justify-content: space-between;
 }
 
+/* 标题栏左右布局 */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* spinner 和 tag 的 opacity 过渡 */
+.header-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-spinner,
+.current-node-tag {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.header-spinner.visible,
+.current-node-tag.visible {
+  opacity: 1;
+}
+
+/* 完成按钮的 opacity 过渡 */
+.header-right .result-actions {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.header-right .result-actions.visible {
+  opacity: 1;
+}
+
 .result-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* 内容区等待提示 */
+.waiting-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) 0;
 }
 
 .view-toggle {
@@ -415,7 +465,7 @@ onUnmounted(() => {
   box-shadow: var(--shadow-sm);
 }
 
-.copy-btn {
+.action-btn {
   padding: 6px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -427,14 +477,22 @@ onUnmounted(() => {
   transition: all var(--transition-fast);
 }
 
-.copy-btn:hover {
+.action-btn:hover {
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
 }
 
-.copy-btn:disabled {
+.action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.current-node-tag {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-accent-soft);
+  padding: 3px 10px;
+  border-radius: var(--radius-md);
 }
 
 .result-body {
@@ -606,10 +664,6 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-  }
-
-  .state-running {
-    padding: var(--space-lg);
   }
 }
 </style>

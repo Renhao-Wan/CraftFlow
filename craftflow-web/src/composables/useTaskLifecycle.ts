@@ -160,6 +160,9 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
       taskStore.setCurrentTask({
         task_id: taskId,
         status,
+        current_node: 'router',
+        current_node_label: '路由决策',
+        progress: 5,
         created_at: response.createdAt as string | undefined,
         data: { original_content: content, mode },
       })

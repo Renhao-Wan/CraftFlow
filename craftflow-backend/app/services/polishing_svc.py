@@ -639,6 +639,15 @@ class PolishingService:
 
                     logger.debug(f"节点完成 - {node_name} ({label}), progress: {progress}")
 
+                # 事件 2：LLM token 流式输出（formatter / author 节点）
+                elif kind == "on_chat_model_stream":
+                    metadata = event.get("metadata", {})
+                    node = metadata.get("langgraph_node", "")
+                    if node in ("formatter", "author"):
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk and hasattr(chunk, "content") and chunk.content:
+                            await broadcaster.broadcast_token(task_id, chunk.content)
+
             # 从 checkpoint 读取最终状态（比 astream 的 final_state 更可靠）
             snapshot = await graph.aget_state(config)
             graph_state = snapshot.values if snapshot else {}
