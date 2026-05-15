@@ -14,7 +14,7 @@ defineEmits<{
     <div class="error-icon">!</div>
     <div class="error-content">
       <p class="error-message">{{ message }}</p>
-      <button v-if="retryable" class="retry-btn" @click="$emit('retry')">
+      <button v-if="retryable" type="button" class="retry-btn" @click="$emit('retry')">
         重试
       </button>
     </div>
@@ -26,8 +26,8 @@ defineEmits<{
   display: flex;
   gap: 12px;
   padding: 16px;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
   border-radius: 8px;
 }
 
@@ -38,7 +38,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #b91c1c;
+  background: var(--color-error);
   color: #fff;
   border-radius: 50%;
   font-size: 14px;
@@ -52,23 +52,23 @@ defineEmits<{
 .error-message {
   margin: 0;
   font-size: 14px;
-  color: #991b1b;
+  color: var(--color-error);
   line-height: 1.5;
 }
 
 .retry-btn {
   margin-top: 8px;
   padding: 4px 16px;
-  background: #fff;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .retry-btn:hover {
-  background: #f3f4f6;
+  background: var(--color-bg);
 }
 </style>

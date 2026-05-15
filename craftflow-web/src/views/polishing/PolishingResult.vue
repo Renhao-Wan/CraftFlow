@@ -17,7 +17,7 @@ const props = defineProps<{ taskId: string }>()
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { loadTask, stop } = useTaskLifecycle()
+const { retryPolishing, loadTask, stop, submitting } = useTaskLifecycle()
 
 const copied = ref(false)
 const viewMode = ref<'result' | 'compare' | 'factCheck'>('result')
@@ -88,9 +88,10 @@ const accuracyClass = computed(() => {
   }
 })
 
-async function onRetry(): Promise<void> {
-  taskStore.clearCurrentTask()
-  await loadTask(props.taskId)
+function onRetry(): void {
+  if (originalContent.value && polishingMode.value) {
+    retryPolishing(originalContent.value, polishingMode.value)
+  }
 }
 
 async function onCopy(): Promise<void> {
@@ -391,7 +392,7 @@ onUnmounted(() => {
 
 .view-toggle {
   display: flex;
-  background: #f3f4f6;
+  background: var(--color-bg);
   border-radius: var(--radius-md);
   padding: 2px;
 }
@@ -427,7 +428,8 @@ onUnmounted(() => {
 }
 
 .copy-btn:hover {
-  background: #eaddd7;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
 }
 
 .copy-btn:disabled {
@@ -465,7 +467,7 @@ onUnmounted(() => {
   letter-spacing: 0.06em;
   padding: 12px 20px;
   margin: 0;
-  background: #fafafa;
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -483,18 +485,18 @@ onUnmounted(() => {
 }
 
 .accuracy-high {
-  background: #f0fdf4;
-  border-color: #86efac;
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
 }
 
 .accuracy-medium {
-  background: #fffbeb;
-  border-color: #fcd34d;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning);
 }
 
 .accuracy-low {
-  background: #fef2f2;
-  border-color: #fca5a5;
+  background: var(--color-error-bg);
+  border-color: var(--color-error);
 }
 
 .summary-header {
@@ -510,15 +512,15 @@ onUnmounted(() => {
 }
 
 .accuracy-high .summary-icon {
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .accuracy-medium .summary-icon {
-  color: #d97706;
+  color: var(--color-warning);
 }
 
 .accuracy-low .summary-icon {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .summary-title {
@@ -550,7 +552,7 @@ onUnmounted(() => {
   color: var(--color-text-secondary);
   padding: 12px 20px;
   margin: 0;
-  background: #fafafa;
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -566,8 +568,8 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-xl);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-lg);
 }
 

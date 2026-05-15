@@ -1,8 +1,10 @@
 """工具链功能测试脚本
 
 测试各个工具的基本功能，验证 Task 5 的实现。
+注意：外部工具 API Key 已迁移至数据库 settings 表，通过前端设置页面管理。
 """
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -10,8 +12,19 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from app.core import tool_configs
 from app.core.config import settings
 from app.core.logger import logger
+
+
+async def _load_tool_configs():
+    """从数据库加载工具配置"""
+    from app.adapters.standalone import StandaloneAdapter
+
+    adapter = StandaloneAdapter()
+    await adapter.init()
+    await tool_configs.load_from_adapter(adapter)
+    await adapter.close()
 
 
 def test_search_tools():
@@ -23,25 +36,25 @@ def test_search_tools():
     try:
         from app.graph.tools.search import search_internet, search_with_answer
 
-        # 测试基本搜索
+        tavily_key = tool_configs.get("tavily_api_key")
+
         print("\n1. 测试 search_internet...")
-        if settings.tavily_api_key:
+        if tavily_key:
             result = search_internet.invoke({"query": "LangGraph tutorial", "max_results": 3})
             print(f"✓ 搜索成功，返回 {len(result)} 条结果")
             if result:
                 print(f"  第一条结果: {result[0]['title'][:50]}...")
         else:
-            print("⚠ TAVILY_API_KEY 未配置，跳过测试")
+            print("⚠ Tavily API Key 未配置，请在设置页面配置")
 
-        # 测试带答案的搜索
         print("\n2. 测试 search_with_answer...")
-        if settings.tavily_api_key:
+        if tavily_key:
             result = search_with_answer.invoke({"query": "What is LangGraph?"})
             print(f"✓ 搜索成功")
             if result.get("answer"):
                 print(f"  AI 答案: {result['answer'][:100]}...")
         else:
-            print("⚠ TAVILY_API_KEY 未配置，跳过测试")
+            print("⚠ Tavily API Key 未配置，请在设置页面配置")
 
     except Exception as e:
         print(f"✗ 搜索工具测试失败: {e}")
@@ -56,9 +69,10 @@ def test_sandbox_tools():
     try:
         from app.graph.tools.sandbox import execute_python_code, validate_code_snippet
 
-        # 测试代码执行
+        e2b_key = tool_configs.get("e2b_api_key")
+
         print("\n1. 测试 execute_python_code...")
-        if settings.e2b_api_key:
+        if e2b_key:
             result = execute_python_code.invoke({"code": "print('Hello from E2B!')"})
             if result["success"]:
                 print(f"✓ 代码执行成功")
@@ -66,11 +80,10 @@ def test_sandbox_tools():
             else:
                 print(f"✗ 代码执行失败: {result['error']}")
         else:
-            print("✗ E2B_API_KEY 未配置，请在 .env 文件中设置")
+            print("⚠ E2B API Key 未配置，请在设置页面配置")
 
-        # 测试代码验证
         print("\n2. 测试 validate_code_snippet...")
-        if settings.e2b_api_key:
+        if e2b_key:
             result = validate_code_snippet.invoke(
                 {"code": "print(2 + 2)", "expected_output": "4"}
             )
@@ -80,7 +93,7 @@ def test_sandbox_tools():
             else:
                 print(f"✗ 代码验证失败: {result['error']}")
         else:
-            print("✗ E2B_API_KEY 未配置，请在 .env 文件中设置")
+            print("⚠ E2B API Key 未配置，请在设置页面配置")
 
     except Exception as e:
         print(f"✗ 沙箱工具测试失败: {e}")
@@ -100,7 +113,6 @@ def test_validator_tools():
             extract_markdown_structure,
         )
 
-        # 测试 URL 验证
         print("\n1. 测试 validate_url...")
         result = validate_url.invoke({"url": "https://www.python.org"})
         if result["accessible"]:
@@ -109,7 +121,6 @@ def test_validator_tools():
         else:
             print(f"✗ URL 不可访问: {result['error']}")
 
-        # 测试可读性计算
         print("\n2. 测试 calculate_readability...")
         test_text = """
         这是一个测试文本。它包含多个句子。
@@ -120,7 +131,6 @@ def test_validator_tools():
         print(f"  可读性等级: {result['readability_level']}")
         print(f"  Flesch 分数: {result['flesch_reading_ease']}")
 
-        # 测试 Markdown 验证
         print("\n3. 测试 validate_markdown...")
         test_markdown = """
 # 标题
@@ -140,7 +150,6 @@ print("Hello, World!")
         else:
             print(f"✗ Markdown 验证失败: {result['issues']}")
 
-        # 测试 Markdown 结构提取
         print("\n4. 测试 extract_markdown_structure...")
         result = extract_markdown_structure.invoke({"content": test_markdown})
         print(f"✓ 结构提取成功")
@@ -161,14 +170,12 @@ def test_retriever_tools():
     try:
         from app.graph.tools.retriever import search_knowledge_base, add_documents_to_knowledge_base
 
-        # 测试 RAG 开关
         print(f"\n1. RAG 功能状态: {'启用' if settings.enable_rag else '禁用'}")
         print(f"   配置项: ENABLE_RAG={settings.enable_rag}")
 
-        # 测试知识库搜索
         print("\n2. 测试 search_knowledge_base...")
         result = search_knowledge_base.invoke({"query": "test query"})
-        
+
         if not settings.enable_rag:
             if result == []:
                 print("✓ RAG 未启用时正确返回空结果")
@@ -180,13 +187,12 @@ def test_retriever_tools():
             else:
                 print(f"✓ 搜索成功，返回 {len(result)} 条结果")
 
-        # 测试添加文档
         print("\n3. 测试 add_documents_to_knowledge_base...")
         test_docs = [
             {"content": "测试文档", "metadata": {"type": "test"}},
         ]
         result = add_documents_to_knowledge_base.invoke({"documents": test_docs})
-        
+
         if not settings.enable_rag:
             if not result["success"]:
                 print("✓ RAG 未启用时正确返回失败")
@@ -199,11 +205,6 @@ def test_retriever_tools():
             else:
                 print(f"⚠ 文档添加失败（可能是知识库未初始化）")
 
-        print("\n注意:")
-        print("  - RAG 功能通过 ENABLE_RAG 配置项控制")
-        print("  - 关闭时不会初始化向量数据库，节省资源")
-        print("  - 检索工具调用时返回空结果，不影响其他功能")
-
     except Exception as e:
         print(f"✗ 检索工具测试失败: {e}")
 
@@ -215,11 +216,14 @@ def main():
     print("=" * 60)
     print(f"环境: {settings.environment}")
     print(f"日志级别: {settings.log_level}")
-    print(f"Tavily API Key 已配置: {bool(settings.tavily_api_key)}")
-    print(f"E2B API Key 已配置: {bool(settings.e2b_api_key)}")
+
+    # 从数据库加载工具配置
+    asyncio.run(_load_tool_configs())
+
+    print(f"Tavily API Key 已配置: {bool(tool_configs.get('tavily_api_key'))}")
+    print(f"E2B API Key 已配置: {bool(tool_configs.get('e2b_api_key'))}")
     print(f"RAG 功能: {'启用' if settings.enable_rag else '禁用'}")
 
-    # 运行各个测试
     test_search_tools()
     test_sandbox_tools()
     test_validator_tools()

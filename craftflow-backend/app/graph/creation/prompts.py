@@ -17,15 +17,13 @@ from app.graph.common.prompts import (
 # PlannerNode Prompt 模板
 # ============================================
 
-PLANNER_SYSTEM_PROMPT = create_base_system_prompt(
-    role=CONTENT_STRATEGIST_ROLE,
-    task_description="""## 任务：生成结构化大纲
+PLANNER_SYSTEM_PROMPT_TEMPLATE = """## 任务：生成结构化大纲
 
 你的任务是根据用户提供的主题和描述，生成一份结构清晰、逻辑严密的文章大纲。
 
 ### 大纲要求
 
-1. **章节划分**：将内容划分为 4-8 个章节，每个章节应有明确的主题
+1. **章节划分**：将内容划分为 4-{max_sections} 个章节，每个章节应有明确的主题
 2. **逻辑顺序**：章节之间应有清晰的逻辑递进关系
 3. **平衡性**：各章节的篇幅应大致均衡，避免某些章节过于冗长或简短
 4. **完整性**：大纲应覆盖主题的所有重要方面，不遗漏关键内容
@@ -35,25 +33,36 @@ PLANNER_SYSTEM_PROMPT = create_base_system_prompt(
 你必须且只能输出以下 JSON 格式，不要输出任何其他内容：
 
 ```json
-{
+{{
   "outline": [
-    {
+    {{
       "title": "章节标题",
       "summary": "本章要点概述（2-3 句话）"
-    }
+    }}
   ]
-}
+}}
 ```
 
 **重要**：
 - 顶层键必须是 "outline"，不能是 "sections" 或其他名称
 - 每个章节对象必须包含 "title" 和 "summary" 两个字段
 - "summary" 必须是字符串，不能是数组
-- 只输出 JSON，不要输出任何解释文字""",
-    include_markdown_rules=False,
-    include_anti_hallucination=False,
-    include_quality_standards=False,
-)
+- 只输出 JSON，不要输出任何解释文字"""
+
+
+def get_planner_system_prompt(max_sections: int = 8) -> str:
+    """生成 PlannerNode 的系统提示词，动态注入章节数上限"""
+    return create_base_system_prompt(
+        role=CONTENT_STRATEGIST_ROLE,
+        task_description=PLANNER_SYSTEM_PROMPT_TEMPLATE.format(max_sections=max_sections),
+        include_markdown_rules=False,
+        include_anti_hallucination=False,
+        include_quality_standards=False,
+    )
+
+
+# 向后兼容：默认 prompt（无 max_sections 时使用）
+PLANNER_SYSTEM_PROMPT = get_planner_system_prompt(8)
 
 PLANNER_HUMAN_PROMPT = """请根据以下主题生成文章大纲：
 
@@ -197,7 +206,6 @@ def format_outline_for_display(outline: list[dict]) -> str:
     formatted_parts = []
     for idx, item in enumerate(outline, 1):
         formatted_parts.append(
-            f"{idx}. **{item.get('title', '未命名')}**\n"
-            f"   {item.get('summary', '无摘要')}"
+            f"{idx}. **{item.get('title', '未命名')}**\n" f"   {item.get('summary', '无摘要')}"
         )
     return "\n".join(formatted_parts)

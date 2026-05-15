@@ -17,7 +17,7 @@ const props = defineProps<{ taskId: string }>()
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { resumeTask, loadTask, stop, submitting, submitError } = useTaskLifecycle()
+const { resumeTask, retryCreation, loadTask, stop, submitting, submitError } = useTaskLifecycle()
 
 const copied = ref(false)
 const resultBodyRef = ref<HTMLElement | null>(null)
@@ -47,9 +47,12 @@ function onUpdateOutline(items: OutlineItem[]): void {
   resumeTask(props.taskId, 'update_outline', { outline: items })
 }
 
-async function onRetry(): Promise<void> {
-  taskStore.clearCurrentTask()
-  await loadTask(props.taskId)
+function onRetry(): void {
+  const data = task.value?.data
+  const topic = data?.topic as string | undefined
+  if (topic) {
+    retryCreation(topic, data?.description as string | undefined)
+  }
 }
 
 async function onCopy(): Promise<void> {
@@ -336,7 +339,8 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background: #eaddd7;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
 }
 
 .action-btn:disabled {
@@ -357,8 +361,8 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-xl);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-lg);
 }
 

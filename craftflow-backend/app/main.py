@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import close_services, init_services
 from app.api.v1.router import router as v1_router
-from app.api.v1.ws import router as ws_router, init_ws_services
+from app.api.v1.ws import init_ws_services
+from app.api.v1.ws import router as ws_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logger import get_logger, setup_logger
@@ -25,19 +26,22 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理
 
-    startup: 初始化日志、Checkpointer、业务服务
+    startup: 初始化日志、Checkpointer、业务服务、WebSocket 服务
     shutdown: 关闭业务服务、Checkpointer
     """
     # ── startup ──
     setup_logger()
     logger.info(
-        f"CraftFlow 启动中 | 环境: {settings.environment} | "
-        f"版本: {settings.app_version}"
+        f"CraftFlow 启动中 | 模式: {settings.app_mode} | "
+        f"环境: {settings.environment} | 版本: {settings.app_version}"
     )
 
     await init_checkpointer()
     await init_services()
+
+    # WebSocket 服务（所有模式都需要，用于任务实时推送）
     init_ws_services()
+    logger.info("WebSocket 服务已初始化")
 
     logger.info("CraftFlow 启动完成")
 
@@ -80,7 +84,7 @@ def create_app() -> FastAPI:
     # v1 路由（REST）
     app.include_router(v1_router)
 
-    # WebSocket 路由
+    # WebSocket 路由（所有模式）
     app.include_router(ws_router)
 
     # 健康检查
@@ -89,6 +93,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "version": settings.app_version,
+            "mode": settings.app_mode,
             "environment": settings.environment,
         }
 

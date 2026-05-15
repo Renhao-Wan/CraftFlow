@@ -21,34 +21,27 @@ const router = useRouter()
 const taskStore = useTaskStore()
 const navStore = useNavigationStore()
 
-const items = ref<HistoryItem[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+const deleting = ref(false)
+
+const items = computed<HistoryItem[]>(() =>
+  taskStore.taskList.map((t) => {
+    const type = inferTaskType(t)
+    return {
+      taskId: t.task_id,
+      topic: t.topic ?? (type === 'polishing' ? '润色任务' : '创作任务'),
+      status: t.status,
+      createdAt: t.created_at ?? '',
+      type,
+    }
+  }),
+)
 
 const currentPage = computed(() => taskStore.currentPage)
 const totalPages = computed(() => taskStore.totalPages)
 const total = computed(() => taskStore.taskTotal)
 
 async function loadHistory(page = 1): Promise<void> {
-  loading.value = true
-  error.value = null
-  try {
-    await taskStore.fetchTaskList(page)
-    items.value = taskStore.taskList.map((t) => {
-      const type = inferTaskType(t)
-      return {
-        taskId: t.task_id,
-        topic: t.topic ?? (type === 'polishing' ? '润色任务' : '创作任务'),
-        status: t.status,
-        createdAt: t.created_at ?? '',
-        type,
-      }
-    })
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : '加载历史记录失败'
-  } finally {
-    loading.value = false
-  }
+  await taskStore.fetchTaskList(page)
 }
 
 function goToDetail(item: HistoryItem): void {
@@ -61,19 +54,30 @@ function onPageChange(page: number): void {
 }
 
 async function onRemove(taskId: string): Promise<void> {
-  await taskStore.deleteTask(taskId)
-  items.value = items.value.filter((item) => item.taskId !== taskId)
-  if (items.value.length === 0 && currentPage.value > 1) {
-    loadHistory(currentPage.value - 1)
+  deleting.value = true
+  try {
+    await taskStore.deleteTask(taskId)
+    if (items.value.length === 0 && currentPage.value > 1) {
+      await loadHistory(currentPage.value - 1)
+    }
+  } catch {
+    // store 已设置 error，Axios 拦截器会弹 toast
+  } finally {
+    deleting.value = false
   }
 }
 
 async function onClearAll(): Promise<void> {
-  for (const item of items.value) {
-    await taskStore.deleteTask(item.taskId)
+  deleting.value = true
+  try {
+    const ids = items.value.map((i) => i.taskId)
+    await Promise.all(ids.map((id) => taskStore.deleteTask(id)))
+    await loadHistory(1)
+  } catch {
+    await loadHistory(1)
+  } finally {
+    deleting.value = false
   }
-  items.value = []
-  loadHistory(1)
 }
 
 onMounted(() => loadHistory())
@@ -89,6 +93,7 @@ onMounted(() => loadHistory())
       <button
         v-if="items.length > 0"
         class="clear-btn"
+        :disabled="deleting"
         @click="onClearAll"
       >
         清空历史
@@ -96,14 +101,14 @@ onMounted(() => loadHistory())
     </div>
 
     <!-- 加载中 -->
-    <div v-if="loading && items.length === 0" class="state-center">
+    <div v-if="taskStore.loading && items.length === 0" class="state-center">
       <LoadingSpinner :size="28" label="加载历史记录..." />
     </div>
 
     <!-- 错误 -->
     <ErrorAlert
-      v-else-if="error"
-      :message="error"
+      v-else-if="taskStore.error"
+      :message="taskStore.error"
       :retryable="true"
       @retry="loadHistory"
     />
@@ -138,6 +143,7 @@ onMounted(() => loadHistory())
           <button
             class="remove-btn"
             title="移除"
+            :disabled="deleting"
             @click.stop="onRemove(item.taskId)"
           >
             &times;
@@ -172,7 +178,11 @@ onMounted(() => loadHistory())
 <style scoped>
 .history-page {
   max-width: 720px;
+  width: 100%;
   margin: 0 auto;
+  height: calc(100vh - var(--space-xl) * 2);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   padding-top: var(--space-lg);
   padding-bottom: var(--space-xl);
 }
@@ -206,16 +216,18 @@ onMounted(() => loadHistory())
 .clear-btn {
   padding: 6px 14px;
   font-size: 13px;
-  color: #b91c1c;
+  color: var(--color-error);
   background: transparent;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
+  opacity: 0.8;
 }
 
 .clear-btn:hover {
-  background: #fef2f2;
+  opacity: 1;
+  background: var(--color-error-bg);
 }
 
 /* 通用 */
@@ -265,6 +277,12 @@ onMounted(() => loadHistory())
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.history-list::-webkit-scrollbar {
+  display: none;
 }
 
 .history-item {
@@ -310,8 +328,8 @@ onMounted(() => loadHistory())
 }
 
 .type-polishing {
-  color: #7c3aed;
-  background: #ede9fe;
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .item-topic {
@@ -351,8 +369,8 @@ onMounted(() => loadHistory())
 }
 
 .remove-btn:hover {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 
 /* 分页 */

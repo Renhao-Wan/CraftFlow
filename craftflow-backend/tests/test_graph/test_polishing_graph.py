@@ -4,16 +4,15 @@
 使用 mock 隔离 LLM 调用和子图调用，验证图的状态流转。
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from langchain_core.messages import AIMessage
 
 from app.graph.polishing import builder as _builder_module
 from app.graph.polishing import nodes as _nodes_module
 from app.graph.polishing.builder import get_polishing_graph
 from app.graph.polishing.state import PolishingState
-
 
 # ============================================
 # 辅助函数
@@ -152,17 +151,21 @@ class TestPolishingMode1:
     @pytest.mark.asyncio
     async def test_mode1_formatter(self):
         """测试 Mode 1 路由到 formatter 并返回格式化内容"""
-        mock_router = AsyncMock(return_value={
-            "mode": 1,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 1")],
-        })
-        mock_formatter = AsyncMock(return_value={
-            "formatted_content": "# 格式化后的内容\n\n正文...",
-            "final_content": "# 格式化后的内容\n\n正文...",
-            "current_node": "formatter",
-            "messages": [AIMessage(content="文章格式化完成")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 1,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 1")],
+            }
+        )
+        mock_formatter = AsyncMock(
+            return_value={
+                "formatted_content": "# 格式化后的内容\n\n正文...",
+                "final_content": "# 格式化后的内容\n\n正文...",
+                "current_node": "formatter",
+                "messages": [AIMessage(content="文章格式化完成")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,
@@ -188,24 +191,28 @@ class TestPolishingMode2:
     @pytest.mark.asyncio
     async def test_mode2_debate_pass(self):
         """测试 Mode 2 对抗审查通过"""
-        mock_router = AsyncMock(return_value={
-            "mode": 2,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 2")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 2,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 2")],
+            }
+        )
 
         debate_result = _make_debate_result(
             final_content="高质量润色内容",
             editor_score=95,
             is_passed=True,
         )
-        mock_debate = AsyncMock(return_value={
-            "final_content": debate_result["final_content"],
-            "debate_history": debate_result["debate_history"],
-            "overall_score": debate_result["editor_score"],
-            "current_node": "debate",
-            "messages": [AIMessage(content="对抗审查完成")],
-        })
+        mock_debate = AsyncMock(
+            return_value={
+                "final_content": debate_result["final_content"],
+                "debate_history": debate_result["debate_history"],
+                "overall_score": debate_result["editor_score"],
+                "current_node": "debate",
+                "messages": [AIMessage(content="对抗审查完成")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,
@@ -222,23 +229,37 @@ class TestPolishingMode2:
     @pytest.mark.asyncio
     async def test_mode2_debate_with_history(self):
         """测试 Mode 2 返回对抗历史"""
-        mock_router = AsyncMock(return_value={
-            "mode": 2,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 2")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 2,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 2")],
+            }
+        )
 
         history = [
-            {"round_number": 1, "author_content": "第一轮", "editor_feedback": "改进", "editor_score": 75},
-            {"round_number": 2, "author_content": "第二轮", "editor_feedback": "优秀", "editor_score": 95},
+            {
+                "round_number": 1,
+                "author_content": "第一轮",
+                "editor_feedback": "改进",
+                "editor_score": 75,
+            },
+            {
+                "round_number": 2,
+                "author_content": "第二轮",
+                "editor_feedback": "优秀",
+                "editor_score": 95,
+            },
         ]
-        mock_debate = AsyncMock(return_value={
-            "final_content": "最终润色内容",
-            "debate_history": history,
-            "overall_score": 95,
-            "current_node": "debate",
-            "messages": [AIMessage(content="对抗审查完成")],
-        })
+        mock_debate = AsyncMock(
+            return_value={
+                "final_content": "最终润色内容",
+                "debate_history": history,
+                "overall_score": 95,
+                "current_node": "debate",
+                "messages": [AIMessage(content="对抗审查完成")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,
@@ -254,16 +275,20 @@ class TestPolishingMode2:
     @pytest.mark.asyncio
     async def test_mode2_debate_error(self):
         """测试 Mode 2 对抗审查失败时的错误处理"""
-        mock_router = AsyncMock(return_value={
-            "mode": 2,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 2")],
-        })
-        mock_debate = AsyncMock(return_value={
-            "error": "对抗审查失败: LLM 调用超时",
-            "current_node": "debate",
-            "messages": [AIMessage(content="对抗审查失败: LLM 调用超时")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 2,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 2")],
+            }
+        )
+        mock_debate = AsyncMock(
+            return_value={
+                "error": "对抗审查失败: LLM 调用超时",
+                "current_node": "debate",
+                "messages": [AIMessage(content="对抗审查失败: LLM 调用超时")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,
@@ -288,17 +313,21 @@ class TestPolishingMode3:
     @pytest.mark.asyncio
     async def test_mode3_no_issues(self):
         """测试 Mode 3 核查无问题时直接返回"""
-        mock_router = AsyncMock(return_value={
-            "mode": 3,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 3")],
-        })
-        mock_fact_checker = AsyncMock(return_value={
-            "fact_check_result": "事实核查完成，准确性: high",
-            "needs_revision": False,
-            "current_node": "fact_checker",
-            "messages": [AIMessage(content="事实核查完成，未发现明显问题")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 3,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 3")],
+            }
+        )
+        mock_fact_checker = AsyncMock(
+            return_value={
+                "fact_check_result": "事实核查完成，准确性: high",
+                "needs_revision": False,
+                "current_node": "fact_checker",
+                "messages": [AIMessage(content="事实核查完成，未发现明显问题")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,
@@ -315,30 +344,36 @@ class TestPolishingMode3:
     @pytest.mark.asyncio
     async def test_mode3_with_issues_goes_to_debate(self):
         """测试 Mode 3 核查有问题时进入 debate 修正"""
-        mock_router = AsyncMock(return_value={
-            "mode": 3,
-            "current_node": "router",
-            "messages": [AIMessage(content="已选择润色模式: 3")],
-        })
-        mock_fact_checker = AsyncMock(return_value={
-            "fact_check_result": "发现 2 个事实问题",
-            "needs_revision": True,
-            "current_node": "fact_checker",
-            "messages": [AIMessage(content="事实核查完成，发现 2 个问题")],
-        })
+        mock_router = AsyncMock(
+            return_value={
+                "mode": 3,
+                "current_node": "router",
+                "messages": [AIMessage(content="已选择润色模式: 3")],
+            }
+        )
+        mock_fact_checker = AsyncMock(
+            return_value={
+                "fact_check_result": "发现 2 个事实问题",
+                "needs_revision": True,
+                "current_node": "fact_checker",
+                "messages": [AIMessage(content="事实核查完成，发现 2 个问题")],
+            }
+        )
 
         debate_result = _make_debate_result(
             final_content="修正后的文章",
             editor_score=92,
             is_passed=True,
         )
-        mock_debate = AsyncMock(return_value={
-            "final_content": debate_result["final_content"],
-            "debate_history": debate_result["debate_history"],
-            "overall_score": debate_result["editor_score"],
-            "current_node": "debate",
-            "messages": [AIMessage(content="对抗审查完成")],
-        })
+        mock_debate = AsyncMock(
+            return_value={
+                "final_content": debate_result["final_content"],
+                "debate_history": debate_result["debate_history"],
+                "overall_score": debate_result["editor_score"],
+                "current_node": "debate",
+                "messages": [AIMessage(content="对抗审查完成")],
+            }
+        )
 
         graph = _rebuild_graph(
             router_node=mock_router,

@@ -9,8 +9,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _is_frozen() -> bool:
+    """判断是否在 PyInstaller 打包环境中运行"""
+    return getattr(sys, "frozen", False)
 
 
 def _get_base_dir() -> Path:
@@ -19,9 +24,9 @@ def _get_base_dir() -> Path:
     桌面版（PyInstaller 打包）：使用 %APPDATA%/CraftFlow/
     开发环境：基于文件路径推导
     """
-    if getattr(sys, 'frozen', False):
-        # PyInstaller 打包环境
+    if _is_frozen():
         from desktop_config import get_data_dir
+
         return get_data_dir()
     return Path(__file__).resolve().parent.parent.parent
 
@@ -29,13 +34,33 @@ def _get_base_dir() -> Path:
 def _get_env_file() -> str:
     """获取 .env 文件路径
 
-    桌面版：从 %APPDATA%/CraftFlow/.env 读取
-    开发环境：从 .env.dev 读取
+    优先级：
+    1. 环境变量 CRAFTFLOW_ENV_FILE（显式指定）
+    2. 桌面版：%APPDATA%/CraftFlow/.env
+    3. .env.dev（本地开发）
+    4. .env（生产部署兜底）
     """
-    if getattr(sys, 'frozen', False):
+    import os
+
+    # 1. 检查环境变量显式指定
+    env_file = os.environ.get("CRAFTFLOW_ENV_FILE")
+    if env_file and Path(env_file).is_file():
+        return env_file
+
+    # 2. 桌面版环境
+    if _is_frozen():
         from desktop_config import get_env_file
+
         return str(get_env_file())
-    return str(_get_base_dir() / ".env.dev")
+
+    # 3. 本地开发：.env.dev
+    base_dir = _get_base_dir()
+    dev_env_file = base_dir / ".env.dev"
+    if dev_env_file.is_file():
+        return str(dev_env_file)
+
+    # 4. 生产部署：.env
+    return str(base_dir / ".env")
 
 
 # 项目根目录
@@ -61,6 +86,10 @@ class Settings(BaseSettings):
     # ============================================
     app_name: str = Field(default="CraftFlow Backend", description="应用名称")
     app_version: str = Field(default="0.1.0", description="应用版本")
+    app_mode: Literal["standalone", "server"] = Field(
+        default="standalone",
+        description="运行模式：standalone（桌面端，SQLite，无鉴权）/ server（服务端，PostgreSQL，API Key 鉴权）",
+    )
     environment: Literal["development", "production"] = Field(
         default="development", description="运行环境"
     )
@@ -70,18 +99,22 @@ class Settings(BaseSettings):
     )
 
     # ============================================
-    # LLM 配置
+    # 鉴权配置
     # ============================================
-    llm_api_key: str = Field(default="", description="LLM API 密钥")
-    llm_api_base: str = Field(default="", description="LLM API 基础 URL（可选）")
-    llm_model: str = Field(default="gpt-4-turbo", description="默认 LLM 模型")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="最大 Token 数")
-
-    # LLM 温度参数
-    default_temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="默认温度参数")
-    editor_node_temperature: float = Field(
-        default=0.2, ge=0.0, le=2.0, description="编辑节点温度参数（更保守）"
+    enable_auth: bool = Field(
+        default=False,
+        description="是否启用 API Key 鉴权（standalone 模式下自动禁用）",
     )
+    api_key: str = Field(
+        default="craftflow-dev-key",
+        description="API Key，用于验证 Java 后端调用（server 模式下必须修改）",
+    )
+
+    # ============================================
+    # LLM 配置（已迁移至数据库 llm_profiles 表）
+    # ============================================
+    # LLM 配置现在通过 Settings 页面管理，存储在 SQLite 的 llm_profiles 表中。
+    # 首次使用时请在前端设置页面添加 LLM Profile。
 
     # ============================================
     # 状态持久化配置
@@ -90,44 +123,37 @@ class Settings(BaseSettings):
         default="sqlite", description="Checkpointer 后端（memory / sqlite / postgres）"
     )
     database_url: str = Field(
-        default="postgresql+asyncpg://user:password@localhost:5432/craftflow",
-        description="PostgreSQL 数据库连接 URL（checkpointer_backend=postgres 时必填）",
+        default="",
+        description="PostgreSQL 数据库连接 URL（checkpointer_backend=postgres 或 taskstore_backend=postgres 时必填）",
     )
     db_pool_size: int = Field(default=10, ge=1, le=100, description="数据库连接池大小")
     db_max_overflow: int = Field(default=20, ge=0, le=100, description="连接池最大溢出数")
 
     # ============================================
-    # 外部工具 API 配置
+    # TaskStore 配置
     # ============================================
-    tavily_api_key: str = Field(default="", description="Tavily Search API 密钥")
-    e2b_api_key: str = Field(default="", description="E2B Code Interpreter API 密钥")
+    taskstore_backend: Literal["sqlite", "postgres"] = Field(
+        default="sqlite", description="TaskStore 存储后端（sqlite / postgres）"
+    )
 
     # ============================================
     # 向量数据库配置
     # ============================================
-    enable_rag: bool = Field(
-        default=False, description="是否启用 RAG（检索增强生成）功能"
-    )
+    enable_rag: bool = Field(default=False, description="是否启用 RAG（检索增强生成）功能")
     vector_db_backend: str = Field(
         default="pgvector", description="向量数据库后端 (pgvector / chroma)"
     )
-    vector_collection_name: str = Field(
-        default="craftflow_docs", description="向量数据库集合名称"
-    )
-    
+    vector_collection_name: str = Field(default="craftflow_docs", description="向量数据库集合名称")
+
     # 向量模型配置
-    embedding_model: str = Field(
-        default="text-embedding-3-small", description="Embedding 模型名称"
-    )
+    embedding_model: str = Field(default="text-embedding-3-small", description="Embedding 模型名称")
     embedding_api_key: str = Field(
         default="", description="Embedding API 密钥（默认使用 LLM_API_KEY）"
     )
     embedding_api_base: str = Field(
         default="", description="Embedding API 基础 URL（默认使用 LLM_API_BASE）"
     )
-    embedding_dimensions: int = Field(
-        default=1536, ge=1, le=3072, description="Embedding 向量维度"
-    )
+    embedding_dimensions: int = Field(default=1536, ge=1, le=3072, description="Embedding 向量维度")
 
     # ============================================
     # FastAPI 服务配置
@@ -154,14 +180,11 @@ class Settings(BaseSettings):
     redis_max_connections: int = Field(default=20, ge=1, le=100, description="Redis 最大连接数")
 
     # ============================================
-    # 业务逻辑配置
+    # 业务逻辑配置（已迁移至数据库 settings 表）
     # ============================================
-    max_outline_sections: int = Field(default=10, ge=1, le=50, description="大纲最大章节数")
-    max_concurrent_writers: int = Field(default=5, ge=1, le=20, description="并发写作节点数量上限")
-    max_debate_iterations: int = Field(default=3, ge=1, le=10, description="对抗循环最大迭代次数")
-    editor_pass_score: int = Field(default=90, ge=0, le=100, description="主编通过分数阈值")
-    task_timeout: int = Field(default=3600, ge=60, le=86400, description="任务超时时间（秒）")
-    tool_call_timeout: int = Field(default=30, ge=5, le=300, description="工具调用超时时间（秒）")
+    # max_outline_sections, max_concurrent_writers, max_debate_iterations,
+    # editor_pass_score, task_timeout, tool_call_timeout
+    # 现在通过前端设置页面管理，存储在 SQLite 的 settings 表中。
 
     @field_validator("cors_origins")
     @classmethod
@@ -171,13 +194,24 @@ class Settings(BaseSettings):
             return []
         return [origin.strip() for origin in v.split(",") if origin.strip()]
 
-    @field_validator("database_url")
-    @classmethod
-    def validate_database_url(cls, v: str, info) -> str:
-        """验证数据库 URL 格式"""
-        if info.data.get("checkpointer_backend") == "postgres" and not v:
-            raise ValueError("checkpointer_backend=postgres 时必须提供有效的 database_url")
-        return v
+    @model_validator(mode="after")
+    def validate_mode_config(self) -> "Settings":
+        """根据 APP_MODE 自动调整配置"""
+        if self.app_mode == "standalone":
+            # 桌面端模式：强制禁用鉴权
+            self.enable_auth = False
+            # 桌面端模式：默认使用 SQLite
+            if self.checkpointer_backend == "postgres":
+                self.checkpointer_backend = "sqlite"
+            if self.taskstore_backend == "postgres":
+                self.taskstore_backend = "sqlite"
+        elif self.app_mode == "server":
+            # 服务端模式：如果使用 postgres，要求配置 database_url
+            if (
+                self.checkpointer_backend == "postgres" or self.taskstore_backend == "postgres"
+            ) and not self.database_url:
+                raise ValueError("server 模式下使用 postgres 后端时必须配置 DATABASE_URL")
+        return self
 
     @property
     def is_production(self) -> bool:
@@ -188,6 +222,16 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """判断是否为开发环境"""
         return self.environment == "development"
+
+    @property
+    def is_standalone(self) -> bool:
+        """判断是否为桌面端模式"""
+        return self.app_mode == "standalone"
+
+    @property
+    def is_server(self) -> bool:
+        """判断是否为服务端模式"""
+        return self.app_mode == "server"
 
 
 @lru_cache

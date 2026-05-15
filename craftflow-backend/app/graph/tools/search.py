@@ -6,10 +6,10 @@
 
 from typing import Any
 
-from langchain_tavily import TavilySearch
 from langchain_core.tools import tool
+from langchain_tavily import TavilySearch
 
-from app.core.config import settings
+from app.core import tool_configs
 from app.core.exceptions import ToolExecutionError
 from app.core.logger import logger
 
@@ -18,9 +18,11 @@ class TavilySearchTool:
     """tavily 搜索工具封装类
 
     提供单例模式的搜索工具实例，支持配置化管理。
+    API Key 变化时自动重建实例。
     """
 
     _instance: TavilySearch | None = None
+    _cached_key: str = ""
 
     @classmethod
     def get_instance(cls, max_results: int = 5) -> TavilySearch:
@@ -35,15 +37,18 @@ class TavilySearchTool:
         Raises:
             ToolExecutionError: 当 API Key 未配置时抛出
         """
-        if cls._instance is None:
-            if not settings.tavily_api_key:
-                raise ToolExecutionError(
-                    tool_name="TavilySearch",
-                    message="TAVILY_API_KEY 未配置，请在 .env 文件中设置",
-                )
+        key = tool_configs.get("tavily_api_key")
+        if not key:
+            raise ToolExecutionError(
+                tool_name="TavilySearch",
+                message="Tavily API Key 未配置，请在设置页面配置",
+            )
 
+        # key 变化时重建实例
+        if cls._instance is None or key != cls._cached_key:
             import os
-            os.environ["TAVILY_API_KEY"] = settings.tavily_api_key
+
+            os.environ["TAVILY_API_KEY"] = key
 
             cls._instance = TavilySearch(
                 max_results=max_results,
@@ -52,9 +57,8 @@ class TavilySearchTool:
                 include_raw_content=False,
                 include_images=False,
             )
+            cls._cached_key = key
             logger.info(f"TavilySearch 工具初始化成功，最大结果数: {max_results}")
-
-        assert cls._instance is not None, "TavilySearch 工具实例未正确初始化"
 
         return cls._instance
 

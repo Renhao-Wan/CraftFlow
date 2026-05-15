@@ -4,9 +4,9 @@
 使用 mock 隔离外部依赖和 Settings 配置。
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
 from app.core.exceptions import CheckpointerError
@@ -76,9 +76,9 @@ class TestInitCheckpointer:
         with (
             patch("app.services.checkpointer.settings") as mock_settings,
             patch.object(
-                __import__(
-                    "app.services.checkpointer", fromlist=["_FACTORIES"]
-                )._FACTORIES["postgres"],
+                __import__("app.services.checkpointer", fromlist=["_FACTORIES"])._FACTORIES[
+                    "postgres"
+                ],
                 "create",
                 new_callable=AsyncMock,
                 return_value=(mock_saver, mock_closer),
@@ -107,9 +107,9 @@ class TestInitCheckpointer:
         with (
             patch("app.services.checkpointer.settings") as mock_settings,
             patch.object(
-                __import__(
-                    "app.services.checkpointer", fromlist=["_FACTORIES"]
-                )._FACTORIES["postgres"],
+                __import__("app.services.checkpointer", fromlist=["_FACTORIES"])._FACTORIES[
+                    "postgres"
+                ],
                 "create",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("连接失败"),
@@ -188,8 +188,8 @@ class TestCloseCheckpointer:
 
             await close_checkpointer()
 
-            # 连接应已关闭（再次关闭会报错说明已关）
-            with pytest.raises(Exception):
+            # 连接应已关闭（再次操作会报错说明已关）
+            with pytest.raises(ValueError, match="no active connection"):
                 await conn.execute("SELECT 1")
 
 

@@ -1,0 +1,89 @@
+appId: com.craftflow.desktop
+productName: CraftFlow
+copyright: Copyright © 2026 Renhao-Wan
+
+# 目录配置
+directories:
+  output: release
+  buildResources: image
+
+# 打包文件
+files:
+  - electron/**/*
+  - package.json
+
+# 额外资源
+extraResources:
+  # PyInstaller 打包的后端
+  - from: backend/dist/craftflow/
+    to: backend
+    filter:
+      - "**/*"
+  # 前端构建产物
+  - from: frontend/dist/
+    to: frontend
+    filter:
+      - "**/*"
+
+# 禁用 asar（后端是独立 exe）
+asar: false
+
+# Windows 配置
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  requestedExecutionLevel: asInvoker
+  icon: image/icon.png
+
+# NSIS 安装程序配置
+nsis:
+  # 非一键安装（允许用户选择安装路径）
+  oneClick: false
+
+  # 允许所有用户安装
+  perMachine: false
+
+  # 允许更改安装目录
+  allowToChangeInstallationDirectory: true
+
+  # 安装程序图标
+  installerIcon: image/icon.png
+
+  # 卸载程序图标
+  uninstallerIcon: image/icon.png
+
+  # 创建桌面快捷方式
+  createDesktopShortcut: true
+
+  # 创建开始菜单快捷方式
+  createStartMenuShortcut: true
+
+  # 快捷方式名称
+  shortcutName: CraftFlow
+
+  # 安装程序文件名
+  artifactName: CraftFlow-${version}-Setup.${ext}
+
+  # 安装后运行
+  runAfterFinish: true
+
+  # 卸载时删除用户数据
+  deleteAppDataOnUninstall: false
+
+# macOS 配置（预留）
+mac:
+  target:
+    - target: dmg
+  icon: image/icon.png
+  category: public.app-category.productivity
+
+# Linux 配置（预留）
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: image/icon.png
+  category: Office

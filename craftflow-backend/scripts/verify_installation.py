@@ -116,8 +116,8 @@ def main():
             print("ℹ️  部分可选依赖未安装（开发环境可忽略）")
         print()
         print("下一步:")
-        print("1. 复制 .env.example 为 .env.dev 并填写 API Key")
-        print("2. 运行 'uv run uvicorn app.main:app --reload' 启动开发服务器")
+        print("1. 使用 .env.standalone 或 .env.server 作为配置模板")
+        print("2. 运行 'scripts/dev.ps1' 或 'scripts/dev.sh' 启动开发服务器")
         return 0
     else:
         print("⚠️  部分核心依赖安装失败，请检查错误信息")

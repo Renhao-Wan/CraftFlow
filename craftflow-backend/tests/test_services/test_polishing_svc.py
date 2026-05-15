@@ -4,8 +4,9 @@
 使用 mock 隔离 Graph 执行和 Checkpointer。
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from app.core.exceptions import GraphExecutionError, TaskNotFoundError
 from app.schemas.response import TaskResponse, TaskStatusResponse
@@ -18,14 +19,31 @@ def mock_checkpointer():
     return MagicMock()
 
 
+_DEFAULT_WRITING_PARAMS = {
+    "max_outline_sections": "5",
+    "max_concurrent_writers": "3",
+    "max_debate_iterations": "3",
+    "editor_pass_score": "90",
+    "task_timeout": "3600",
+    "tool_call_timeout": "30",
+}
+
+
 @pytest.fixture
-def mock_task_store():
-    """创建 mock TaskStore"""
-    store = AsyncMock()
-    store.save_task = AsyncMock()
-    store.get_task = AsyncMock(return_value=None)
-    store.get_task_list = AsyncMock(return_value=[])
-    return store
+def mock_adapter():
+    """创建 mock BusinessAdapter"""
+    adapter = AsyncMock()
+    adapter.save_task = AsyncMock()
+    adapter.get_task = AsyncMock(return_value=None)
+    adapter.get_task_list = AsyncMock(return_value=([], 0))
+    adapter.get_writing_params = AsyncMock(return_value=_DEFAULT_WRITING_PARAMS)
+    adapter.get_llm_profile = AsyncMock(
+        return_value={"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}
+    )
+    adapter.get_all_llm_profiles = AsyncMock(
+        return_value=[{"id": "test", "name": "test", "api_key": "sk-test", "model": "gpt-4"}]
+    )
+    return adapter
 
 
 @pytest.fixture
@@ -38,9 +56,9 @@ def mock_graph():
 
 
 @pytest.fixture
-def service(mock_checkpointer, mock_task_store, mock_graph):
+def service(mock_checkpointer, mock_adapter, mock_graph):
     """创建 PolishingService 实例（注入 mock graph）"""
-    svc = PolishingService(checkpointer=mock_checkpointer, task_store=mock_task_store)
+    svc = PolishingService(checkpointer=mock_checkpointer, adapter=mock_adapter)
     svc._graph = mock_graph
     return svc
 
@@ -48,8 +66,7 @@ def service(mock_checkpointer, mock_task_store, mock_graph):
 def _setup_graph_mocks(mock_graph, invoke_result, state_values=None):
     """统一设置 ainvoke 和 aget_state 的返回值"""
     if isinstance(invoke_result, Exception) or (
-        hasattr(invoke_result, "__class__")
-        and issubclass(invoke_result.__class__, BaseException)
+        hasattr(invoke_result, "__class__") and issubclass(invoke_result.__class__, BaseException)
     ):
         mock_graph.ainvoke.side_effect = invoke_result
     else:
@@ -73,11 +90,14 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_mode1_formatter(self, service, mock_graph):
         """测试 Mode 1 极速格式化"""
-        _setup_graph_mocks(mock_graph, {
-            "formatted_content": "# 格式化内容",
-            "final_content": "# 格式化内容",
-            "current_node": "formatter",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "formatted_content": "# 格式化内容",
+                "final_content": "# 格式化内容",
+                "current_node": "formatter",
+            },
+        )
 
         result = await service.start_task(content="# 原始内容\n\n正文", mode=1)
 
@@ -89,11 +109,14 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_mode2_debate(self, service, mock_graph):
         """测试 Mode 2 专家对抗审查"""
-        _setup_graph_mocks(mock_graph, {
-            "final_content": "对抗审查后的内容",
-            "overall_score": 95,
-            "current_node": "debate",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "final_content": "对抗审查后的内容",
+                "overall_score": 95,
+                "current_node": "debate",
+            },
+        )
 
         result = await service.start_task(content="# 测试内容\n\n正文", mode=2)
 
@@ -103,10 +126,14 @@ class TestStartTask:
     @pytest.mark.asyncio
     async def test_start_mode3_fact_checker(self, service, mock_graph):
         """测试 Mode 3 事实核查"""
-        _setup_graph_mocks(mock_graph, {
-            "fact_check_result": "事实核查完成，准确性: high",
-            "current_node": "fact_checker",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "fact_check_result": "事实核查完成，准确性: high",
+                "final_content": "# 测试内容\n\n核查后的内容",
+                "current_node": "fact_checker",
+            },
+        )
 
         result = await service.start_task(content="# 测试内容\n\n正文", mode=3)
 
@@ -114,7 +141,7 @@ class TestStartTask:
         assert "事实核查" in result.message
 
     @pytest.mark.asyncio
-    async def test_start_task_saves_metadata(self, service, mock_graph, mock_task_store):
+    async def test_start_task_saves_metadata(self, service, mock_graph, mock_adapter):
         """测试任务元数据正确保存到 TaskStore"""
         _setup_graph_mocks(mock_graph, {"final_content": "结果"})
 
@@ -122,8 +149,8 @@ class TestStartTask:
         result = await service.start_task(content=content, mode=2)
 
         # 已完成任务应持久化到 TaskStore 并从 _tasks 移除
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "completed"
         assert saved_data["graph_type"] == "polishing"
         assert saved_data["mode"] == 2
@@ -142,7 +169,7 @@ class TestStartTask:
         assert "LLM 调用超时" in str(exc_info.value.message)
 
     @pytest.mark.asyncio
-    async def test_start_task_exception(self, service, mock_graph, mock_task_store):
+    async def test_start_task_exception(self, service, mock_graph, mock_adapter):
         """测试图执行异常时抛出 GraphExecutionError"""
         _setup_graph_mocks(mock_graph, RuntimeError("网络错误"))
 
@@ -150,15 +177,20 @@ class TestStartTask:
             await service.start_task(content="测试内容" * 5, mode=1)
 
         # 失败任务应持久化到 TaskStore
-        mock_task_store.save_task.assert_called_once()
-        saved_data = mock_task_store.save_task.call_args[0][0]
+        mock_adapter.save_task.assert_called_once()
+        saved_data = mock_adapter.save_task.call_args[0][0]
         assert saved_data["status"] == "failed"
         assert "网络错误" in saved_data["error"]
 
     @pytest.mark.asyncio
     async def test_start_task_passes_correct_state(self, service, mock_graph):
         """测试传递正确的初始状态"""
-        _setup_graph_mocks(mock_graph, {})
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "final_content": "测试结果",
+            },
+        )
 
         content = "# 测试文章\n\n这是正文内容"
         await service.start_task(content=content, mode=2)
@@ -182,17 +214,20 @@ class TestGetTaskStatus:
     """测试任务状态查询"""
 
     @pytest.mark.asyncio
-    async def test_get_status_completed_mode1(self, service, mock_graph, mock_task_store):
+    async def test_get_status_completed_mode1(self, service, mock_graph, mock_adapter):
         """测试 Mode 1 完成后的状态查询（从 TaskStore）"""
-        _setup_graph_mocks(mock_graph, {
-            "formatted_content": "# 格式化结果",
-            "current_node": "formatter",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "formatted_content": "# 格式化结果",
+                "current_node": "formatter",
+            },
+        )
 
         create_result = await service.start_task(content="测试内容" * 5, mode=1)
 
         # 已完成任务从 TaskStore 查询
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "polishing",
             "status": "completed",
@@ -210,17 +245,20 @@ class TestGetTaskStatus:
         assert status.progress == 100.0
 
     @pytest.mark.asyncio
-    async def test_get_status_completed_mode2(self, service, mock_graph, mock_task_store):
+    async def test_get_status_completed_mode2(self, service, mock_graph, mock_adapter):
         """测试 Mode 2 完成后的状态查询（从 TaskStore）"""
-        _setup_graph_mocks(mock_graph, {
-            "final_content": "对抗审查结果",
-            "overall_score": 92,
-            "current_node": "debate",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "final_content": "对抗审查结果",
+                "overall_score": 92,
+                "current_node": "debate",
+            },
+        )
 
         create_result = await service.start_task(content="测试内容" * 5, mode=2)
 
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "polishing",
             "status": "completed",
@@ -235,16 +273,20 @@ class TestGetTaskStatus:
         assert status.result == "对抗审查结果"
 
     @pytest.mark.asyncio
-    async def test_get_status_completed_mode3(self, service, mock_graph, mock_task_store):
+    async def test_get_status_completed_mode3(self, service, mock_graph, mock_adapter):
         """测试 Mode 3 完成后的状态查询（从 TaskStore）"""
-        _setup_graph_mocks(mock_graph, {
-            "fact_check_result": "核查通过",
-            "current_node": "fact_checker",
-        })
+        _setup_graph_mocks(
+            mock_graph,
+            {
+                "fact_check_result": "核查通过",
+                "final_content": "# 测试内容\n\n核查后的内容",
+                "current_node": "fact_checker",
+            },
+        )
 
         create_result = await service.start_task(content="测试内容" * 5, mode=3)
 
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "polishing",
             "status": "completed",
@@ -265,13 +307,13 @@ class TestGetTaskStatus:
             await service.get_task_status(task_id="nonexistent")
 
     @pytest.mark.asyncio
-    async def test_get_status_with_state(self, service, mock_graph, mock_task_store):
+    async def test_get_status_with_state(self, service, mock_graph, mock_adapter):
         """测试查询已完成任务的完整状态（从 TaskStore，state 为 None）"""
         _setup_graph_mocks(mock_graph, {"final_content": "结果"})
 
         create_result = await service.start_task(content="测试内容" * 5, mode=2)
 
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "polishing",
             "status": "completed",
@@ -290,13 +332,13 @@ class TestGetTaskStatus:
         assert status.state is None
 
     @pytest.mark.asyncio
-    async def test_get_status_with_history(self, service, mock_graph, mock_task_store):
+    async def test_get_status_with_history(self, service, mock_graph, mock_adapter):
         """测试查询已完成任务的执行历史（从 TaskStore，history 为 None）"""
         _setup_graph_mocks(mock_graph, {"final_content": "结果"})
 
         create_result = await service.start_task(content="测试内容" * 5, mode=1)
 
-        mock_task_store.get_task.return_value = {
+        mock_adapter.get_task.return_value = {
             "task_id": create_result.task_id,
             "graph_type": "polishing",
             "status": "completed",
@@ -334,13 +376,14 @@ class TestExtractResult:
         assert PolishingService._extract_result(state) == "格式化内容"
 
     def test_extract_from_fact_check_result(self):
-        """测试从 fact_check_result 提取结果"""
+        """测试 fact_check_result 不作为文章结果提取（核查报告通过单独字段传递）"""
         state = {
             "final_content": None,
             "formatted_content": None,
             "fact_check_result": "核查结果",
         }
-        assert PolishingService._extract_result(state) == "核查结果"
+        # _extract_result 提取文章内容，fact_check_result 单独处理
+        assert PolishingService._extract_result(state) is None
 
     def test_extract_returns_none_when_empty(self):
         """测试无结果时返回 None"""
@@ -368,12 +411,12 @@ class TestProgressCalculation:
 
     def test_progress_by_node(self):
         nodes = {
-            "router": 20.0,
+            "router": 10.0,
             "formatter": 60.0,
             "debate": 60.0,
-            "fact_checker": 60.0,
+            "fact_checker": 30.0,
         }
         for node, expected in nodes.items():
-            assert PolishingService._calculate_progress(
-                {"current_node": node}, "running"
-            ) == expected
+            assert (
+                PolishingService._calculate_progress({"current_node": node}, "running") == expected
+            )

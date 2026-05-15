@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useNavigationStore } from '@/stores/navigation'
+import { useSettingsStore } from '@/stores/settings'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import { inferTaskType, formatTime, taskRouteName } from '@/utils/taskHelpers'
 import type { TaskStatus } from '@/api/types/task'
@@ -18,6 +19,17 @@ interface RecentTask {
 const router = useRouter()
 const taskStore = useTaskStore()
 const navStore = useNavigationStore()
+const settingsStore = useSettingsStore()
+
+const hasProfiles = ref<boolean | null>(null)
+
+async function checkLlmProfiles(): Promise<void> {
+  hasProfiles.value = await settingsStore.checkProfiles()
+}
+
+function goToLlmSettings(): void {
+  settingsStore.openSettingsModal('llm')
+}
 
 const recentTasks = ref<RecentTask[]>([])
 
@@ -40,7 +52,10 @@ function goToTask(item: RecentTask): void {
   router.push({ name: taskRouteName(item.type), params: { taskId: item.taskId } })
 }
 
-onMounted(loadRecent)
+onMounted(() => {
+  loadRecent()
+  checkLlmProfiles()
+})
 </script>
 
 <template>
@@ -50,6 +65,27 @@ onMounted(loadRecent)
       <h1 class="hero-title">CraftFlow</h1>
       <div class="hero-rule" />
       <p class="hero-subtitle">AI 驱动的智能长文创作与审校平台</p>
+    </div>
+
+    <!-- LLM 未配置引导 -->
+    <div v-if="hasProfiles === false" class="setup-banner" @click="goToLlmSettings">
+      <div class="setup-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+      <div class="setup-text">
+        <span class="setup-title">尚未配置 LLM 模型</span>
+        <span class="setup-desc">需要先添加至少一个 LLM 配置才能使用创作和润色功能</span>
+      </div>
+      <span class="setup-action">
+        前往设置
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </span>
     </div>
 
     <!-- 入口卡片 -->
@@ -192,8 +228,8 @@ onMounted(loadRecent)
 }
 
 .action-icon-polishing {
-  background: #f0ead6;
-  color: #92730a;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .action-info {
@@ -302,8 +338,8 @@ onMounted(loadRecent)
 }
 
 .type-polishing {
-  color: #7c3aed;
-  background: #ede9fe;
+  color: var(--color-info);
+  background: var(--color-info-bg);
 }
 
 .recent-topic {
@@ -320,6 +356,59 @@ onMounted(loadRecent)
   flex-shrink: 0;
   font-size: 12px;
   color: var(--color-text-light);
+}
+
+/* LLM 未配置引导 */
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 14px 18px;
+  margin-bottom: var(--space-xl);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.setup-banner:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.setup-icon {
+  flex-shrink: 0;
+  color: var(--color-warning);
+  display: flex;
+}
+
+.setup-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setup-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.setup-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.setup-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 @media (max-width: 768px) {

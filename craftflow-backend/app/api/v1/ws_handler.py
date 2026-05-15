@@ -110,6 +110,15 @@ async def _handle_create_creation(
             )
         except Exception as e:
             logger.error(f"创作任务流式执行异常: {e}")
+            error_msg = {
+                "type": "error",
+                "requestId": msg.request_id,
+                "code": "TASK_CREATE_FAILED",
+                "message": str(e),
+            }
+            sent = await broadcaster.send_to(client_id, error_msg)
+            if not sent:
+                logger.warning(f"错误消息发送失败，客户端可能已断开 - client: {client_id}")
 
     asyncio.create_task(_run())
 
@@ -133,6 +142,15 @@ async def _handle_create_polishing(
             )
         except Exception as e:
             logger.error(f"润色任务流式执行异常: {e}")
+            error_msg = {
+                "type": "error",
+                "requestId": msg.request_id,
+                "code": "TASK_CREATE_FAILED",
+                "message": str(e),
+            }
+            sent = await broadcaster.send_to(client_id, error_msg)
+            if not sent:
+                logger.warning(f"错误消息发送失败，客户端可能已断开 - client: {client_id}")
 
     asyncio.create_task(_run())
 
@@ -157,6 +175,15 @@ async def _handle_resume_task(
             )
         except Exception as e:
             logger.error(f"恢复任务流式执行异常: {e}")
+            error_msg = {
+                "type": "error",
+                "requestId": msg.request_id,
+                "code": "TASK_RESUME_FAILED",
+                "message": str(e),
+            }
+            sent = await broadcaster.send_to(client_id, error_msg)
+            if not sent:
+                logger.warning(f"错误消息发送失败，客户端可能已断开 - client: {client_id}")
 
     asyncio.create_task(_run())
 
@@ -171,11 +198,14 @@ async def _handle_get_task_status(
     polishing_svc = get_polishing_service()
 
     try:
-        # 服务层内部已实现：内存 → TaskStore 的查询链
+        # 先尝试 creation 服务，再尝试 polishing 服务
         status = None
         try:
             status = await creation_svc.get_task_status(msg.task_id)
         except Exception:
+            pass
+
+        if status is None:
             try:
                 status = await polishing_svc.get_task_status(msg.task_id)
             except Exception:

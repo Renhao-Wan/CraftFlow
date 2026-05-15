@@ -11,12 +11,12 @@ AuthorNode、EditorNode 等对抗循环节点位于 debate/nodes.py。
 import asyncio
 import json
 import re
-from typing import Any, Callable, Awaitable
+from typing import Any, Awaitable, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm
+from app.graph.common.llm_factory import get_default_llm, get_factchecker_llm
 from app.graph.polishing.prompts import (
     FACT_CHECKER_HUMAN_PROMPT,
     FACT_CHECKER_SYSTEM_PROMPT,
@@ -128,7 +128,8 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
 
     # 使用 LLM 分析并推荐模式
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         human_message = ROUTER_HUMAN_PROMPT.format(content=content[:2000])  # 限制长度
 
@@ -138,7 +139,9 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        response_content = response.content if isinstance(response.content, str) else str(response.content)
+        response_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         # 解析推荐结果
         result = _extract_json_from_response(response_content)
@@ -150,9 +153,14 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
             return {
                 "mode": recommended_mode,
                 "current_node": "router",
-                "messages": [AIMessage(content=f"推荐润色模式: {recommended_mode}，理由: {reason}")],
+                "messages": [
+                    AIMessage(content=f"推荐润色模式: {recommended_mode}，理由: {reason}")
+                ],
             }
 
+    except ValueError:
+        # 配置错误（API Key 未配置等）向上传播，由 start_task_streaming 处理
+        raise
     except Exception as e:
         logger.warning(f"模式推荐失败，使用默认模式 2: {str(e)}")
 
@@ -185,7 +193,8 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
     logger.info("FormatterNode 开始执行")
 
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_default_llm()
 
         human_message = FORMATTER_HUMAN_PROMPT.format(content=content)
 
@@ -195,7 +204,9 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
         ]
 
         response = await llm.ainvoke(messages)
-        formatted_content = response.content if isinstance(response.content, str) else str(response.content)
+        formatted_content = (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
 
         logger.info("格式化完成")
 
@@ -208,11 +219,7 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"FormatterNode 执行失败: {str(e)}")
-        return {
-            "error": f"格式化失败: {str(e)}",
-            "current_node": "formatter",
-            "messages": [AIMessage(content=f"格式化失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================
@@ -237,7 +244,6 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     """
     content = state.get("content", "")
     task_id = state.get("task_id", "")
-    mode = state.get("mode", 3)
 
     logger.info("FactCheckerNode 开始执行")
 
@@ -248,7 +254,8 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
     await _report_progress(task_id, "fact_checker", "事实核查", fc_start)
 
     try:
-        llm = get_default_llm()
+        # ValueError 表示配置错误（API Key 未配置等），应向上传播
+        llm = await get_factchecker_llm()
         llm_with_tools = llm.bind_tools(SEARCH_TOOLS)
 
         human_message = FACT_CHECKER_HUMAN_PROMPT.format(content=content)
@@ -291,9 +298,7 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
                 tool_fn = tool_map.get(tool_name)
                 if tool_fn:
                     try:
-                        result = await asyncio.wait_for(
-                            tool_fn.ainvoke(tool_args), timeout=30
-                        )
+                        result = await asyncio.wait_for(tool_fn.ainvoke(tool_args), timeout=30)
                         tool_result = str(result) if not isinstance(result, str) else result
                     except asyncio.TimeoutError:
                         tool_result = f"工具执行超时（30秒）: {tool_name}"
@@ -305,14 +310,20 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
                     tool_result = f"未知工具: {tool_name}"
                     logger.warning(f"未知工具: {tool_name}")
 
-                messages.append(ToolMessage(
-                    content=tool_result,
-                    tool_call_id=tool_id,
-                ))
+                messages.append(
+                    ToolMessage(
+                        content=tool_result,
+                        tool_call_id=tool_id,
+                    )
+                )
 
             # 报告中间进度
-            round_progress = fc_start + (round_num + 1) / (MAX_TOOL_ROUNDS + 1) * (fc_end - fc_start)
-            await _report_progress(task_id, "fact_checker", f"事实核查（第 {round_num + 1} 轮搜索）", round_progress)
+            round_progress = fc_start + (round_num + 1) / (MAX_TOOL_ROUNDS + 1) * (
+                fc_end - fc_start
+            )
+            await _report_progress(
+                task_id, "fact_checker", f"事实核查（第 {round_num + 1} 轮搜索）", round_progress
+            )
             logger.debug(f"Agent loop 第 {round_num + 1} 轮完成")
         else:
             # 达到最大轮次，再次调用 LLM 获取最终文本响应（不含工具调用）
@@ -321,7 +332,8 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
 
         # 使用最终响应的内容
         response_content = (
-            final_response.content if isinstance(final_response.content, str)
+            final_response.content
+            if isinstance(final_response.content, str)
             else str(final_response.content)
         )
 
@@ -347,11 +359,15 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
                 "fact_check_result": fact_check_text,
                 "needs_revision": needs_revision,
                 "current_node": "fact_checker",
-                "messages": [AIMessage(
-                    content=f"事实核查完成，发现 {len(issues)} 个问题"
-                    if needs_revision
-                    else "事实核查完成，未发现明显问题"
-                )],
+                "messages": [
+                    AIMessage(
+                        content=(
+                            f"事实核查完成，发现 {len(issues)} 个问题"
+                            if needs_revision
+                            else "事实核查完成，未发现明显问题"
+                        )
+                    )
+                ],
             }
         else:
             logger.warning("事实核查结果解析失败")
@@ -364,12 +380,7 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"FactCheckerNode 执行失败: {str(e)}")
-        return {
-            "error": f"事实核查失败: {str(e)}",
-            "needs_revision": False,
-            "current_node": "fact_checker",
-            "messages": [AIMessage(content=f"事实核查失败: {str(e)}")],
-        }
+        raise
 
 
 # ============================================

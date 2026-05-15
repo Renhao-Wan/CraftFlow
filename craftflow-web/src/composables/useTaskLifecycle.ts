@@ -50,6 +50,10 @@ export interface UseTaskLifecycleReturn {
   submitPolishing: (content: string, mode: PolishingMode) => Promise<void>
   /** HITL 恢复执行 */
   resumeTask: (taskId: string, action: ResumeAction, data?: Record<string, unknown>) => Promise<void>
+  /** 原地重试创作任务（不跳转页面） */
+  retryCreation: (topic: string, description?: string) => Promise<void>
+  /** 原地重试润色任务（不跳转页面） */
+  retryPolishing: (content: string, mode: PolishingMode) => Promise<void>
   /** 加载指定任务状态 */
   loadTask: (taskId: string) => Promise<void>
   /** 取消订阅当前任务的 WS 推送 */
@@ -124,13 +128,13 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
         task_id: taskId,
         status,
         created_at: response.createdAt as string | undefined,
+        data: { topic, description },
       })
 
       await handleSubmit(taskId, 'creation')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '提交创作任务失败'
       submitError.value = message
-      throw err
     } finally {
       submitting.value = false
     }
@@ -160,7 +164,6 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '提交润色任务失败'
       submitError.value = message
-      throw err
     } finally {
       submitting.value = false
     }
@@ -192,10 +195,60 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '恢复任务失败'
       submitError.value = message
-      throw err
     } finally {
       submitting.value = false
     }
+  }
+
+  /** 原地重试：创建新任务，替换当前页状态，不跳转 */
+  async function retryInPlace(
+    type: TaskType,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const msgType = type === 'creation' ? 'create_creation' : 'create_polishing'
+
+    submitting.value = true
+    submitError.value = null
+    try {
+      const response = await wsClient.sendAndWait(msgType, payload)
+      const taskId = response.taskId as string
+      const status = (response.status as TaskStatus) ?? 'running'
+
+      // 取消旧任务订阅，订阅新任务
+      const oldTaskId = taskStore.currentTask?.task_id
+      if (oldTaskId) {
+        wsClient.send({ type: 'unsubscribe_task', taskId: oldTaskId })
+      }
+
+      taskStore.setCurrentTask({
+        task_id: taskId,
+        status,
+        created_at: response.createdAt as string | undefined,
+        data: type === 'creation'
+          ? { topic: payload.topic, description: payload.description }
+          : { original_content: payload.content, mode: payload.mode },
+      })
+
+      subscribeTask(taskId)
+      taskType.value = type
+
+      // 直接用 history.replaceState 更新 URL，绕过 Vue Router 避免组件重新渲染
+      const basePath = type === 'creation' ? '/tasks/' : '/polishing/'
+      history.replaceState(null, '', `#${basePath}${taskId}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '重试失败'
+      submitError.value = message
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  async function retryCreation(topic: string, description?: string): Promise<void> {
+    await retryInPlace('creation', { topic, description })
+  }
+
+  async function retryPolishing(content: string, mode: PolishingMode): Promise<void> {
+    await retryInPlace('polishing', { content, mode })
   }
 
   /** 加载指定任务状态 */
@@ -221,6 +274,8 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     submitCreation,
     submitPolishing,
     resumeTask,
+    retryCreation,
+    retryPolishing,
     loadTask,
     stop,
     submitting,

@@ -1,0 +1,71 @@
+# ============================================================
+# Frontend CI — 前端类型检查与生产构建
+# ============================================================
+# 触发条件：
+#   - push 到 main / master / feature-dev 分支
+#   - PR 目标为 main / master 分支
+# 仅当 craftflow-web/ 或本文件有变更时才触发，
+# 避免后端改动浪费前端 CI 资源。
+# ============================================================
+name: Frontend CI
+
+on:
+  push:
+    # branches: [ "main", "master", "feature-dev" ]
+    branches: [ "main", "master" ]
+    paths:
+      - "craftflow-web/**"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    branches: [ "main", "master" ]
+    paths:
+      - "craftflow-web/**"
+      - ".github/workflows/frontend.yml"
+
+# 所有 run 命令的默认工作目录
+defaults:
+  run:
+    working-directory: craftflow-web
+
+jobs:
+  # ── TypeScript 类型检查 ───────────────────────────────────
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: craftflow-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # vue-tsc 类型检查，确保无类型错误
+      - name: Type check
+        run: npm run type-check
+
+  # ── 生产构建验证 ──────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: craftflow-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # vite build，跳过类型检查（已在 type-check job 中完成）
+      - name: Build
+        run: npm run build-only
