@@ -2,6 +2,7 @@
   "name": "craftflow-desktop",
   "version": "0.1.0",
   "description": "CraftFlow 智能长文创作平台 - 桌面版",
+  "repository": "github:Renhao-Wan/CraftFlow",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
