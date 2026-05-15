@@ -6,6 +6,12 @@ echo   CraftFlow Desktop Build Script
 echo ========================================
 echo.
 
+:: Clean previous build artifacts
+if exist "%~dp0..\release" (
+    echo [0/6] Cleaning previous release...
+    rmdir /s /q "%~dp0..\release"
+)
+
 :: Set mirrors for China
 set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
 set ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
