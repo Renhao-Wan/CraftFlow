@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { testLlmProfile } from '@/api/settings'
+import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal.vue'
 import type { LlmProfile } from '@/api/types/settings'
 import type { TestProfileResponse } from '@/api/types/chat'
 
@@ -26,6 +27,11 @@ const searchQuery = ref('')
 const expandedIds = ref<Set<string>>(new Set())
 const accordionMode = ref(loadAccordionMode())
 const showTooltip = ref(false)
+
+// 删除确认弹窗状态
+const deleteModalVisible = ref(false)
+const deleteModalLoading = ref(false)
+const deleteTargetProfile = ref<LlmProfile | null>(null)
 
 function loadAccordionMode(): boolean {
   const stored = localStorage.getItem(ACCORDION_STORAGE_KEY)
@@ -67,9 +73,22 @@ onMounted(() => {
   store.fetchProfiles()
 })
 
-async function handleDelete(profile: LlmProfile): Promise<void> {
-  if (!confirm(`确定删除配置「${profile.name}」吗？`)) return
-  await store.removeProfile(profile.id)
+function promptDelete(profile: LlmProfile): void {
+  deleteTargetProfile.value = profile
+  deleteModalVisible.value = true
+}
+
+async function confirmDelete(): Promise<void> {
+  if (!deleteTargetProfile.value) return
+  deleteModalLoading.value = true
+  try {
+    await store.removeProfile(deleteTargetProfile.value.id)
+    deleteModalVisible.value = false
+  } catch {
+    // store 已设置 error
+  } finally {
+    deleteModalLoading.value = false
+  }
 }
 
 async function handleSetDefault(profile: LlmProfile): Promise<void> {
@@ -214,7 +233,7 @@ function goToChat(profileId: string): void {
             <button class="btn-action btn-chat" @click.stop="goToChat(profile.id)">
               对话
             </button>
-            <button class="btn-action btn-delete" @click.stop="handleDelete(profile)">
+            <button class="btn-action btn-delete" @click.stop="promptDelete(profile)">
               删除
             </button>
           </div>
@@ -250,6 +269,15 @@ function goToChat(profileId: string): void {
         </div>
       </div>
     </div>
+
+    <ConfirmDeleteModal
+      v-model:visible="deleteModalVisible"
+      title="删除配置"
+      :message="deleteTargetProfile ? `确定删除 LLM 配置「${deleteTargetProfile.name}」吗？此操作不可恢复。` : ''"
+      confirm-text="删除"
+      :loading="deleteModalLoading"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 

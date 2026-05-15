@@ -18,11 +18,13 @@ from app.api.dependencies import (
 )
 from app.core.auth import verify_api_key
 from app.core.exceptions import TaskNotFoundError
+from app.core.logger import get_logger
 from app.schemas.response import TaskStatusResponse
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get("/tasks")
@@ -94,6 +96,31 @@ async def get_task_status(
         pass
 
     raise TaskNotFoundError(task_id=task_id)
+
+
+@router.delete("/tasks")
+async def delete_all_tasks(
+    caller: dict[str, Any] = Depends(verify_api_key),
+    adapter: BusinessAdapter = Depends(get_adapter),
+    creation_svc: CreationService = Depends(get_creation_service),
+    polishing_svc: PolishingService = Depends(get_polishing_service),
+) -> dict[str, Any]:
+    """清空所有任务记录
+
+    清除内存中所有运行态任务和 SQLite 中所有终态任务。
+    """
+    # 1. 清空内存中的运行态任务
+    creation_count = len(creation_svc._tasks)
+    polishing_count = len(polishing_svc._tasks)
+    creation_svc._tasks.clear()
+    polishing_svc._tasks.clear()
+
+    # 2. 清空 SQLite 中的终态任务
+    db_count = await adapter.delete_all_tasks()
+
+    total = creation_count + polishing_count + db_count
+    logger.info(f"已清空所有任务 - 内存: {creation_count + polishing_count}, 数据库: {db_count}")
+    return {"deleted": total}
 
 
 @router.delete("/tasks/{task_id}")

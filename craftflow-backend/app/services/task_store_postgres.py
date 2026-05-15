@@ -163,6 +163,19 @@ class PostgresTaskStore(AbstractTaskStore):
             logger.debug(f"任务已从 PostgreSQL 删除 - task_id: {task_id}")
         return deleted
 
+    async def delete_all_tasks(self) -> int:
+        """删除所有任务记录"""
+        if self._pool is None:
+            raise RuntimeError("TaskStore 未初始化")
+
+        async with self._pool.acquire() as conn:
+            result = await conn.execute("DELETE FROM tasks")
+        # asyncpg 返回格式如 "DELETE 5"
+        count = int(result.split()[-1]) if result.startswith("DELETE") else 0
+        if count > 0:
+            logger.debug(f"已清空所有任务 - 共删除 {count} 条")
+        return count
+
     async def close(self) -> None:
         """关闭连接池"""
         if self._pool is not None:

@@ -34,3 +34,8 @@ export async function getTaskList(
 export async function deleteTask(taskId: string): Promise<void> {
   await client.delete(`/v1/tasks/${taskId}`)
 }
+
+/** 清空所有任务（REST） */
+export async function deleteAllTasks(): Promise<{ deleted: number }> {
+  return client.delete('/v1/tasks')
+}

@@ -6,6 +6,8 @@ import { useNavigationStore } from '@/stores/navigation'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
+import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal.vue'
+import { deleteAllTasks } from '@/api/tasks'
 import { inferTaskType, formatTime, taskRouteName } from '@/utils/taskHelpers'
 import type { TaskStatus } from '@/api/types/task'
 
@@ -22,6 +24,11 @@ const taskStore = useTaskStore()
 const navStore = useNavigationStore()
 
 const deleting = ref(false)
+
+// 删除确认弹窗状态
+const deleteModalVisible = ref(false)
+const deleteModalLoading = ref(false)
+const deleteTarget = ref<{ type: 'single' | 'clearAll'; taskId?: string; topic?: string }>({ type: 'single' })
 
 const items = computed<HistoryItem[]>(() =>
   taskStore.taskList.map((t) => {
@@ -53,30 +60,37 @@ function onPageChange(page: number): void {
   loadHistory(page)
 }
 
-async function onRemove(taskId: string): Promise<void> {
-  deleting.value = true
-  try {
-    await taskStore.deleteTask(taskId)
-    if (items.value.length === 0 && currentPage.value > 1) {
-      await loadHistory(currentPage.value - 1)
-    }
-  } catch {
-    // store 已设置 error，Axios 拦截器会弹 toast
-  } finally {
-    deleting.value = false
-  }
+function promptRemove(taskId: string, topic: string): void {
+  deleteTarget.value = { type: 'single', taskId, topic }
+  deleteModalVisible.value = true
 }
 
-async function onClearAll(): Promise<void> {
+function promptClearAll(): void {
+  deleteTarget.value = { type: 'clearAll' }
+  deleteModalVisible.value = true
+}
+
+async function confirmDelete(): Promise<void> {
+  deleteModalLoading.value = true
   deleting.value = true
   try {
-    const ids = items.value.map((i) => i.taskId)
-    await Promise.all(ids.map((id) => taskStore.deleteTask(id)))
-    await loadHistory(1)
+    if (deleteTarget.value.type === 'single' && deleteTarget.value.taskId) {
+      await taskStore.deleteTask(deleteTarget.value.taskId)
+      if (items.value.length === 0 && currentPage.value > 1) {
+        await loadHistory(currentPage.value - 1)
+      }
+    } else if (deleteTarget.value.type === 'clearAll') {
+      await deleteAllTasks()
+      await loadHistory(1)
+    }
   } catch {
-    await loadHistory(1)
+    if (deleteTarget.value.type === 'clearAll') {
+      await loadHistory(1)
+    }
   } finally {
+    deleteModalLoading.value = false
     deleting.value = false
+    deleteModalVisible.value = false
   }
 }
 
@@ -94,7 +108,7 @@ onMounted(() => loadHistory())
         v-if="items.length > 0"
         class="clear-btn"
         :disabled="deleting"
-        @click="onClearAll"
+        @click="promptClearAll"
       >
         清空历史
       </button>
@@ -144,7 +158,7 @@ onMounted(() => loadHistory())
             class="remove-btn"
             title="移除"
             :disabled="deleting"
-            @click.stop="onRemove(item.taskId)"
+            @click.stop="promptRemove(item.taskId, item.topic)"
           >
             &times;
           </button>
@@ -172,6 +186,17 @@ onMounted(() => loadHistory())
         </button>
       </div>
     </div>
+
+    <ConfirmDeleteModal
+      v-model:visible="deleteModalVisible"
+      :title="deleteTarget.type === 'clearAll' ? '清空历史' : '删除任务'"
+      :message="deleteTarget.type === 'clearAll'
+        ? `确定清空全部 ${total} 条历史记录吗？此操作不可恢复。`
+        : `确定删除任务「${deleteTarget.topic}」吗？此操作不可恢复。`"
+      :confirm-text="deleteTarget.type === 'clearAll' ? '清空' : '删除'"
+      :loading="deleteModalLoading"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 

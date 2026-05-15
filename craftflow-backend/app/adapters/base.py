@@ -36,6 +36,10 @@ class BusinessAdapter(ABC):
         """删除任务"""
 
     @abstractmethod
+    async def delete_all_tasks(self) -> int:
+        """删除所有任务，返回被删除的记录数"""
+
+    @abstractmethod
     async def get_interrupted_tasks(self) -> list[dict[str, Any]]:
         """查询所有中断任务（用于服务重启恢复）"""
 

@@ -76,6 +76,14 @@ class AbstractTaskStore(ABC):
         """
 
     @abstractmethod
+    async def delete_all_tasks(self) -> int:
+        """删除所有任务记录
+
+        Returns:
+            被删除的记录数
+        """
+
+    @abstractmethod
     async def close(self) -> None:
         """关闭数据库连接"""
 

@@ -50,6 +50,9 @@ class StandaloneAdapter(BusinessAdapter):
     async def delete_task(self, task_id: str) -> bool:
         return await self.task_store.delete_task(task_id)
 
+    async def delete_all_tasks(self) -> int:
+        return await self.task_store.delete_all_tasks()
+
     async def get_interrupted_tasks(self) -> list[dict[str, Any]]:
         return await self.task_store.get_interrupted_tasks()
 

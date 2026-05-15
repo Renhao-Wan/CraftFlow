@@ -240,6 +240,18 @@ class SqliteTaskStore(AbstractTaskStore):
             logger.debug(f"任务已从 SQLite 删除 - task_id: {task_id}")
         return deleted
 
+    async def delete_all_tasks(self) -> int:
+        """删除所有任务记录"""
+        if self._db is None:
+            raise RuntimeError("TaskStore 未初始化")
+
+        cursor = await self._db.execute("DELETE FROM tasks")
+        await self._db.commit()
+        count = cursor.rowcount
+        if count > 0:
+            logger.debug(f"已清空所有任务 - 共删除 {count} 条")
+        return count
+
     async def close(self) -> None:
         """关闭数据库连接"""
         if self._db is not None:
