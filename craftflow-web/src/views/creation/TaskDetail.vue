@@ -206,7 +206,7 @@ onUnmounted(() => {
               {{ displayPhase === 'completed' ? '创作完成' : '正在创作中...' }}
             </h2>
             <span v-if="currentNode || progress > 0" class="current-node-tag" :class="{ visible: displayPhase !== 'completed' }">
-              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? progress + '%' : '' }}
+              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? Math.round(progress) + '%' : '' }}
             </span>
           </div>
           <div class="header-right">

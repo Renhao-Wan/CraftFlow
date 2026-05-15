@@ -216,7 +216,7 @@ onUnmounted(() => {
             </h2>
             <span v-if="modeLabel" class="mode-tag">{{ modeLabel }}</span>
             <span v-if="currentNode || progress > 0" class="current-node-tag" :class="{ visible: displayPhase !== 'completed' }">
-              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? progress + '%' : '' }}
+              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? Math.round(progress) + '%' : '' }}
             </span>
           </div>
           <div class="header-right">
