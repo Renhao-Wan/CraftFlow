@@ -35,7 +35,7 @@ win:
       arch:
         - x64
   requestedExecutionLevel: asInvoker
-  icon: image/icon.ico
+  icon: image/favicon.svg
 
 # NSIS 安装程序配置
 nsis:
@@ -49,10 +49,10 @@ nsis:
   allowToChangeInstallationDirectory: true
 
   # 安装程序图标
-  installerIcon: image/icon.ico
+  installerIcon: image/favicon.svg
 
   # 卸载程序图标
-  uninstallerIcon: image/icon.ico
+  uninstallerIcon: image/favicon.svg
 
   # 创建桌面快捷方式
   createDesktopShortcut: true
