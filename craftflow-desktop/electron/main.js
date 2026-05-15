@@ -30,14 +30,15 @@ const RETRY_INTERVAL = 1000; // 1 秒
  */
 function getBackendPath() {
   const isDev = !app.isPackaged;
+  const exeName = process.platform === 'win32' ? 'craftflow.exe' : 'craftflow';
 
   if (isDev) {
     // 开发环境：假设后端在 craftflow-desktop/backend/dist/craftflow/
-    return path.join(__dirname, '..', 'backend', 'dist', 'craftflow', 'craftflow.exe');
+    return path.join(__dirname, '..', 'backend', 'dist', 'craftflow', exeName);
   }
 
   // 生产环境：从 resources 目录读取
-  return path.join(process.resourcesPath, 'backend', 'craftflow.exe');
+  return path.join(process.resourcesPath, 'backend', exeName);
 }
 
 /**
