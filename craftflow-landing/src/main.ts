@@ -229,28 +229,28 @@ function showToast(message: string, duration: number = 3000): void {
 }
 
 function initOnlineAccess(): void {
-  // 绑定所有"在线体验"相关的按钮和链接
-  const onlineElements = document.querySelectorAll<HTMLElement>(
-    '#onlineAccessBtn, #onlineAccessBtnAlt, [data-action="online-access"]'
-  )
-
-  const handler = (e: Event) => {
-    e.preventDefault()
-    showToast('功能开发中，敬请期待')
+  // Hero 部分的"在线体验"按钮 → 锚点跳转到 #online
+  const heroBtn = document.getElementById('onlineAccessBtn')
+  if (heroBtn) {
+    heroBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      const target = document.getElementById('online')
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
   }
 
-  onlineElements.forEach(el => {
-    el.addEventListener('click', handler)
-  })
-
-  // 绑定导航栏和页脚中指向 #online 的链接
-  const onlineLinks = document.querySelectorAll<HTMLAnchorElement>('a[href="#online"]')
-  onlineLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
+  // 底部在线体验部分的"立即体验"按钮 → 实际链接跳转
+  const altBtn = document.getElementById('onlineAccessBtnAlt')
+  if (altBtn) {
+    altBtn.addEventListener('click', (e) => {
       e.preventDefault()
+      // TODO: 替换为实际的在线体验链接
+      // window.open('https://your-online-url.com', '_blank')
       showToast('功能开发中，敬请期待')
     })
-  })
+  }
 }
 
 // ============================================
