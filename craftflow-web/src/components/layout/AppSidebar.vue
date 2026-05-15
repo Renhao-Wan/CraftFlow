@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
+import CraftFlowLogo from '@/components/common/CraftFlowLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
 const navStore = useNavigationStore()
 const sidebarOpen = ref(false)
 
+const props = defineProps<{
+  collapsed?: boolean
+}>()
+
 const emit = defineEmits<{
   'open-settings': []
+  'toggle-collapse': []
 }>()
 
 const navItems = [
   { label: '创作', path: '/creation', icon: 'pen' },
   { label: '润色', path: '/polishing', icon: 'sparkle' },
+  { label: '对话', path: '/chat', icon: 'chat' },
   { label: '历史', path: '/history', icon: 'clock' },
 ]
 
@@ -23,6 +30,7 @@ const currentPath = computed(() => route.path)
 const pathToSource: Record<string, string> = {
   '/creation': 'creation',
   '/polishing': 'polishing',
+  '/chat': 'chat',
   '/history': 'history',
 }
 
@@ -66,12 +74,15 @@ function navigateTo(path: string): void {
   </header>
 
   <!-- Sidebar -->
-  <aside class="app-sidebar" :class="{ open: sidebarOpen }">
+  <aside class="app-sidebar" :class="{ open: sidebarOpen, collapsed: props.collapsed }">
     <div class="sidebar-inner">
       <!-- Logo -->
       <div class="sidebar-logo" @click="navigateTo('/')">
-        <span class="logo-text">CraftFlow</span>
-        <span class="logo-tagline">创作平台</span>
+        <CraftFlowLogo :size="32" class="logo-img" />
+        <div class="logo-text-group">
+          <span class="logo-text">CraftFlow</span>
+          <span class="logo-tagline">创作平台</span>
+        </div>
       </div>
 
       <!-- Divider -->
@@ -97,6 +108,10 @@ function navigateTo(path: string): void {
             <svg v-else-if="item.icon === 'sparkle'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
             </svg>
+            <!-- Chat icon -->
+            <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
             <!-- Clock icon -->
             <svg v-else-if="item.icon === 'clock'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -110,20 +125,40 @@ function navigateTo(path: string): void {
       <!-- Footer -->
       <div class="sidebar-footer">
         <div class="sidebar-divider" />
-        <div class="footer-info">
-          <span class="footer-version">v0.1.0</span>
-          <span class="footer-dot">&middot;</span>
-          <span class="footer-status">AI 就绪</span>
-          <span class="footer-dot">&middot;</span>
+        <div class="footer-actions">
+          <span v-if="!props.collapsed" class="footer-info">
+            <span class="footer-version">v0.1.0</span>
+            <span class="footer-dot">&middot;</span>
+            <span class="footer-status">AI 就绪</span>
+          </span>
           <button
             class="settings-btn"
             title="设置"
             @click="emit('open-settings')"
           >
             <!-- Gear icon -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+          <button
+            class="collapse-btn"
+            :title="props.collapsed ? '展开侧边栏' : '收缩侧边栏'"
+            @click="emit('toggle-collapse')"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M11 17l-5-5 5-5" />
+              <path d="M18 17l-5-5 5-5" />
             </svg>
           </button>
         </div>
@@ -207,6 +242,7 @@ function navigateTo(path: string): void {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
   background-size: 128px 128px;
   box-shadow: var(--shadow-sidebar);
+  transition: width var(--transition-normal);
 }
 
 .sidebar-inner {
@@ -215,28 +251,45 @@ function navigateTo(path: string): void {
   height: 100%;
   padding: var(--space-lg) 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* --- Logo --- */
 .sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   padding: 0 var(--space-lg) var(--space-lg);
   cursor: pointer;
-  transition: opacity var(--transition-fast);
+  transition: opacity var(--transition-fast), padding var(--transition-normal);
 }
 
 .sidebar-logo:hover {
   opacity: 0.85;
 }
 
+.logo-img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  transition: transform var(--transition-normal);
+}
+
+.logo-text-group {
+  overflow: hidden;
+  transition: opacity var(--transition-fast), width var(--transition-normal);
+}
+
 .logo-text {
   display: block;
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--color-text-sidebar);
   letter-spacing: -0.01em;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .logo-tagline {
@@ -247,7 +300,8 @@ function navigateTo(path: string): void {
   color: var(--color-text-sidebar-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-top: 4px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 /* --- Divider --- */
@@ -255,6 +309,7 @@ function navigateTo(path: string): void {
   height: 1px;
   background: var(--color-sidebar-divider);
   margin: var(--space-sm) var(--space-lg);
+  transition: margin var(--transition-normal);
 }
 
 /* --- Navigation --- */
@@ -264,6 +319,7 @@ function navigateTo(path: string): void {
   flex-direction: column;
   gap: 2px;
   padding: var(--space-md) var(--space-sm);
+  transition: padding var(--transition-normal);
 }
 
 .nav-item {
@@ -275,7 +331,7 @@ function navigateTo(path: string): void {
   color: var(--color-text-sidebar-muted);
   font-size: 14px;
   font-weight: 500;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-fast), padding var(--transition-normal);
   position: relative;
   text-align: left;
   width: 100%;
@@ -300,7 +356,7 @@ function navigateTo(path: string): void {
   height: 0;
   background: var(--color-accent);
   border-radius: 0 2px 2px 0;
-  transition: height var(--transition-normal);
+  transition: height var(--transition-normal), left var(--transition-normal);
 }
 
 .nav-item.active .nav-indicator {
@@ -315,6 +371,7 @@ function navigateTo(path: string): void {
   width: 20px;
   height: 20px;
   opacity: 0.7;
+  transition: margin var(--transition-normal);
 }
 
 .nav-item.active .nav-icon {
@@ -323,6 +380,9 @@ function navigateTo(path: string): void {
 
 .nav-label {
   flex: 1;
+  transition: opacity var(--transition-fast), width var(--transition-normal);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* --- Footer --- */
@@ -331,14 +391,25 @@ function navigateTo(path: string): void {
   padding-top: var(--space-sm);
 }
 
-.footer-info {
+.footer-actions {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md) 0;
+  transition: padding var(--transition-normal), flex-direction var(--transition-normal);
+}
+
+.footer-info {
+  display: flex;
+  align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg) 0;
   font-size: 11px;
   color: var(--color-text-sidebar-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity var(--transition-fast);
 }
 
 .footer-dot {
@@ -349,20 +420,81 @@ function navigateTo(path: string): void {
   color: var(--color-success);
 }
 
-.settings-btn {
-  display: inline-flex;
+.settings-btn,
+.collapse-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
-  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
   color: var(--color-text-sidebar-muted);
   transition: all var(--transition-fast);
-  vertical-align: middle;
+  flex-shrink: 0;
 }
 
-.settings-btn:hover {
+.settings-btn:hover,
+.collapse-btn:hover {
   color: var(--color-text-sidebar);
   background: var(--color-bg-sidebar-hover);
+}
+
+.collapse-btn svg {
+  transition: transform var(--transition-normal);
+}
+
+.app-sidebar.collapsed .collapse-btn svg {
+  transform: rotate(180deg);
+}
+
+/* --- Collapsed State --- */
+.app-sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.app-sidebar.collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 0 var(--space-sm) var(--space-lg);
+}
+
+.app-sidebar.collapsed .logo-text-group {
+  width: 0;
+  opacity: 0;
+  margin-left: 0;
+}
+
+.app-sidebar.collapsed .sidebar-divider {
+  margin: var(--space-sm) var(--space-sm);
+}
+
+.app-sidebar.collapsed .sidebar-nav {
+  padding: var(--space-md) var(--space-xs);
+}
+
+.app-sidebar.collapsed .nav-item {
+  padding: 10px;
+  justify-content: center;
+}
+
+.app-sidebar.collapsed .nav-label {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.app-sidebar.collapsed .nav-indicator {
+  left: 0;
+}
+
+.app-sidebar.collapsed .footer-actions {
+  flex-direction: column;
+  padding: var(--space-sm) var(--space-xs) 0;
+}
+
+.app-sidebar.collapsed .footer-info {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
 }
 
 /* --- Responsive (< 768px) --- */

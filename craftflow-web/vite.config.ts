@@ -9,7 +9,12 @@ export default defineConfig({
   base: './',  // Electron 需要相对路径加载资源
   plugins: [
     vue(),
-    vueDevTools(),
+    vueDevTools({
+      // 关闭悬浮按钮
+      appendTo: "false",
+      // 或者直接禁用整个插件（如果不需要调试工具）
+      // enabled: false
+    }),
   ],
   resolve: {
     alias: {

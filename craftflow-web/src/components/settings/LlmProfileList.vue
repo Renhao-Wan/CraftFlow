@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
+import { testLlmProfile } from '@/api/settings'
 import type { LlmProfile } from '@/api/types/settings'
+import type { TestProfileResponse } from '@/api/types/chat'
 
 const store = useSettingsStore()
+const router = useRouter()
 
 const emit = defineEmits<{
   edit: [profile: LlmProfile]
@@ -11,6 +15,11 @@ const emit = defineEmits<{
 }>()
 
 const MAX_PROFILES = 20
+
+// ─── 测试连接状态 ────────────────────────────────────────
+const testingProfileId = ref<string | null>(null)
+const testResult = ref<TestProfileResponse | null>(null)
+const testLoading = ref(false)
 const ACCORDION_STORAGE_KEY = 'craftflow:llm-profile-accordion'
 
 const searchQuery = ref('')
@@ -65,6 +74,29 @@ async function handleDelete(profile: LlmProfile): Promise<void> {
 
 async function handleSetDefault(profile: LlmProfile): Promise<void> {
   await store.makeDefault(profile.id)
+}
+
+async function handleTest(profile: LlmProfile): Promise<void> {
+  testingProfileId.value = profile.id
+  testResult.value = null
+  testLoading.value = true
+  try {
+    testResult.value = await testLlmProfile(profile.id)
+  } catch {
+    testResult.value = { success: false, error: '请求失败，请检查网络连接' }
+  } finally {
+    testLoading.value = false
+  }
+}
+
+function closeTest(): void {
+  testingProfileId.value = null
+  testResult.value = null
+}
+
+function goToChat(profileId: string): void {
+  store.closeSettingsModal()
+  router.push({ path: '/chat', query: { profile_id: profileId } })
 }
 </script>
 
@@ -176,9 +208,44 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
             <button class="btn-action btn-edit" @click.stop="emit('edit', profile)">
               编辑
             </button>
+            <button class="btn-action btn-test" @click.stop="handleTest(profile)">
+              测试连接
+            </button>
+            <button class="btn-action btn-chat" @click.stop="goToChat(profile.id)">
+              对话
+            </button>
             <button class="btn-action btn-delete" @click.stop="handleDelete(profile)">
               删除
             </button>
+          </div>
+          <!-- 测试结果内嵌区域 -->
+          <div v-if="testingProfileId === profile.id" class="test-result-area">
+            <div v-if="testLoading" class="test-loading">
+              <span class="test-spinner" />
+              正在测试连接...
+            </div>
+            <div v-else-if="testResult" class="test-result" :class="testResult.success ? 'test-success' : 'test-fail'">
+              <div class="test-result-header">
+                <svg v-if="testResult.success" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span v-if="testResult.success">
+                  连接成功
+                  <span v-if="testResult.latency_ms" class="test-latency">（{{ testResult.latency_ms }}ms）</span>
+                </span>
+                <span v-else>连接失败</span>
+              </div>
+              <p v-if="testResult.reply" class="test-reply">{{ testResult.reply }}</p>
+              <p v-if="testResult.error" class="test-error-msg">{{ testResult.error }}</p>
+              <div class="test-result-actions">
+                <button class="btn-test-action" @click.stop="handleTest(profile)">重新测试</button>
+                <button class="btn-test-action" @click.stop="closeTest">关闭</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -524,5 +591,127 @@ async function handleSetDefault(profile: LlmProfile): Promise<void> {
 .btn-delete:hover {
   border-color: var(--color-error);
   color: var(--color-error);
+}
+
+.btn-test {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-test:hover {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.btn-chat {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-chat:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── 测试结果内嵌区域 ── */
+
+.test-result-area {
+  padding: 0 var(--space-md) var(--space-md);
+  padding-left: calc(var(--space-md) + 14px + var(--space-sm));
+  animation: slideDown 150ms ease;
+}
+
+.test-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: var(--space-sm) 0;
+}
+
+.test-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.test-result {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.test-success {
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.test-fail {
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.test-result-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+.test-latency {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.test-reply {
+  margin: var(--space-xs) 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.test-error-msg {
+  margin: var(--space-xs) 0;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.test-result-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.btn-test-action {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.btn-test-action:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 </style>
