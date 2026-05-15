@@ -167,8 +167,12 @@ function initMobileMenu(): void {
 function initSmoothScroll(): void {
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', (e) => {
+      const href = (e.currentTarget as HTMLAnchorElement).getAttribute('href')
+      if (!href || href === '#') return
+
       e.preventDefault()
-      const target = document.querySelector((e.currentTarget as HTMLAnchorElement).href.split('#')[1] || '')
+      const targetId = href.substring(1)
+      const target = document.getElementById(targetId)
 
       if (target) {
         target.scrollIntoView({
@@ -225,15 +229,28 @@ function showToast(message: string, duration: number = 3000): void {
 }
 
 function initOnlineAccess(): void {
-  const btn1 = document.getElementById('onlineAccessBtn')
-  const btn2 = document.getElementById('onlineAccessBtnAlt')
+  // 绑定所有"在线体验"相关的按钮和链接
+  const onlineElements = document.querySelectorAll<HTMLElement>(
+    '#onlineAccessBtn, #onlineAccessBtnAlt, [data-action="online-access"]'
+  )
 
-  const handler = () => {
+  const handler = (e: Event) => {
+    e.preventDefault()
     showToast('功能开发中，敬请期待')
   }
 
-  btn1?.addEventListener('click', handler)
-  btn2?.addEventListener('click', handler)
+  onlineElements.forEach(el => {
+    el.addEventListener('click', handler)
+  })
+
+  // 绑定导航栏和页脚中指向 #online 的链接
+  const onlineLinks = document.querySelectorAll<HTMLAnchorElement>('a[href="#online"]')
+  onlineLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      showToast('功能开发中，敬请期待')
+    })
+  })
 }
 
 // ============================================
