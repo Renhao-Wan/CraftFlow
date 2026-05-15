@@ -7,7 +7,7 @@
 前往[下载页面](/#download)下载适合您操作系统的客户端：
 
 - **Windows**: Windows 10 及以上版本
-- **macOS**: macOS 12 及以上版本
+- **macOS**: macOS 12 及以上版本 (Apple Silicon)
 - **Linux**: Ubuntu 20.04 及以上版本
 
 下载完成后，双击安装包按照提示完成安装。
