@@ -26,6 +26,7 @@ from app.core.config import settings
 from app.core.exceptions import CheckpointerError
 from app.core.logger import get_logger
 from app.graph.common.llm_factory import LLMFactory
+from app.services.chat_svc import ChatService
 from app.services.checkpointer import get_checkpointer
 from app.services.creation_svc import CreationService
 from app.services.polishing_svc import PolishingService
@@ -38,6 +39,7 @@ logger = get_logger(__name__)
 
 _creation_service: CreationService | None = None
 _polishing_service: PolishingService | None = None
+_chat_service: ChatService | None = None
 _adapter: BusinessAdapter | None = None
 
 
@@ -56,7 +58,7 @@ async def init_services() -> None:
     Raises:
         CheckpointerError: Checkpointer 尚未初始化
     """
-    global _creation_service, _polishing_service, _adapter
+    global _creation_service, _polishing_service, _chat_service, _adapter
 
     logger.info(f"初始化业务服务 | 模式: {settings.app_mode}")
 
@@ -75,6 +77,7 @@ async def init_services() -> None:
     # 3. 创建业务服务
     _creation_service = CreationService(checkpointer=checkpointer, adapter=_adapter)
     _polishing_service = PolishingService(checkpointer=checkpointer, adapter=_adapter)
+    _chat_service = ChatService(adapter=_adapter)
 
     # 3. 从 Adapter 加载中断任务到内存（委托给各 Service 自行处理）
     creation_loaded = await _creation_service.load_interrupted_tasks()
@@ -87,7 +90,7 @@ async def init_services() -> None:
     if settings.is_server:
         await _init_server_components()
 
-    logger.info("业务服务初始化完成（CreationService, PolishingService, Adapter）")
+    logger.info("业务服务初始化完成（CreationService, PolishingService, ChatService, Adapter）")
 
 
 async def _init_server_components() -> None:
@@ -101,13 +104,14 @@ async def _init_server_components() -> None:
 
 async def close_services() -> None:
     """关闭所有业务服务，释放资源"""
-    global _creation_service, _polishing_service, _adapter
+    global _creation_service, _polishing_service, _chat_service, _adapter
 
     LLMFactory.clear_cache()
     if _adapter:
         await _adapter.close()
     _creation_service = None
     _polishing_service = None
+    _chat_service = None
     _adapter = None
 
     logger.info("业务服务已关闭")
@@ -164,3 +168,19 @@ def get_adapter() -> BusinessAdapter:
             message="BusinessAdapter 尚未初始化，请确保应用已启动",
         )
     return _adapter
+
+
+def get_chat_service() -> ChatService:
+    """获取 ChatService 实例（FastAPI 依赖注入）
+
+    Returns:
+        ChatService: 对话服务实例
+
+    Raises:
+        CheckpointerError: 服务尚未初始化时抛出
+    """
+    if _chat_service is None:
+        raise CheckpointerError(
+            message="ChatService 尚未初始化，请确保应用已启动",
+        )
+    return _chat_service

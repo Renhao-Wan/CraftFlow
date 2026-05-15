@@ -108,7 +108,7 @@ class SqliteTaskStore(AbstractTaskStore):
             _DEFAULT_SETTINGS,
         )
         await self._db.commit()
-        logger.info(f"SQLite TaskStore 初始化完成 - {self._db_path}")
+        logger.info(f"SQLite craftflow 初始化完成 - {self._db_path}")
 
     async def save_task(self, task: dict[str, Any]) -> None:
         """保存或更新任务记录（INSERT OR REPLACE）
