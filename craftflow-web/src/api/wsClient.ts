@@ -16,6 +16,7 @@ export type ServerMessageType =
   | 'task_created'
   | 'task_update'
   | 'task_result'
+  | 'task_token'
   | 'task_error'
   | 'task_status'
   | 'error'

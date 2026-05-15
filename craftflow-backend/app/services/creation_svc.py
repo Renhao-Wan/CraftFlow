@@ -699,20 +699,27 @@ class CreationService:
             total_sections = len(initial_state.get("outline", []))
             completed_writers = 0
 
-            async for node_output in graph.astream(initial_state, config):
-                # node_output: {"node_name": {节点输出的增量字典}}
-                for node_name, partial in node_output.items():
-                    if node_name == "__end__":
-                        continue
+            async for event in graph.astream_events(initial_state, config, version="v2"):
+                kind = event.get("event", "")
 
-                    if not isinstance(partial, dict):
+                # 事件 1：节点完成（替代原 astream 的 node_output）
+                if kind == "on_chain_end":
+                    node_name = event.get("name", "")
+                    data = event.get("data", {})
+                    if not isinstance(data, dict):
+                        continue
+                    output = data.get("output")
+                    if not isinstance(output, dict):
+                        continue
+                    # 跳过顶层图结束事件
+                    if node_name == "LangGraph":
                         continue
 
                     # 跟踪 writer 完成进度
-                    if node_name == "writer" and "sections" in partial:
+                    if node_name == "writer" and "sections" in output:
                         completed_writers += 1
 
-                    current_node = partial.get("current_node", node_name)
+                    current_node = output.get("current_node", node_name)
                     label = NODE_LABELS.get(current_node, current_node)
                     progress = self._calculate_writer_progress(
                         current_node,
@@ -732,7 +739,15 @@ class CreationService:
 
                     logger.debug(f"节点完成 - {node_name} ({label}), progress: {progress}")
 
-            # astream() 遇到 interrupt_before 不会抛异常，而是停止 yield
+                # 事件 2：ReducerNode LLM token 流式输出
+                elif kind == "on_chat_model_stream":
+                    metadata = event.get("metadata", {})
+                    if metadata.get("langgraph_node") == "reducer":
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk and hasattr(chunk, "content") and chunk.content:
+                            await broadcaster.broadcast_token(task_id, chunk.content)
+
+            # astream_events 遇到 interrupt_before 不会抛异常，而是停止 yield
             # 检查图状态是否有待处理的中断
             snapshot = await graph.aget_state(config)
             has_pending_interrupt = (
@@ -911,19 +926,28 @@ class CreationService:
 
             completed_writers = 0
 
-            async for node_output in graph.astream(Command(resume=True), config):
-                for node_name, partial in node_output.items():
-                    if node_name == "__end__":
-                        continue
+            async for event in graph.astream_events(
+                Command(resume=True), config, version="v2"
+            ):
+                kind = event.get("event", "")
 
-                    if not isinstance(partial, dict):
+                # 事件 1：节点完成
+                if kind == "on_chain_end":
+                    node_name = event.get("name", "")
+                    data = event.get("data", {})
+                    if not isinstance(data, dict):
+                        continue
+                    output = data.get("output")
+                    if not isinstance(output, dict):
+                        continue
+                    if node_name == "LangGraph":
                         continue
 
                     # 跟踪 writer 完成进度
-                    if node_name == "writer" and "sections" in partial:
+                    if node_name == "writer" and "sections" in output:
                         completed_writers += 1
 
-                    current_node = partial.get("current_node", node_name)
+                    current_node = output.get("current_node", node_name)
                     label = NODE_LABELS.get(current_node, current_node)
                     progress = self._calculate_writer_progress(
                         current_node,
@@ -940,6 +964,14 @@ class CreationService:
                             "progress": progress,
                         },
                     )
+
+                # 事件 2：ReducerNode LLM token 流式输出
+                elif kind == "on_chat_model_stream":
+                    metadata = event.get("metadata", {})
+                    if metadata.get("langgraph_node") == "reducer":
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk and hasattr(chunk, "content") and chunk.content:
+                            await broadcaster.broadcast_token(task_id, chunk.content)
 
             # 检查是否有待处理的中断
             snapshot = await graph.aget_state(config)
@@ -991,20 +1023,6 @@ class CreationService:
                 )
 
                 await broadcaster.broadcast_result(task_id, result or "", created_at)
-
-        except GraphInterrupt:
-            self._update_task(task_id, status="interrupted")
-            await self._persist_interrupted(task_id)
-            logger.warning(f"创作任务再次中断 - task_id: {task_id}")
-            await broadcaster.broadcast_update(
-                task_id,
-                {
-                    "status": "interrupted",
-                    "currentNode": "outline_confirmation",
-                    "currentNodeLabel": NODE_LABELS["outline_confirmation"],
-                    "awaiting": "outline_confirmation",
-                },
-            )
 
         except Exception as e:
             friendly_msg = format_error_message(e)

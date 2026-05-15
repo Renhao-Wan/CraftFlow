@@ -139,6 +139,11 @@ class TaskBroadcaster:
             message["factCheckResult"] = fact_check_result
         await self._send_to_subscribers(task_id, message)
 
+    async def broadcast_token(self, task_id: str, content: str) -> None:
+        """向任务订阅者广播流式 token（ReducerNode 输出）"""
+        message = {"type": "task_token", "taskId": task_id, "content": content}
+        await self._send_to_subscribers(task_id, message)
+
     async def broadcast_error(self, task_id: str, error: str) -> None:
         """广播任务失败"""
         message = {"type": "task_error", "taskId": task_id, "error": error}

@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useTaskLifecycle } from '@/composables/useTaskLifecycle'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
-import ProgressBar from '@/components/common/ProgressBar.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
@@ -32,6 +31,27 @@ const progress = computed(() => task.value?.progress ?? 0)
 const currentNode = computed(() => task.value?.current_node_label ?? task.value?.current_node ?? '')
 const result = computed(() => task.value?.result ?? '')
 const error = computed(() => task.value?.error ?? '未知错误')
+const streamingContent = computed(() => taskStore.streamingContent)
+
+/**
+ * 显示阶段：解耦 UI 状态与任务 status，避免 status 先于 result 到达导致闪烁
+ * - 'waiting'：无内容，显示居中等待
+ * - 'streaming'：有流式内容，显示实时渲染
+ * - 'completed'：有最终结果，显示完成视图
+ * - 'interrupted'：大纲确认
+ * - 'failed'：失败
+ */
+type DisplayPhase = 'waiting' | 'streaming' | 'completed' | 'interrupted' | 'failed'
+const displayPhase = computed<DisplayPhase>(() => {
+  if (result.value) return 'completed'
+  if (streamingContent.value) return 'streaming'
+  if (status.value === 'interrupted') return 'interrupted'
+  if (status.value === 'failed') return 'failed'
+  return 'waiting'
+})
+
+/** 渲染内容：优先用最终结果，回退到流式内容 */
+const displayContent = computed(() => result.value || streamingContent.value)
 
 const outlineItems = computed<OutlineItem[]>(() => {
   const raw = task.value?.data
@@ -75,6 +95,13 @@ async function onExport(): Promise<void> {
 function onBack(): void {
   router.back()
 }
+
+// 流式输出时自动滚动到底部（页面级滚动）
+watch(streamingContent, () => {
+  if (streamingContent.value) {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }
+})
 
 onMounted(() => {
   if (!task.value || task.value.task_id !== props.taskId) {
@@ -133,26 +160,8 @@ onUnmounted(() => {
 
     <!-- 任务内容 -->
     <template v-else-if="task">
-      <!-- running -->
-      <div v-if="status === 'running'" class="state-running">
-        <div class="running-header">
-          <LoadingSpinner :size="28" label="" />
-          <div>
-            <h2 class="state-title">正在创作中...</h2>
-            <p v-if="currentNode" class="current-node">
-              当前阶段：{{ currentNode }}
-            </p>
-          </div>
-        </div>
-        <ProgressBar
-          :percentage="progress"
-          :show-text="true"
-          :height="10"
-        />
-      </div>
-
-      <!-- interrupted -->
-      <div v-else-if="status === 'interrupted'" class="state-interrupted">
+      <!-- interrupted: 大纲确认（独立视图） -->
+      <div v-if="displayPhase === 'interrupted'" class="state-interrupted">
         <h2 class="state-title">大纲已生成，请确认</h2>
         <p class="state-desc">
           AI 已根据你的主题生成了文章大纲。你可以直接确认，或点击条目编辑后更新。
@@ -176,33 +185,49 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- completed -->
-      <div v-else-if="status === 'completed'" class="state-completed">
-        <div class="result-header">
-          <h2 class="state-title">创作完成</h2>
-          <div class="result-actions">
-            <button class="action-btn" @click="onCopy">
-              {{ copied ? '已复制' : '复制全文' }}
-            </button>
-            <button class="action-btn" :disabled="exporting" @click="onExport">
-              {{ exporting ? '导出中...' : '导出 PDF' }}
-            </button>
-          </div>
-        </div>
-        <div ref="resultBodyRef" class="result-body">
-          <MarkdownRenderer v-if="result" :content="result" />
-          <p v-else class="empty-hint">暂无结果内容</p>
-        </div>
-      </div>
-
-      <!-- failed -->
-      <div v-else-if="status === 'failed'" class="state-failed">
+      <!-- failed: 错误（独立视图） -->
+      <div v-else-if="displayPhase === 'failed'" class="state-failed">
         <h2 class="state-title">创作失败</h2>
         <ErrorAlert
           :message="error"
           :retryable="true"
           @retry="onRetry"
         />
+      </div>
+
+      <!-- waiting / streaming / completed: 统一容器，标题栏固定 -->
+      <div v-else class="state-completed">
+        <div class="result-header">
+          <div class="header-left">
+            <div class="header-spinner" :class="{ visible: displayPhase !== 'completed' }">
+              <LoadingSpinner :size="20" label="" />
+            </div>
+            <h2 class="state-title">
+              {{ displayPhase === 'completed' ? '创作完成' : '正在创作中...' }}
+            </h2>
+            <span v-if="currentNode || progress > 0" class="current-node-tag" :class="{ visible: displayPhase !== 'completed' }">
+              {{ currentNode }}{{ currentNode && progress > 0 ? ' · ' : '' }}{{ progress > 0 ? progress + '%' : '' }}
+            </span>
+          </div>
+          <div class="header-right">
+            <div class="result-actions" :class="{ visible: displayPhase === 'completed' }">
+              <button class="action-btn" @click="onCopy">
+                {{ copied ? '已复制' : '复制全文' }}
+              </button>
+              <button class="action-btn" :disabled="exporting" @click="onExport">
+                {{ exporting ? '导出中...' : '导出 PDF' }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div ref="resultBodyRef" class="result-body">
+          <MarkdownRenderer v-if="displayContent" :content="displayContent" />
+          <span v-if="displayPhase === 'streaming'" class="typing-cursor" />
+          <div v-else-if="displayPhase === 'waiting'" class="waiting-hint">
+            <LoadingSpinner :size="24" label="" />
+          </div>
+          <p v-else-if="!displayContent" class="empty-hint">暂无结果内容</p>
+        </div>
       </div>
     </template>
 
@@ -277,27 +302,18 @@ onUnmounted(() => {
   padding: var(--space-lg);
 }
 
-/* running */
-.state-running {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-xl);
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.running-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
 .current-node {
   font-size: 14px;
   color: var(--color-text-muted);
   margin: 4px 0 0;
+}
+
+/* 内容区等待提示 */
+.waiting-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) 0;
 }
 
 /* interrupted */
@@ -318,6 +334,43 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* 标题栏左右布局 */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* spinner 和 tag 的 opacity 过渡 */
+.header-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-spinner,
+.current-node-tag {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.header-spinner.visible,
+.current-node-tag.visible {
+  opacity: 1;
+}
+
+/* 完成按钮的 opacity 过渡 */
+.header-right .result-actions {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.header-right .result-actions.visible {
+  opacity: 1;
 }
 
 .result-actions {
@@ -355,6 +408,14 @@ onUnmounted(() => {
   background: var(--color-bg-surface);
 }
 
+.current-node-tag {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-accent-soft);
+  padding: 3px 10px;
+  border-radius: var(--radius-md);
+}
+
 /* failed */
 .state-failed {
   display: flex;
@@ -388,11 +449,5 @@ onUnmounted(() => {
 
 .link-btn:hover {
   opacity: 0.7;
-}
-
-@media (max-width: 768px) {
-  .state-running {
-    padding: var(--space-lg);
-  }
 }
 </style>

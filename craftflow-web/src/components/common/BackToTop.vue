@@ -2,21 +2,31 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const visible = ref(false)
+let scrollContainer: HTMLElement | null = null
 
 function onScroll(): void {
-  visible.value = window.scrollY > 300
+  if (scrollContainer) {
+    visible.value = scrollContainer.scrollTop > 100
+  }
 }
 
 function scrollToTop(): void {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  if (scrollContainer) {
+    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', onScroll, { passive: true })
+  scrollContainer = document.querySelector('.app-content')
+  if (scrollContainer) {
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true })
+  }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', onScroll)
+  if (scrollContainer) {
+    scrollContainer.removeEventListener('scroll', onScroll)
+  }
 })
 </script>
 

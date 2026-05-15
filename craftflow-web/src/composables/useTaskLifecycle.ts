@@ -37,6 +37,10 @@ function ensureGlobalListeners(): void {
     taskStore.handleTaskResult(msg)
   })
 
+  wsClient.on('task_token', (msg: WsMessage) => {
+    taskStore.handleTaskToken(msg)
+  })
+
   wsClient.on('task_error', (msg: WsMessage) => {
     taskStore.handleTaskError(msg)
   })

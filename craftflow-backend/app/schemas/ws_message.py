@@ -116,6 +116,16 @@ class TaskResultMessage(ServerMessage):
     model_config = {"populate_by_name": True}
 
 
+class TaskTokenMessage(ServerMessage):
+    """ReducerNode 流式 token 推送"""
+
+    type: str = "task_token"
+    task_id: str = Field(..., alias="taskId")
+    content: str
+
+    model_config = {"populate_by_name": True}
+
+
 class TaskErrorMessage(ServerMessage):
     type: str = "task_error"
     task_id: str = Field(..., alias="taskId")

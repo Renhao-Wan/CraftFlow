@@ -392,6 +392,37 @@ input, textarea, select {
   to { opacity: 1; }
 }
 
+/* --- Typing Cursor（呼吸光环） --- */
+.typing-cursor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.typing-cursor::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-accent);
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* --- Utility Classes --- */
 .visually-hidden {
   position: absolute;

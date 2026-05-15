@@ -13,6 +13,7 @@ export const useTaskStore = defineStore('task', () => {
   const pageSize = ref(5)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const streamingContent = ref('')
 
   // ─── Getters ────────────────────────────────────────────
   const isRunning = computed(() => currentTask.value?.status === 'running')
@@ -122,10 +123,20 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
+  /** 处理 WS task_token 推送（ReducerNode 流式输出） */
+  function handleTaskToken(message: WsMessage): void {
+    const taskId = message.taskId as string
+    if (!taskId || !currentTask.value || currentTask.value.task_id !== taskId) return
+    streamingContent.value += (message.content as string) ?? ''
+  }
+
   /** 处理 WS task_result 推送 */
   function handleTaskResult(message: WsMessage): void {
     const taskId = message.taskId as string
     if (!taskId) return
+
+    // 清空流式内容（最终结果由 result 承载）
+    streamingContent.value = ''
 
     const result = (message.result as string) ?? ''
     const factCheckResult = (message.factCheckResult as string) ?? ''
@@ -206,6 +217,7 @@ export const useTaskStore = defineStore('task', () => {
     pageSize,
     loading,
     error,
+    streamingContent,
     // getters
     isRunning,
     isInterrupted,
@@ -219,6 +231,7 @@ export const useTaskStore = defineStore('task', () => {
     deleteTask,
     handleTaskUpdate,
     handleTaskResult,
+    handleTaskToken,
     handleTaskError,
     clearCurrentTask,
     setCurrentTask,
