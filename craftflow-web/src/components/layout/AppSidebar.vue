@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
+import CraftFlowLogo from '@/components/common/CraftFlowLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,7 +78,7 @@ function navigateTo(path: string): void {
     <div class="sidebar-inner">
       <!-- Logo -->
       <div class="sidebar-logo" @click="navigateTo('/')">
-        <img src="/logo.svg" alt="CraftFlow" class="logo-img" />
+        <CraftFlowLogo :size="32" class="logo-img" />
         <div class="logo-text-group">
           <span class="logo-text">CraftFlow</span>
           <span class="logo-tagline">创作平台</span>
