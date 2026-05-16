@@ -22,6 +22,14 @@
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <!-- Preload theme screenshots -->
+  <link rel="preload" as="image" href="/screenshots/screenshot-light.webp">
+  <link rel="preload" as="image" href="/screenshots/screenshot-dark.webp">
+  <link rel="preload" as="image" href="/screenshots/screenshot-sepia.webp">
+  <link rel="preload" as="image" href="/screenshots/screenshot-midnight.webp">
+  <link rel="preload" as="image" href="/screenshots/screenshot-frost.webp">
+  <link rel="preload" as="image" href="/screenshots/screenshot-rose.webp">
 </head>
 <body>
   <!-- Navbar -->
@@ -122,12 +130,12 @@
       <div class="hero__preview reveal" style="transition-delay: 0.2s;">
         <div class="hero__preview-image">
           <!-- 产品截图：放在 public/screenshots/ 目录下 -->
-          <!-- 命名规则：screenshot-{theme}.png，如 screenshot-light.png -->
+          <!-- 命名规则：screenshot-{theme}.webp，如 screenshot-light.webp -->
           <img
-            src="/screenshots/screenshot-light.png"
+            src="/screenshots/screenshot-light.webp"
             alt="CraftFlow 产品界面截图"
             class="hero__screenshot"
-            data-theme-srcs='{"light":"/screenshots/screenshot-light.png","dark":"/screenshots/screenshot-dark.png","sepia":"/screenshots/screenshot-sepia.png","midnight":"/screenshots/screenshot-midnight.png","frost":"/screenshots/screenshot-frost.png","rose":"/screenshots/screenshot-rose.png"}'
+            data-theme-srcs='{"light":"/screenshots/screenshot-light.webp","dark":"/screenshots/screenshot-dark.webp","sepia":"/screenshots/screenshot-sepia.webp","midnight":"/screenshots/screenshot-midnight.webp","frost":"/screenshots/screenshot-frost.webp","rose":"/screenshots/screenshot-rose.webp"}'
           >
           <!-- 兜底占位内容：当截图加载失败时显示 -->
           <div class="hero__fallback">
