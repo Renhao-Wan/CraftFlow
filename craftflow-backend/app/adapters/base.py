@@ -27,17 +27,17 @@ class BusinessAdapter(ABC):
 
     @abstractmethod
     async def get_task_list(
-        self, limit: int = 50, offset: int = 0
+        self, limit: int = 50, offset: int = 0, statuses: tuple[str, ...] | None = None
     ) -> tuple[list[dict[str, Any]], int]:
-        """查询任务列表（分页）"""
+        """查询任务列表（分页），可选按状态过滤"""
 
     @abstractmethod
     async def delete_task(self, task_id: str) -> bool:
         """删除任务"""
 
     @abstractmethod
-    async def delete_all_tasks(self) -> int:
-        """删除所有任务，返回被删除的记录数"""
+    async def delete_tasks_by_status(self, statuses: tuple[str, ...]) -> int:
+        """按状态删除任务，返回被删除的记录数"""
 
     @abstractmethod
     async def get_interrupted_tasks(self) -> list[dict[str, Any]]:

@@ -196,12 +196,14 @@ class SqliteTaskStore(AbstractTaskStore):
         self,
         limit: int = 50,
         offset: int = 0,
+        statuses: tuple[str, ...] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         """查询任务列表（按创建时间降序）
 
         Args:
             limit: 最大返回数量
             offset: 偏移量（分页用）
+            statuses: 可选的状态过滤，如 ("completed", "failed")
 
         Returns:
             (任务数据字典列表, 总数)
@@ -209,16 +211,28 @@ class SqliteTaskStore(AbstractTaskStore):
         if self._db is None:
             raise RuntimeError("TaskStore 未初始化")
 
+        if statuses:
+            placeholders = ",".join("?" for _ in statuses)
+            count_sql = f"SELECT COUNT(*) FROM tasks WHERE status IN ({placeholders})"
+            data_sql = (
+                f"SELECT * FROM tasks WHERE status IN ({placeholders})"
+                " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            )
+            count_params: tuple[str, ...] = statuses
+            data_params: tuple[str | int, ...] = (*statuses, limit, offset)
+        else:
+            count_sql = "SELECT COUNT(*) FROM tasks"
+            data_sql = "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            count_params = ()
+            data_params = (limit, offset)
+
         # 查询总数
-        cursor = await self._db.execute("SELECT COUNT(*) FROM tasks")
+        cursor = await self._db.execute(count_sql, count_params)
         row = await cursor.fetchone()
         total = row[0] if row else 0
 
         # 查询分页数据
-        cursor = await self._db.execute(
-            "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
+        cursor = await self._db.execute(data_sql, data_params)
         rows = await cursor.fetchall()
         return [_row_to_dict(cursor, row) for row in rows], total
 
@@ -241,16 +255,19 @@ class SqliteTaskStore(AbstractTaskStore):
             logger.debug(f"任务已从 SQLite 删除 - task_id: {task_id}")
         return deleted
 
-    async def delete_all_tasks(self) -> int:
-        """删除所有任务记录"""
+    async def delete_tasks_by_status(self, statuses: tuple[str, ...]) -> int:
+        """按状态删除任务记录"""
         if self._db is None:
             raise RuntimeError("TaskStore 未初始化")
 
-        cursor = await self._db.execute("DELETE FROM tasks")
+        placeholders = ",".join("?" for _ in statuses)
+        cursor = await self._db.execute(
+            f"DELETE FROM tasks WHERE status IN ({placeholders})", statuses
+        )
         await self._db.commit()
         count = cursor.rowcount
         if count > 0:
-            logger.debug(f"已清空所有任务 - 共删除 {count} 条")
+            logger.debug(f"已按状态删除任务 {statuses} - 共删除 {count} 条")
         return count
 
     async def close(self) -> None:

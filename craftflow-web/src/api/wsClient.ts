@@ -5,7 +5,7 @@
  * - 指数退避自动重连（1s → 2s → 4s → 8s → 16s → 30s，最大 6 次）
  * - 心跳机制（30s ping，10s pong 超时）
  * - requestId 请求-响应配对
- * - 断连期间消息缓存，重连后自动发送
+ * - 订阅管理（任务级订阅，重连后自动重新订阅）
  * - 事件驱动的消息分发
  */
 
@@ -43,24 +43,13 @@ export interface WsMessage {
 /** 消息处理器 */
 type MessageHandler = (message: WsMessage) => void
 
-/** 待发送消息 */
-interface PendingMessage {
-  data: Record<string, unknown>
-  timestamp: number
-}
-
 // ─── 常量 ──────────────────────────────────────────
 
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000] as const
 const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS.length
 const HEARTBEAT_INTERVAL = 30_000
 const PONG_TIMEOUT = 10_000
-const MAX_PENDING_MESSAGES = 100
-const PENDING_MESSAGE_TTL = 5 * 60_000 // 5 minutes
 const SUBSCRIPTION_TIMEOUT = 5 * 60_000 // 5 分钟后自动取消订阅
-
-// 幂等消息：断连后可以安全重发
-const IDEMPOTENT_TYPES = new Set(['subscribe_task', 'unsubscribe_task', 'ping', 'get_task_status'])
 
 // ─── 状态 ──────────────────────────────────────────
 
@@ -75,7 +64,6 @@ let pongTimer: ReturnType<typeof setTimeout> | null = null
 
 const handlers = new Map<string, Set<MessageHandler>>()
 const pendingRequests = new Map<string, { resolve: (value: WsMessage) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> }>()
-const pendingMessages: PendingMessage[] = []
 const subscribedTasks = new Set<string>()
 const subscriptionTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -110,7 +98,6 @@ function connect(): void {
     reconnectAttempts.value = 0
     isReconnecting.value = false
     startHeartbeat()
-    flushPendingMessages()
     resubscribeAll()
     emit('open')
   }
@@ -136,21 +123,6 @@ function connect(): void {
     // onclose 会在 onerror 之后触发，无需额外处理
     emit('error')
   }
-}
-
-function disconnect(): void {
-  clearReconnectTimer()
-  stopHeartbeat()
-
-  if (ws) {
-    ws.onclose = null // 阻止自动重连
-    ws.close()
-    ws = null
-  }
-
-  isConnected.value = false
-  isReconnecting.value = false
-  reconnectAttempts.value = 0
 }
 
 // ─── 重连 ──────────────────────────────────────────
@@ -245,22 +217,6 @@ function sendRaw(data: Record<string, unknown>): boolean {
 }
 
 /**
- * 发送消息，返回是否成功写入
- * 只缓存幂等消息（subscribe_task、ping 等），非幂等消息（create_creation 等）不缓存
- */
-function send(data: Record<string, unknown>): boolean {
-  if (sendRaw(data)) return true
-
-  // 只缓存幂等消息
-  if (IDEMPOTENT_TYPES.has(data.type as string)) {
-    if (pendingMessages.length < MAX_PENDING_MESSAGES) {
-      pendingMessages.push({ data, timestamp: Date.now() })
-    }
-  }
-  return false
-}
-
-/**
  * 发送请求并等待响应（通过 requestId 匹配）
  * 使用 sendRaw 直接发送，非幂等消息不会被缓存
  *
@@ -297,17 +253,6 @@ function sendAndWait(
 function resubscribeAll(): void {
   for (const taskId of subscribedTasks) {
     sendRaw({ type: 'subscribe_task', taskId })
-  }
-}
-
-function flushPendingMessages(): void {
-  const now = Date.now()
-  // 过期消息丢弃
-  const valid = pendingMessages.filter((m) => now - m.timestamp < PENDING_MESSAGE_TTL)
-  pendingMessages.length = 0
-
-  for (const msg of valid) {
-    sendRaw(msg.data)
   }
 }
 
@@ -364,13 +309,6 @@ function resetSubscriptionTimer(taskId: string): void {
   subscriptionTimers.set(taskId, newTimer)
 }
 
-/**
- * 获取已订阅的任务 ID 列表
- */
-function getSubscribedTasks(): string[] {
-  return Array.from(subscribedTasks)
-}
-
 // ─── 事件系统 ──────────────────────────────────────
 
 function on(type: string, handler: MessageHandler): void {
@@ -378,10 +316,6 @@ function on(type: string, handler: MessageHandler): void {
     handlers.set(type, new Set())
   }
   handlers.get(type)!.add(handler)
-}
-
-function off(type: string, handler: MessageHandler): void {
-  handlers.get(type)?.delete(handler)
 }
 
 function clearTypeHandlers(type: string): void {
@@ -403,27 +337,18 @@ function emit(type: string, message?: WsMessage): void {
 // ─── 导出 ──────────────────────────────────────────
 
 export const wsClient = {
-  // 状态
-  isConnected,
-  reconnectAttempts,
-  isReconnecting,
-
   // 连接
   connect,
-  disconnect,
 
   // 发送
-  send,
   sendAndWait,
   sendRaw,
 
   // 订阅
   subscribeTask,
   unsubscribeTask,
-  getSubscribedTasks,
 
   // 事件
   on,
-  off,
   clearTypeHandlers,
 } as const

@@ -43,15 +43,15 @@ class StandaloneAdapter(BusinessAdapter):
         return await self.task_store.get_task(task_id)
 
     async def get_task_list(
-        self, limit: int = 50, offset: int = 0
+        self, limit: int = 50, offset: int = 0, statuses: tuple[str, ...] | None = None
     ) -> tuple[list[dict[str, Any]], int]:
-        return await self.task_store.get_task_list(limit, offset)
+        return await self.task_store.get_task_list(limit, offset, statuses)
 
     async def delete_task(self, task_id: str) -> bool:
         return await self.task_store.delete_task(task_id)
 
-    async def delete_all_tasks(self) -> int:
-        return await self.task_store.delete_all_tasks()
+    async def delete_tasks_by_status(self, statuses: tuple[str, ...]) -> int:
+        return await self.task_store.delete_tasks_by_status(statuses)
 
     async def get_interrupted_tasks(self) -> list[dict[str, Any]]:
         return await self.task_store.get_interrupted_tasks()

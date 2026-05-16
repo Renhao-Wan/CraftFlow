@@ -56,12 +56,14 @@ class AbstractTaskStore(ABC):
         self,
         limit: int = 50,
         offset: int = 0,
+        statuses: tuple[str, ...] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        """查询任务列表（按创建时间降序）
+        """查询任务列表（按创建时间降序），可选按状态过滤
 
         Args:
             limit: 最大返回数量
             offset: 偏移量（分页用）
+            statuses: 可选的状态过滤，如 ("completed", "failed")
 
         Returns:
             (任务数据字典列表, 总数)
@@ -76,8 +78,8 @@ class AbstractTaskStore(ABC):
         """
 
     @abstractmethod
-    async def delete_all_tasks(self) -> int:
-        """删除所有任务记录
+    async def delete_tasks_by_status(self, statuses: tuple[str, ...]) -> int:
+        """按状态删除任务记录
 
         Returns:
             被删除的记录数

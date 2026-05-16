@@ -158,7 +158,7 @@ class CreationService:
                     "status": "interrupted",
                     "topic": request.get("topic"),
                     "description": request.get("description"),
-                    "progress": 30.0,
+                    "progress": task.get("progress", 30.0),
                     "created_at": str(task.get("created_at", datetime.now())),
                     "updated_at": str(datetime.now()),
                 }

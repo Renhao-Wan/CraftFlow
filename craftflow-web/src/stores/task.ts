@@ -49,10 +49,17 @@ export const useTaskStore = defineStore('task', () => {
   /** 运行中任务实时状态：taskId → 任务状态（WebSocket 推送更新） */
   const tasks = ref<Map<string, TaskStatusResponse>>(new Map())
 
-  /** 历史任务列表：直接从 REST API 获取，独立存储 */
+  /** 历史任务列表：直接从 REST API 获取，仅 completed/failed */
   const taskList = ref<TaskStatusResponse[]>([])
   /** 历史列表总数 */
   const listTotal = ref(0)
+
+  /** 运行中任务列表：直接从 REST API 获取，仅 running/interrupted */
+  const runningItems = ref<TaskStatusResponse[]>([])
+  /** 运行中列表总数 */
+  const runningTotal = ref(0)
+  /** 运行中列表当前页 */
+  const runningCurrentPage = ref(1)
 
   /** 多任务流式内容：taskId → 累积内容 */
   const streamingContents = ref<Map<string, string>>(new Map())
@@ -74,6 +81,7 @@ export const useTaskStore = defineStore('task', () => {
   // ─── Getters ────────────────────────────────────────────
 
   const totalPages = computed(() => Math.ceil(listTotal.value / pageSize.value))
+  const runningTotalPages = computed(() => Math.ceil(runningTotal.value / pageSize.value))
 
   // ─── Actions ────────────────────────────────────────────
 
@@ -120,12 +128,8 @@ export const useTaskStore = defineStore('task', () => {
     taskErrors.value.delete(taskId)
     // 从历史列表中移除
     taskList.value = taskList.value.filter((t) => t.task_id !== taskId)
-  }
-
-  /** 清除指定任务的流式内容 */
-  function clearStreamingContent(taskId: string): void {
-    streamingContents.value.delete(taskId)
-    clearStreamingCache(taskId)
+    // 从运行中列表移除
+    runningItems.value = runningItems.value.filter((t) => t.task_id !== taskId)
   }
 
   /** 通过 WebSocket 查询任务状态 */
@@ -162,19 +166,24 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
-  /** 获取任务列表（REST），数据存储到 taskList（独立于 tasks Map） */
-  async function fetchTaskList(page?: number): Promise<void> {
+  /** 获取任务列表（REST），数据存储到 taskList 和 runningItems */
+  async function fetchTaskList(
+    page?: number,
+    tab: 'history' | 'running' = 'history',
+  ): Promise<void> {
     loading.value = true
     error.value = null
-    if (page !== undefined) {
-      currentPage.value = page
-    }
+    if (tab === 'history' && page !== undefined) currentPage.value = page
+    if (tab === 'running' && page !== undefined) runningCurrentPage.value = page
+
     const offset = (currentPage.value - 1) * pageSize.value
+    const runningOffset = (runningCurrentPage.value - 1) * pageSize.value
     try {
-      const response = await apiGetTaskList(pageSize.value, offset)
-      listTotal.value = response.total
-      // 历史列表直接存储，不写入 tasks Map
+      const response = await apiGetTaskList(pageSize.value, offset, pageSize.value, runningOffset)
+      runningItems.value = response.running_items
+      runningTotal.value = response.running_total
       taskList.value = response.items
+      listTotal.value = response.total
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : '获取任务列表失败'
     } finally {
@@ -234,11 +243,6 @@ export const useTaskStore = defineStore('task', () => {
       updated_at: new Date().toISOString(),
     }
     tasks.value.set(taskId, updated)
-    // 同步更新历史列表中的对应任务
-    const idx = taskList.value.findIndex((t) => t.task_id === taskId)
-    if (idx >= 0) {
-      taskList.value[idx] = { ...taskList.value[idx], ...updated }
-    }
   }
 
   /** 处理 WS task_token 推送（ReducerNode 流式输出） */
@@ -279,14 +283,9 @@ export const useTaskStore = defineStore('task', () => {
       updated_at: (message.updatedAt as string) ?? now,
     }
     tasks.value.set(taskId, updated)
-    // 同步更新历史列表中的对应任务
-    const idx = taskList.value.findIndex((t) => t.task_id === taskId)
-    if (idx >= 0) {
-      taskList.value[idx] = { ...taskList.value[idx], ...updated }
-    }
+    // 任务完成，从运行中列表移除
+    runningItems.value = runningItems.value.filter((t) => t.task_id !== taskId)
   }
-
-  /** 处理 WS task_error 推送 */
   function handleTaskError(message: WsMessage): void {
     const taskId = message.taskId as string
     if (!taskId) return
@@ -304,11 +303,8 @@ export const useTaskStore = defineStore('task', () => {
       updated_at: now,
     }
     tasks.value.set(taskId, updated)
-    // 同步更新历史列表中的对应任务
-    const idx = taskList.value.findIndex((t) => t.task_id === taskId)
-    if (idx >= 0) {
-      taskList.value[idx] = { ...taskList.value[idx], ...updated }
-    }
+    // 任务失败，从运行中列表移除
+    runningItems.value = runningItems.value.filter((t) => t.task_id !== taskId)
   }
 
   /** 设置当前任务（合并更新，保留已有字段） */
@@ -321,18 +317,13 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
-  /** 乐观更新指定任务的状态字段 */
-  function updateTaskStatus(taskId: string, status: TaskStatus): void {
-    const existing = tasks.value.get(taskId)
-    if (existing) {
-      tasks.value.set(taskId, { ...existing, status })
-    }
-  }
-
   return {
     // state
     tasks,
     taskList,
+    runningItems,
+    runningTotal,
+    runningCurrentPage,
     streamingContents,
     listTotal,
     currentPage,
@@ -341,6 +332,7 @@ export const useTaskStore = defineStore('task', () => {
     error,
     // getters
     totalPages,
+    runningTotalPages,
     // actions
     getTask,
     getStreamingContent,
@@ -349,7 +341,6 @@ export const useTaskStore = defineStore('task', () => {
     setTaskLoading,
     setTaskError,
     removeTask,
-    clearStreamingContent,
     fetchTaskStatus,
     fetchTaskList,
     deleteTask,
@@ -358,6 +349,5 @@ export const useTaskStore = defineStore('task', () => {
     handleTaskToken,
     handleTaskError,
     setCurrentTask,
-    updateTaskStatus,
   }
 })

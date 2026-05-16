@@ -29,47 +29,48 @@ logger = get_logger(__name__)
 
 @router.get("/tasks")
 async def list_tasks(
-    limit: int = Query(50, ge=1, le=200, description="最大返回数量"),
-    offset: int = Query(0, ge=0, description="偏移量"),
+    limit: int = Query(5, ge=1, le=200, description="历史任务每页数量"),
+    offset: int = Query(0, ge=0, description="历史任务偏移量"),
+    running_limit: int = Query(5, ge=1, le=50, description="运行中任务每页数量"),
+    running_offset: int = Query(0, ge=0, description="运行中任务偏移量"),
     caller: dict[str, Any] = Depends(verify_api_key),
     adapter: BusinessAdapter = Depends(get_adapter),
     creation_svc: CreationService = Depends(get_creation_service),
     polishing_svc: PolishingService = Depends(get_polishing_service),
 ) -> dict[str, Any]:
-    """获取任务列表
+    """获取任务列表（双列表：运行中 + 历史）
 
-    返回所有任务（包括运行中和已完成的），按创建时间降序排列。
-    - running/interrupted 任务从内存 _tasks dict 获取（优先）
-    - completed/failed 任务从 SQLite 获取
-    - 中断任务同时存在于内存和 SQLite，以内存版本为准（去重）
+    返回两个独立列表，各自分页：
+    - running_items：内存中 running/interrupted 任务
+    - items：SQLite 中 completed/failed 任务
 
     Returns:
-        { items: [...], total: int }
+        { running_items: [...], running_total: int, items: [...], total: int }
     """
-    # 1. 从内存获取运行中的任务
-    running_tasks: list[dict[str, Any]] = []
-    memory_task_ids: set[str] = set()
+    # 1. 从内存获取所有 running/interrupted 任务
+    all_running: list[dict[str, Any]] = []
     for task in creation_svc._tasks.values():
         if task["status"] in ("running", "interrupted"):
-            running_tasks.append(_format_running_task(task))
-            memory_task_ids.add(task["task_id"])
+            all_running.append(_format_running_task(task))
     for task in polishing_svc._tasks.values():
         if task["status"] in ("running", "interrupted"):
-            running_tasks.append(_format_running_task(task))
-            memory_task_ids.add(task["task_id"])
+            all_running.append(_format_running_task(task))
 
-    # 2. 从 SQLite 查询任务，排除已在内存中的（去重）
-    db_tasks, db_total = await adapter.get_task_list(limit=limit, offset=offset)
-    db_tasks_deduped = [t for t in db_tasks if t["task_id"] not in memory_task_ids]
+    all_running.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    running_total = len(all_running)
+    running_items = all_running[running_offset : running_offset + running_limit]
 
-    # 3. 合并并按 created_at 降序排序
-    all_tasks = running_tasks + db_tasks_deduped
-    all_tasks.sort(key=lambda t: t.get("created_at", ""), reverse=True)
+    # 2. 从 SQLite 查询终态任务（completed/failed）
+    items, total = await adapter.get_task_list(
+        limit=limit, offset=offset, statuses=("completed", "failed")
+    )
 
-    # 总数 = 内存中的运行态任务数 + SQLite 中的终态任务数
-    total = len(running_tasks) + db_total
-
-    return {"items": all_tasks[:limit], "total": total}
+    return {
+        "running_items": running_items,
+        "running_total": running_total,
+        "items": items,
+        "total": total,
+    }
 
 
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
@@ -99,28 +100,19 @@ async def get_task_status(
 
 
 @router.delete("/tasks")
-async def delete_all_tasks(
+async def delete_tasks_by_status(
+    statuses: str = Query(..., description="按状态过滤删除，逗号分隔，如 completed,failed"),
     caller: dict[str, Any] = Depends(verify_api_key),
     adapter: BusinessAdapter = Depends(get_adapter),
-    creation_svc: CreationService = Depends(get_creation_service),
-    polishing_svc: PolishingService = Depends(get_polishing_service),
 ) -> dict[str, Any]:
-    """清空所有任务记录
+    """按状态清空 SQLite 中的任务记录
 
-    清除内存中所有运行态任务和 SQLite 中所有终态任务。
+    仅清空匹配状态的任务，不影响内存中的运行态任务。
     """
-    # 1. 清空内存中的运行态任务
-    creation_count = len(creation_svc._tasks)
-    polishing_count = len(polishing_svc._tasks)
-    creation_svc._tasks.clear()
-    polishing_svc._tasks.clear()
-
-    # 2. 清空 SQLite 中的终态任务
-    db_count = await adapter.delete_all_tasks()
-
-    total = creation_count + polishing_count + db_count
-    logger.info(f"已清空所有任务 - 内存: {creation_count + polishing_count}, 数据库: {db_count}")
-    return {"deleted": total}
+    status_list = tuple(s.strip() for s in statuses.split(","))
+    db_count = await adapter.delete_tasks_by_status(status_list)
+    logger.info(f"已按状态删除任务 {status_list} - 数据库: {db_count}")
+    return {"deleted": db_count}
 
 
 @router.delete("/tasks/{task_id}")

@@ -55,7 +55,7 @@ function isDetailRoute(name: string | null | undefined): boolean {
 }
 
 // 注意：不在路由守卫中取消订阅，保持订阅以继续接收流式内容
-// 订阅的取消由 useTaskLifecycle 中的 stop 函数在任务完成/失败时调用
+// 订阅的取消由全局 WS 监听器在收到 task_result/task_error 时自动调用
 
 router.afterEach((to) => {
   if (!isDetailRoute(to.name as string)) {

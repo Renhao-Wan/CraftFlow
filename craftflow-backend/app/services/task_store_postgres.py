@@ -132,20 +132,35 @@ class PostgresTaskStore(AbstractTaskStore):
         self,
         limit: int = 50,
         offset: int = 0,
+        statuses: tuple[str, ...] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        """查询任务列表（按创建时间降序）"""
+        """查询任务列表（按创建时间降序），可选按状态过滤"""
         if self._pool is None:
             raise RuntimeError("TaskStore 未初始化")
 
         async with self._pool.acquire() as conn:
-            total_row = await conn.fetchrow("SELECT COUNT(*) FROM tasks")
-            total = total_row[0] if total_row else 0
-
-            rows = await conn.fetch(
-                "SELECT * FROM tasks ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-                limit,
-                offset,
-            )
+            if statuses:
+                status_list = list(statuses)
+                total_row = await conn.fetchrow(
+                    "SELECT COUNT(*) FROM tasks WHERE status = ANY($1::text[])",
+                    status_list,
+                )
+                total = total_row[0] if total_row else 0
+                rows = await conn.fetch(
+                    "SELECT * FROM tasks WHERE status = ANY($1::text[])"
+                    " ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+                    status_list,
+                    limit,
+                    offset,
+                )
+            else:
+                total_row = await conn.fetchrow("SELECT COUNT(*) FROM tasks")
+                total = total_row[0] if total_row else 0
+                rows = await conn.fetch(
+                    "SELECT * FROM tasks ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+                    limit,
+                    offset,
+                )
         return [_record_to_dict(row) for row in rows], total
 
     async def delete_task(self, task_id: str) -> bool:
@@ -163,17 +178,19 @@ class PostgresTaskStore(AbstractTaskStore):
             logger.debug(f"任务已从 PostgreSQL 删除 - task_id: {task_id}")
         return deleted
 
-    async def delete_all_tasks(self) -> int:
-        """删除所有任务记录"""
+    async def delete_tasks_by_status(self, statuses: tuple[str, ...]) -> int:
+        """按状态删除任务记录"""
         if self._pool is None:
             raise RuntimeError("TaskStore 未初始化")
 
         async with self._pool.acquire() as conn:
-            result = await conn.execute("DELETE FROM tasks")
-        # asyncpg 返回格式如 "DELETE 5"
+            result = await conn.execute(
+                "DELETE FROM tasks WHERE status = ANY($1::text[])",
+                list(statuses),
+            )
         count = int(result.split()[-1]) if result.startswith("DELETE") else 0
         if count > 0:
-            logger.debug(f"已清空所有任务 - 共删除 {count} 条")
+            logger.debug(f"已按状态删除任务 {statuses} - 共删除 {count} 条")
         return count
 
     async def close(self) -> None:

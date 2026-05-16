@@ -76,8 +76,6 @@ export interface UseTaskLifecycleReturn {
   retryPolishing: (content: string, mode: PolishingMode) => Promise<void>
   /** 加载指定任务状态 */
   loadTask: (taskId: string) => Promise<void>
-  /** 取消订阅指定任务的 WS 推送 */
-  stop: (taskId: string) => void
   /** 是否正在提交 */
   submitting: ReturnType<typeof ref<boolean>>
   /** 提交错误 */
@@ -273,11 +271,6 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     await taskStore.fetchTaskStatus(taskId)
   }
 
-  /** 取消订阅指定任务 */
-  function stop(taskId: string): void {
-    wsClient.unsubscribeTask(taskId)
-  }
-
   return {
     submitCreation,
     submitPolishing,
@@ -285,7 +278,6 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     retryCreation,
     retryPolishing,
     loadTask,
-    stop,
     submitting,
     submitError,
     taskType,

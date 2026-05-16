@@ -7,9 +7,9 @@ import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal.vue'
-import { deleteAllTasks } from '@/api/tasks'
+import { deleteTasksByStatus } from '@/api/tasks'
 import { inferTaskType, formatTime, taskRouteName } from '@/utils/taskHelpers'
-import type { TaskStatus } from '@/api/types/task'
+import type { TaskStatus, TaskStatusResponse } from '@/api/types/task'
 
 interface HistoryItem {
   taskId: string
@@ -19,10 +19,13 @@ interface HistoryItem {
   type: 'creation' | 'polishing'
 }
 
+type TabType = 'running' | 'history'
+
 const router = useRouter()
 const taskStore = useTaskStore()
 const navStore = useNavigationStore()
 
+const activeTab = ref<TabType>('history')
 const deleting = ref(false)
 
 // 删除确认弹窗状态
@@ -34,29 +37,48 @@ const deleteTarget = ref<{ type: 'single' | 'clearAll'; taskId?: string; topic?:
 const REFRESH_INTERVAL = 30_000
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-/**
- * 从 taskList 读取当前页的任务（REST API 数据源）
- * WS 推送会同步更新 taskList 中对应任务的状态
- */
+/** 将 TaskStatusResponse 映射为 HistoryItem */
+function toHistoryItem(t: TaskStatusResponse): HistoryItem {
+  const type = inferTaskType(t)
+  return {
+    taskId: t.task_id,
+    topic: t.topic ?? (type === 'polishing' ? '润色任务' : '创作任务'),
+    status: t.status,
+    createdAt: t.created_at ?? '',
+    type,
+  }
+}
+
+/** 当前 Tab 的列表数据 */
 const items = computed<HistoryItem[]>(() => {
-  return taskStore.taskList.map((t) => {
-    const type = inferTaskType(t)
-    return {
-      taskId: t.task_id,
-      topic: t.topic ?? (type === 'polishing' ? '润色任务' : '创作任务'),
-      status: t.status,
-      createdAt: t.created_at ?? '',
-      type,
-    }
-  })
+  if (activeTab.value === 'running') {
+    return taskStore.runningItems.map(toHistoryItem)
+  }
+  return taskStore.taskList.map(toHistoryItem)
 })
 
-const currentPage = computed(() => taskStore.currentPage)
-const totalPages = computed(() => taskStore.totalPages)
-const total = computed(() => taskStore.listTotal)
+/** 当前 Tab 的当前页 */
+const currentPage = computed(() =>
+  activeTab.value === 'running' ? taskStore.runningCurrentPage : taskStore.currentPage,
+)
 
-async function loadHistory(page = 1): Promise<void> {
-  await taskStore.fetchTaskList(page)
+/** 当前 Tab 的总页数 */
+const totalPages = computed(() =>
+  activeTab.value === 'running' ? taskStore.runningTotalPages : taskStore.totalPages,
+)
+
+/** 当前 Tab 的总数 */
+const total = computed(() =>
+  activeTab.value === 'running' ? taskStore.runningTotal : taskStore.listTotal,
+)
+
+/** 切换 Tab */
+function switchTab(tab: TabType): void {
+  activeTab.value = tab
+}
+
+async function loadList(page?: number): Promise<void> {
+  await taskStore.fetchTaskList(page, activeTab.value)
 }
 
 function goToDetail(item: HistoryItem): void {
@@ -65,7 +87,7 @@ function goToDetail(item: HistoryItem): void {
 }
 
 function onPageChange(page: number): void {
-  loadHistory(page)
+  loadList(page)
 }
 
 function promptRemove(taskId: string, topic: string): void {
@@ -85,15 +107,15 @@ async function confirmDelete(): Promise<void> {
     if (deleteTarget.value.type === 'single' && deleteTarget.value.taskId) {
       await taskStore.deleteTask(deleteTarget.value.taskId)
       if (items.value.length === 0 && currentPage.value > 1) {
-        await loadHistory(currentPage.value - 1)
+        await loadList(currentPage.value - 1)
       }
     } else if (deleteTarget.value.type === 'clearAll') {
-      await deleteAllTasks()
-      await loadHistory(1)
+      await deleteTasksByStatus(['completed', 'failed'])
+      await loadList(1)
     }
   } catch {
     if (deleteTarget.value.type === 'clearAll') {
-      await loadHistory(1)
+      await loadList(1)
     }
   } finally {
     deleteModalLoading.value = false
@@ -103,10 +125,10 @@ async function confirmDelete(): Promise<void> {
 }
 
 onMounted(() => {
-  loadHistory()
+  loadList()
   // 定时刷新，确保任务状态实时更新
   refreshTimer = setInterval(() => {
-    loadHistory(currentPage.value)
+    loadList()
   }, REFRESH_INTERVAL)
 })
 
@@ -123,10 +145,9 @@ onUnmounted(() => {
     <div class="page-header">
       <div class="page-header-left">
         <h1 class="page-title">任务历史</h1>
-        <span v-if="total > 0" class="page-count">{{ total }} 条记录</span>
       </div>
       <button
-        v-if="items.length > 0"
+        v-if="activeTab === 'history' && items.length > 0"
         class="clear-btn"
         :disabled="deleting"
         @click="promptClearAll"
@@ -135,77 +156,109 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- 加载中 -->
-    <div v-if="taskStore.loading && items.length === 0" class="state-center">
-      <LoadingSpinner :size="28" label="加载历史记录..." />
-    </div>
-
-    <!-- 错误 -->
-    <ErrorAlert
-      v-else-if="taskStore.error"
-      :message="taskStore.error"
-      :retryable="true"
-      @retry="loadHistory"
-    />
-
-    <!-- 空状态 -->
-    <div v-else-if="items.length === 0" class="empty-state">
-      <p class="empty-text">暂无任务历史</p>
-      <button class="empty-action" @click="router.push({ name: 'creation' })">
-        发起第一个任务
+    <!-- Tab 切换 -->
+    <div class="tab-bar">
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'history' }"
+        @click="switchTab('history')"
+      >
+        历史记录
+        <span class="tab-badge">{{ taskStore.listTotal }}</span>
+      </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'running' }"
+        @click="switchTab('running')"
+      >
+        运行中
+        <span class="tab-badge">{{ taskStore.runningTotal }}</span>
       </button>
     </div>
 
-    <!-- 列表 -->
-    <ul v-else class="history-list">
-      <li
-        v-for="item in items"
-        :key="item.taskId"
-        class="history-item"
-        @click="goToDetail(item)"
-      >
-        <div class="item-main">
-          <div class="item-top">
-            <span class="type-tag" :class="'type-' + item.type">
-              {{ item.type === 'creation' ? '创作' : '润色' }}
-            </span>
-            <TaskStatusBadge :status="item.status" />
-          </div>
-          <p class="item-topic">{{ item.topic }}</p>
-        </div>
-        <div class="item-side">
-          <span class="item-time">{{ formatTime(item.createdAt) }}</span>
-          <button
-            class="remove-btn"
-            title="移除"
-            :disabled="deleting"
-            @click.stop="promptRemove(item.taskId, item.topic)"
-          >
-            &times;
-          </button>
-        </div>
-      </li>
-    </ul>
+    <!-- 内容区（列表 + 分页） -->
+    <div class="content-area">
+      <!-- 加载中 -->
+      <div v-if="taskStore.loading && items.length === 0" class="state-center">
+        <LoadingSpinner :size="28" label="加载中..." />
+      </div>
 
-    <!-- 分页 -->
-    <div v-if="totalPages > 1" class="pagination">
-      <div class="page-controls">
+      <!-- 错误 -->
+      <ErrorAlert
+        v-else-if="taskStore.error"
+        :message="taskStore.error"
+        :retryable="true"
+        @retry="loadList"
+      />
+
+      <!-- 空状态 -->
+      <div v-else-if="items.length === 0" class="empty-state">
+        <p class="empty-text">
+          {{ activeTab === 'running' ? '暂无运行中的任务' : '暂无历史记录' }}
+        </p>
         <button
-          class="page-btn"
-          :disabled="currentPage <= 1"
-          @click="onPageChange(currentPage - 1)"
+          v-if="activeTab === 'history'"
+          class="empty-action"
+          @click="router.push({ name: 'creation' })"
         >
-          上一页
-        </button>
-        <span class="page-number">{{ currentPage }} / {{ totalPages }}</span>
-        <button
-          class="page-btn"
-          :disabled="currentPage >= totalPages"
-          @click="onPageChange(currentPage + 1)"
-        >
-          下一页
+          发起第一个任务
         </button>
       </div>
+
+      <!-- 列表 -->
+      <template v-else>
+        <ul class="history-list">
+          <li
+            v-for="item in items"
+            :key="item.taskId"
+            class="history-item"
+            @click="goToDetail(item)"
+          >
+            <div class="item-main">
+              <div class="item-top">
+                <span class="type-tag" :class="'type-' + item.type">
+                  {{ item.type === 'creation' ? '创作' : '润色' }}
+                </span>
+                <TaskStatusBadge :status="item.status" />
+              </div>
+              <p class="item-topic">{{ item.topic }}</p>
+            </div>
+            <div class="item-side">
+              <span class="item-time">{{ formatTime(item.createdAt) }}</span>
+              <button
+                v-if="activeTab === 'history'"
+                class="remove-btn"
+                title="移除"
+                :disabled="deleting"
+                @click.stop="promptRemove(item.taskId, item.topic)"
+              >
+                &times;
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- 分页 -->
+        <div v-if="totalPages > 1" class="pagination">
+          <div class="page-controls">
+            <button
+              class="page-btn"
+              :disabled="currentPage <= 1"
+              @click="onPageChange(currentPage - 1)"
+            >
+              上一页
+            </button>
+            <span class="page-number">{{ currentPage }} / {{ totalPages }}</span>
+            <button
+              class="page-btn"
+              :disabled="currentPage >= totalPages"
+              @click="onPageChange(currentPage + 1)"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      </template>
     </div>
 
     <ConfirmDeleteModal
@@ -228,9 +281,16 @@ onUnmounted(() => {
   margin: 0 auto;
   height: calc(100vh - var(--space-xl) * 2);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr;
   padding-top: var(--space-lg);
   padding-bottom: var(--space-xl);
+}
+
+.content-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .page-header {
@@ -274,6 +334,57 @@ onUnmounted(() => {
 .clear-btn:hover {
   opacity: 1;
   background: var(--color-error-bg);
+}
+
+/* Tab 切换 */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab-btn {
+  position: relative;
+  width: 140px;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab-btn:hover {
+  color: var(--color-text-secondary);
+}
+
+.tab-btn.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.tab-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  min-width: 20px;
+  text-align: center;
+  border-radius: 9999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.tab-btn:not(.active) .tab-badge {
+  background: var(--color-bg-surface);
+  color: var(--color-text-muted);
 }
 
 /* 通用 */
@@ -323,6 +434,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
   overflow-y: auto;
   scrollbar-width: none;
 }
