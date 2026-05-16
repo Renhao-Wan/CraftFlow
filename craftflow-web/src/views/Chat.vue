@@ -52,24 +52,48 @@ function syncProfileFromQuery(): void {
 
 // ─── 自动滚动到底部 ────────────────────────────────────────
 
-function scrollToBottom(): void {
+const isNearBottom = ref(true)
+
+function checkNearBottom(): void {
+  const el = messagesContainer.value
+  if (!el) return
+  isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+}
+
+function scrollToBottom(immediate = false): void {
   nextTick(() => {
     messagesContainer.value?.scrollTo({
       top: messagesContainer.value.scrollHeight,
-      behavior: 'smooth',
+      behavior: immediate ? 'auto' : 'smooth',
     })
   })
 }
 
+// 用户手动滚动时检测位置
+function onScroll(): void {
+  checkNearBottom()
+}
+
+// 新消息加入时滚到底部
 watch(
   () => messages.value.length,
-  () => scrollToBottom(),
+  () => {
+    if (isNearBottom.value) scrollToBottom()
+  },
 )
 
-// 流式期间监听最后一条消息的 content 变化（直接修改 content 属性）
+// 流式期间内容变化时滚到底部（用节流避免频繁触发）
+let scrollTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   () => messages.value[messages.value.length - 1]?.content,
-  () => scrollToBottom(),
+  () => {
+    if (!isNearBottom.value) return
+    if (scrollTimer) return
+    scrollTimer = setTimeout(() => {
+      scrollTimer = null
+      scrollToBottom(true)
+    }, 50)
+  },
 )
 
 // 流式输出结束后重新聚焦输入框
@@ -181,6 +205,7 @@ function handleKeydown(e: KeyboardEvent): void {
       v-else
       ref="messagesContainer"
       class="messages-container"
+      @scroll="onScroll"
     >
       <!-- 空对话引导 -->
       <div v-if="messages.length === 0" class="welcome">
@@ -214,9 +239,11 @@ function handleKeydown(e: KeyboardEvent): void {
         </div>
         <!-- 消息操作按钮（始终占位，悬浮时显示） -->
         <div
-          v-if="msg.content && !isStreaming"
           class="message-actions"
-          :class="{ visible: hoveredIndex === index }"
+          :class="{
+            visible: !isStreaming && msg.content && hoveredIndex === index,
+            hidden: isStreaming || !msg.content,
+          }"
         >
           <button class="action-btn" title="复制" @click.stop="copyMessage(msg.content)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -522,11 +549,18 @@ function handleKeydown(e: KeyboardEvent): void {
   padding-left: 2px;
   height: 28px;
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--transition-fast);
+}
+
+.message-actions.hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .message-actions.visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .action-btn {
