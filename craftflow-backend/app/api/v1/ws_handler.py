@@ -185,6 +185,17 @@ async def _handle_resume_task(
             if not sent:
                 logger.warning(f"错误消息发送失败，客户端可能已断开 - client: {client_id}")
 
+    # 立即发送确认响应，让前端 sendAndWait 正常 resolve
+    await broadcaster.send_to(
+        client_id,
+        {
+            "type": "task_resuming",
+            "requestId": msg.request_id,
+            "taskId": msg.task_id,
+            "status": "running",
+        },
+    )
+
     asyncio.create_task(_run())
 
 

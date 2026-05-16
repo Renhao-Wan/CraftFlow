@@ -100,6 +100,9 @@ class PolishingService:
             "graph_type": "polishing",
             "status": status,
             "request": request_data,
+            "current_node": None,
+            "current_node_label": None,
+            "progress": 0.0,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
@@ -536,10 +539,7 @@ class PolishingService:
             request_data={"content": content, "mode": mode},
         )
 
-        # 自动订阅
-        broadcaster.subscribe(client_id, task_id)
-
-        # 通知客户端任务已创建
+        # 通知客户端任务已创建（订阅由前端统一管理）
         await broadcaster.send_to(
             client_id,
             {
@@ -581,6 +581,13 @@ class PolishingService:
 
         # 注册进度回调，让 fact_checker_node 能推送中间进度
         async def _progress_cb(node: str, label: str, progress: float) -> None:
+            # 更新 _tasks dict 中的进度信息
+            self._update_task(
+                task_id,
+                current_node=node,
+                current_node_label=label,
+                progress=progress,
+            )
             await broadcaster.broadcast_update(
                 task_id,
                 {
@@ -626,6 +633,14 @@ class PolishingService:
                         progress = self._calculate_fact_checker_progress(output, mode)
                     else:
                         progress = self._calculate_progress(output, "running")
+
+                    # 更新 _tasks dict 中的进度信息
+                    self._update_task(
+                        task_id,
+                        current_node=current_node,
+                        current_node_label=label,
+                        progress=progress,
+                    )
 
                     await broadcaster.broadcast_update(
                         task_id,

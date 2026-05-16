@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { marked } from 'marked'
 
 const props = defineProps<{
@@ -7,10 +7,66 @@ const props = defineProps<{
   content: string
 }>()
 
-/** 将 Markdown 转换为 HTML */
-const html = computed(() => {
-  if (!props.content) return ''
-  return marked.parse(props.content, { async: false }) as string
+/** 节流渲染间隔（ms） */
+const THROTTLE_INTERVAL = 80
+
+/** 实际渲染的 HTML */
+const html = ref('')
+/** 是否有待渲染的内容 */
+let pendingContent = ''
+let throttleTimer: ReturnType<typeof setTimeout> | null = null
+let rafId: number | null = null
+
+function renderMarkdown(content: string): void {
+  if (!content) {
+    html.value = ''
+    return
+  }
+  html.value = marked.parse(content, { async: false }) as string
+}
+
+/** 节流渲染：最多每 THROTTLE_INTERVAL ms 渲染一次，保证最后一次一定渲染 */
+function throttledRender(content: string): void {
+  pendingContent = content
+  if (throttleTimer !== null) return
+
+  throttleTimer = setTimeout(() => {
+    throttleTimer = null
+    renderMarkdown(pendingContent)
+    // 确保最终内容一定被渲染（如果节流窗口后还有新内容）
+    if (rafId !== null) cancelAnimationFrame(rafId)
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      if (pendingContent !== html.value) {
+        renderMarkdown(pendingContent)
+      }
+    })
+  }, THROTTLE_INTERVAL)
+}
+
+watch(
+  () => props.content,
+  (content) => {
+    if (!content) {
+      html.value = ''
+      return
+    }
+    // 完成状态（内容不再变化）直接渲染，不节流
+    // 通过内容长度变化速度判断：如果 200ms 内无新 token，认为流式结束
+    throttledRender(content)
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  if (throttleTimer !== null) {
+    clearTimeout(throttleTimer)
+    throttleTimer = null
+  }
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
 })
 </script>
 

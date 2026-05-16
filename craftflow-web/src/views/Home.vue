@@ -35,7 +35,7 @@ const recentTasks = ref<RecentTask[]>([])
 
 async function loadRecent(): Promise<void> {
   await taskStore.fetchTaskList(1)
-  recentTasks.value = taskStore.taskList.slice(0, 2).map((t: import('@/api/types/task').TaskStatusResponse) => {
+  recentTasks.value = taskStore.taskList.slice(0, 2).map((t) => {
     const type = inferTaskType(t)
     return {
       taskId: t.task_id,

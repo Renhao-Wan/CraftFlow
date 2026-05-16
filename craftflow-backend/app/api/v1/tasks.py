@@ -164,6 +164,14 @@ def _format_running_task(task: dict[str, Any]) -> dict[str, Any]:
         "updated_at": str(task["updated_at"]),
     }
 
+    # 包含进度和当前节点信息（如果有的话）
+    if "progress" in task:
+        result["progress"] = task["progress"]
+    if "current_node" in task:
+        result["current_node"] = task["current_node"]
+    if "current_node_label" in task:
+        result["current_node_label"] = task["current_node_label"]
+
     if graph_type == "creation":
         result["topic"] = request.get("topic")
         result["description"] = request.get("description")

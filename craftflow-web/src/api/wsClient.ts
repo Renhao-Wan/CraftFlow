@@ -57,6 +57,10 @@ const HEARTBEAT_INTERVAL = 30_000
 const PONG_TIMEOUT = 10_000
 const MAX_PENDING_MESSAGES = 100
 const PENDING_MESSAGE_TTL = 5 * 60_000 // 5 minutes
+const SUBSCRIPTION_TIMEOUT = 5 * 60_000 // 5 分钟后自动取消订阅
+
+// 幂等消息：断连后可以安全重发
+const IDEMPOTENT_TYPES = new Set(['subscribe_task', 'unsubscribe_task', 'ping', 'get_task_status'])
 
 // ─── 状态 ──────────────────────────────────────────
 
@@ -72,6 +76,8 @@ let pongTimer: ReturnType<typeof setTimeout> | null = null
 const handlers = new Map<string, Set<MessageHandler>>()
 const pendingRequests = new Map<string, { resolve: (value: WsMessage) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 const pendingMessages: PendingMessage[] = []
+const subscribedTasks = new Set<string>()
+const subscriptionTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 // ─── URL 计算 ──────────────────────────────────────
 
@@ -105,6 +111,7 @@ function connect(): void {
     isReconnecting.value = false
     startHeartbeat()
     flushPendingMessages()
+    resubscribeAll()
     emit('open')
   }
 
@@ -238,20 +245,24 @@ function sendRaw(data: Record<string, unknown>): boolean {
 }
 
 /**
- * 发送消息，返回是否成功写入（或已缓存）
+ * 发送消息，返回是否成功写入
+ * 只缓存幂等消息（subscribe_task、ping 等），非幂等消息（create_creation 等）不缓存
  */
 function send(data: Record<string, unknown>): boolean {
   if (sendRaw(data)) return true
 
-  // 断连时缓存消息
-  if (pendingMessages.length < MAX_PENDING_MESSAGES) {
-    pendingMessages.push({ data, timestamp: Date.now() })
+  // 只缓存幂等消息
+  if (IDEMPOTENT_TYPES.has(data.type as string)) {
+    if (pendingMessages.length < MAX_PENDING_MESSAGES) {
+      pendingMessages.push({ data, timestamp: Date.now() })
+    }
   }
   return false
 }
 
 /**
  * 发送请求并等待响应（通过 requestId 匹配）
+ * 使用 sendRaw 直接发送，非幂等消息不会被缓存
  *
  * @param type 消息类型
  * @param payload 消息负载
@@ -273,13 +284,20 @@ function sendAndWait(
 
     pendingRequests.set(requestId, { resolve, reject, timer })
 
-    const sent = send({ type, requestId, ...payload })
+    // 使用 sendRaw 直接发送，非幂等消息不缓存
+    const sent = sendRaw({ type, requestId, ...payload })
     if (!sent) {
       clearTimeout(timer)
       pendingRequests.delete(requestId)
       reject(new Error('WebSocket 未连接'))
     }
   })
+}
+
+function resubscribeAll(): void {
+  for (const taskId of subscribedTasks) {
+    sendRaw({ type: 'subscribe_task', taskId })
+  }
 }
 
 function flushPendingMessages(): void {
@@ -291,6 +309,66 @@ function flushPendingMessages(): void {
   for (const msg of valid) {
     sendRaw(msg.data)
   }
+}
+
+// ─── 订阅管理 ──────────────────────────────────────
+
+/**
+ * 订阅任务状态推送并记录，重连后自动重新订阅
+ * 如果已订阅则跳过，避免重复发送
+ * 设置超时自动清理，防止订阅泄漏
+ */
+function subscribeTask(taskId: string): void {
+  if (subscribedTasks.has(taskId)) {
+    // 重置超时定时器
+    resetSubscriptionTimer(taskId)
+    return
+  }
+  subscribedTasks.add(taskId)
+  sendRaw({ type: 'subscribe_task', taskId })
+
+  // 设置超时清理
+  const timer = setTimeout(() => {
+    unsubscribeTask(taskId)
+  }, SUBSCRIPTION_TIMEOUT)
+  subscriptionTimers.set(taskId, timer)
+}
+
+/**
+ * 取消订阅任务状态推送并移除记录
+ */
+function unsubscribeTask(taskId: string): void {
+  if (!subscribedTasks.has(taskId)) return
+  subscribedTasks.delete(taskId)
+  sendRaw({ type: 'unsubscribe_task', taskId })
+
+  // 清理定时器
+  const timer = subscriptionTimers.get(taskId)
+  if (timer) {
+    clearTimeout(timer)
+    subscriptionTimers.delete(taskId)
+  }
+}
+
+/**
+ * 重置订阅超时定时器
+ */
+function resetSubscriptionTimer(taskId: string): void {
+  const timer = subscriptionTimers.get(taskId)
+  if (timer) {
+    clearTimeout(timer)
+  }
+  const newTimer = setTimeout(() => {
+    unsubscribeTask(taskId)
+  }, SUBSCRIPTION_TIMEOUT)
+  subscriptionTimers.set(taskId, newTimer)
+}
+
+/**
+ * 获取已订阅的任务 ID 列表
+ */
+function getSubscribedTasks(): string[] {
+  return Array.from(subscribedTasks)
 }
 
 // ─── 事件系统 ──────────────────────────────────────
@@ -338,6 +416,11 @@ export const wsClient = {
   send,
   sendAndWait,
   sendRaw,
+
+  // 订阅
+  subscribeTask,
+  unsubscribeTask,
+  getSubscribedTasks,
 
   // 事件
   on,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useNavigationStore } from '@/stores/navigation'
@@ -30,8 +30,16 @@ const deleteModalVisible = ref(false)
 const deleteModalLoading = ref(false)
 const deleteTarget = ref<{ type: 'single' | 'clearAll'; taskId?: string; topic?: string }>({ type: 'single' })
 
-const items = computed<HistoryItem[]>(() =>
-  taskStore.taskList.map((t) => {
+// 定时刷新间隔（30 秒）
+const REFRESH_INTERVAL = 30_000
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+/**
+ * 从 taskList 读取当前页的任务（REST API 数据源）
+ * WS 推送会同步更新 taskList 中对应任务的状态
+ */
+const items = computed<HistoryItem[]>(() => {
+  return taskStore.taskList.map((t) => {
     const type = inferTaskType(t)
     return {
       taskId: t.task_id,
@@ -40,12 +48,12 @@ const items = computed<HistoryItem[]>(() =>
       createdAt: t.created_at ?? '',
       type,
     }
-  }),
-)
+  })
+})
 
 const currentPage = computed(() => taskStore.currentPage)
 const totalPages = computed(() => taskStore.totalPages)
-const total = computed(() => taskStore.taskTotal)
+const total = computed(() => taskStore.listTotal)
 
 async function loadHistory(page = 1): Promise<void> {
   await taskStore.fetchTaskList(page)
@@ -94,7 +102,20 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
-onMounted(() => loadHistory())
+onMounted(() => {
+  loadHistory()
+  // 定时刷新，确保任务状态实时更新
+  refreshTimer = setInterval(() => {
+    loadHistory(currentPage.value)
+  }, REFRESH_INTERVAL)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
 </script>
 
 <template>

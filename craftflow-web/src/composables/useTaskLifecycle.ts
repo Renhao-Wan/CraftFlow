@@ -7,7 +7,7 @@
  * 替代原轮询方案：服务端通过 WebSocket 主动推送状态变更。
  */
 
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useNavigationStore } from '@/stores/navigation'
@@ -41,6 +41,11 @@ function ensureGlobalListeners(): void {
 
   wsClient.on('task_result', (msg: WsMessage) => {
     taskStore.handleTaskResult(msg)
+    // 任务完成，自动取消订阅
+    const taskId = msg.taskId as string
+    if (taskId) {
+      wsClient.unsubscribeTask(taskId)
+    }
   })
 
   wsClient.on('task_token', (msg: WsMessage) => {
@@ -49,6 +54,11 @@ function ensureGlobalListeners(): void {
 
   wsClient.on('task_error', (msg: WsMessage) => {
     taskStore.handleTaskError(msg)
+    // 任务失败，自动取消订阅
+    const taskId = msg.taskId as string
+    if (taskId) {
+      wsClient.unsubscribeTask(taskId)
+    }
   })
 }
 
@@ -66,8 +76,8 @@ export interface UseTaskLifecycleReturn {
   retryPolishing: (content: string, mode: PolishingMode) => Promise<void>
   /** 加载指定任务状态 */
   loadTask: (taskId: string) => Promise<void>
-  /** 取消订阅当前任务的 WS 推送 */
-  stop: () => void
+  /** 取消订阅指定任务的 WS 推送 */
+  stop: (taskId: string) => void
   /** 是否正在提交 */
   submitting: ReturnType<typeof ref<boolean>>
   /** 提交错误 */
@@ -105,7 +115,7 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
 
   /** 订阅任务的 WS 推送 */
   function subscribeTask(taskId: string): void {
-    wsClient.send({ type: 'subscribe_task', taskId })
+    wsClient.subscribeTask(taskId)
   }
 
   /** 提交任务后跳转 */
@@ -190,24 +200,23 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
   ): Promise<void> {
     submitting.value = true
     submitError.value = null
+
+    // 乐观更新：立即将状态设为 running 并清除 awaiting，避免 UI 停留在 interrupted
+    const existing = taskStore.getTask(taskId)
+    if (existing) {
+      taskStore.setCurrentTask({ ...existing, status: 'running', awaiting: undefined })
+    }
+
     try {
-      const response = await wsClient.sendAndWait('resume_task', {
-        taskId,
-        action,
-        data,
-      })
-
-      const responseTaskId = (response.taskId as string) ?? taskId
-      const status = (response.status as TaskStatus) ?? 'running'
-
-      taskStore.setCurrentTask({
-        task_id: responseTaskId,
-        status,
-        created_at: response.createdAt as string | undefined,
-      })
+      await wsClient.sendAndWait('resume_task', { taskId, action, data })
+      // 不覆盖 store，后续 task_update 推送会携带完整状态
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '恢复任务失败'
       submitError.value = message
+      // 回滚乐观更新
+      if (existing) {
+        taskStore.setCurrentTask(existing)
+      }
     } finally {
       submitting.value = false
     }
@@ -224,17 +233,11 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     submitError.value = null
     try {
       const response = await wsClient.sendAndWait(msgType, payload)
-      const taskId = response.taskId as string
+      const newTaskId = response.taskId as string
       const status = (response.status as TaskStatus) ?? 'running'
 
-      // 取消旧任务订阅，订阅新任务
-      const oldTaskId = taskStore.currentTask?.task_id
-      if (oldTaskId) {
-        wsClient.send({ type: 'unsubscribe_task', taskId: oldTaskId })
-      }
-
       taskStore.setCurrentTask({
-        task_id: taskId,
+        task_id: newTaskId,
         status,
         created_at: response.createdAt as string | undefined,
         data: type === 'creation'
@@ -242,12 +245,12 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
           : { original_content: payload.content, mode: payload.mode },
       })
 
-      subscribeTask(taskId)
+      subscribeTask(newTaskId)
       taskType.value = type
 
-      // 直接用 history.replaceState 更新 URL，绕过 Vue Router 避免组件重新渲染
-      const basePath = type === 'creation' ? '/tasks/' : '/polishing/'
-      history.replaceState(null, '', `#${basePath}${taskId}`)
+      // 使用 Vue Router 替换路由
+      const routeName = type === 'creation' ? 'task-detail' : 'polishing-result'
+      await router.replace({ name: routeName, params: { taskId: newTaskId } })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '重试失败'
       submitError.value = message
@@ -270,18 +273,10 @@ export function useTaskLifecycle(): UseTaskLifecycleReturn {
     await taskStore.fetchTaskStatus(taskId)
   }
 
-  /** 取消订阅当前任务 */
-  function stop(): void {
-    const taskId = taskStore.currentTask?.task_id
-    if (taskId) {
-      wsClient.send({ type: 'unsubscribe_task', taskId })
-    }
+  /** 取消订阅指定任务 */
+  function stop(taskId: string): void {
+    wsClient.unsubscribeTask(taskId)
   }
-
-  // 不在 onUnmounted 中自动取消订阅。
-  // 原因：提交任务后 router.push 会触发当前组件卸载，但新组件会立即
-  // 挂载并接管订阅。如果在卸载时取消订阅，会丢失中间的进度推送。
-  // 组件应在适当时机显式调用 stop()（如用户主动离开任务页）。
 
   return {
     submitCreation,

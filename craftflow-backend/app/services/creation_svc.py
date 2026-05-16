@@ -61,6 +61,7 @@ class CreationService:
         self.adapter = adapter
         self._graph = None
         self._tasks: dict[str, dict[str, Any]] = {}
+        self._executing_tasks: set[str] = set()  # 正在执行的任务 ID，防止重复执行
 
     def _get_graph(self):
         """获取编译后的 Creation Graph（惰性初始化）"""
@@ -86,6 +87,9 @@ class CreationService:
             "graph_type": "creation",
             "status": status,
             "request": request_data,
+            "current_node": None,
+            "current_node_label": None,
+            "progress": 0.0,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
@@ -663,10 +667,7 @@ class CreationService:
             request_data={"topic": topic, "description": description},
         )
 
-        # 自动订阅
-        broadcaster.subscribe(client_id, task_id)
-
-        # 通知客户端任务已创建
+        # 通知客户端任务已创建（订阅由前端统一管理）
         await broadcaster.send_to(
             client_id,
             {
@@ -733,6 +734,14 @@ class CreationService:
                         total_sections,
                     )
 
+                    # 更新 _tasks dict 中的进度信息
+                    self._update_task(
+                        task_id,
+                        current_node=current_node,
+                        current_node_label=label,
+                        progress=progress,
+                    )
+
                     await broadcaster.broadcast_update(
                         task_id,
                         {
@@ -764,11 +773,18 @@ class CreationService:
 
             if has_pending_interrupt:
                 # 图在中断点暂停（大纲待确认）
-                self._update_task(task_id, status="interrupted")
+                graph_state = snapshot.values if snapshot else {}
+                progress = self._calculate_progress(graph_state, "interrupted")
+                self._update_task(
+                    task_id,
+                    status="interrupted",
+                    current_node="outline_confirmation",
+                    current_node_label=NODE_LABELS["outline_confirmation"],
+                    progress=progress,
+                )
                 await self._persist_interrupted(task_id)
                 logger.info(f"创作任务流式暂停（大纲待确认）- task_id: {task_id}")
 
-                graph_state = snapshot.values if snapshot else {}
                 outline_data = None
                 raw_outline = graph_state.get("outline")
                 if raw_outline:
@@ -785,7 +801,7 @@ class CreationService:
                         "currentNodeLabel": NODE_LABELS["outline_confirmation"],
                         "awaiting": "outline_confirmation",
                         "data": {"outline": outline_data} if outline_data else None,
-                        "progress": self._calculate_progress(graph_state, "interrupted"),
+                        "progress": progress,
                     },
                 )
             else:
@@ -827,13 +843,21 @@ class CreationService:
                     await broadcaster.broadcast_result(task_id, result or "", created_at)
 
         except GraphInterrupt:
-            self._update_task(task_id, status="interrupted")
-            await self._persist_interrupted(task_id)
-            logger.info(f"创作任务流式暂停（大纲待确认）- task_id: {task_id}")
-
             # 获取大纲数据用于推送
             snapshot = await graph.aget_state(config)
             graph_state = snapshot.values if snapshot else {}
+            progress = self._calculate_progress(graph_state, "interrupted")
+
+            self._update_task(
+                task_id,
+                status="interrupted",
+                current_node="outline_confirmation",
+                current_node_label=NODE_LABELS["outline_confirmation"],
+                progress=progress,
+            )
+            await self._persist_interrupted(task_id)
+            logger.info(f"创作任务流式暂停（大纲待确认）- task_id: {task_id}")
+
             outline_data = None
             raw_outline = graph_state.get("outline")
             if raw_outline:
@@ -850,7 +874,7 @@ class CreationService:
                     "currentNodeLabel": NODE_LABELS["outline_confirmation"],
                     "awaiting": "outline_confirmation",
                     "data": {"outline": outline_data} if outline_data else None,
-                    "progress": self._calculate_progress(graph_state, "interrupted"),
+                    "progress": progress,
                 },
             )
 
@@ -879,6 +903,20 @@ class CreationService:
         request_id: Optional[str] = None,
     ) -> None:
         """流式恢复被中断的创作任务（WebSocket 推送进度）"""
+        # 防止重复执行
+        if task_id in self._executing_tasks:
+            logger.warning(f"任务正在执行中，跳过重复恢复 - task_id: {task_id}")
+            await broadcaster.send_to(
+                client_id,
+                {
+                    "type": "error",
+                    "requestId": request_id,
+                    "code": "TASK_ALREADY_RUNNING",
+                    "message": f"任务正在执行中: {task_id}",
+                },
+            )
+            return
+
         task = self._tasks.get(task_id)
         if task is None:
             await broadcaster.send_to(
@@ -892,6 +930,28 @@ class CreationService:
             )
             return
 
+        # 标记任务开始执行
+        self._executing_tasks.add(task_id)
+        self._update_task(task_id, status="running")
+
+        # 持久化 running 状态到 SQLite（中断恢复时 SQLite 中仍是 interrupted）
+        request = task.get("request", {})
+        try:
+            await self.adapter.save_task(
+                {
+                    "task_id": task_id,
+                    "graph_type": "creation",
+                    "status": "running",
+                    "topic": request.get("topic"),
+                    "description": request.get("description"),
+                    "progress": 30.0,
+                    "created_at": str(task.get("created_at", datetime.now())),
+                    "updated_at": str(datetime.now()),
+                }
+            )
+        except Exception as e:
+            logger.warning(f"持久化 running 状态失败（不影响执行）- task_id: {task_id}, error: {e}")
+
         thread_id = task["thread_id"]
         # 从数据库读取当前写作参数（恢复时也需限制并发度）
         params = await self.adapter.get_writing_params()
@@ -899,8 +959,7 @@ class CreationService:
         config = self._build_config(thread_id, max_concurrent_writers)
         graph = self._get_graph()
 
-        # 自动订阅
-        broadcaster.subscribe(client_id, task_id)
+        # 订阅由前端统一管理，此处不再自动订阅
 
         try:
             logger.info(f"恢复创作任务流式执行 - task_id: {task_id}, action: {action}")
@@ -1027,6 +1086,9 @@ class CreationService:
             )
 
             await broadcaster.broadcast_error(task_id, friendly_msg)
+        finally:
+            # 无论成功或失败，都从执行集合中移除
+            self._executing_tasks.discard(task_id)
 
     # ============================================
     # 内部辅助方法

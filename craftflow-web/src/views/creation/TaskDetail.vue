@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTaskStore } from '@/stores/task'
 import { useTaskLifecycle } from '@/composables/useTaskLifecycle'
+import { useTaskDetail } from '@/composables/useTaskDetail'
 import TaskStatusBadge from '@/components/common/TaskStatusBadge.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
@@ -16,42 +17,31 @@ const props = defineProps<{ taskId: string }>()
 
 const router = useRouter()
 const taskStore = useTaskStore()
-const { resumeTask, retryCreation, loadTask, stop, submitting, submitError } = useTaskLifecycle()
+const { resumeTask, retryCreation, submitting, submitError } = useTaskLifecycle()
+
+// 使用 useTaskDetail composable 获取任务详情
+const taskIdRef = computed(() => props.taskId)
+const {
+  task,
+  streamingContent,
+  loading,
+  taskError,
+  displayPhase,
+  displayContent,
+} = useTaskDetail(taskIdRef)
 
 const copied = ref(false)
 const resultBodyRef = ref<HTMLElement | null>(null)
 const { exporting, exportToPdf } = usePdfExport()
 
-const task = computed(() => taskStore.currentTask)
 const isNotFound = computed(
-  () => taskStore.error?.includes('404') ?? false,
+  () => taskError.value?.includes('404') ?? false,
 )
 const status = computed(() => task.value?.status)
 const progress = computed(() => task.value?.progress ?? 0)
 const currentNode = computed(() => task.value?.current_node_label ?? task.value?.current_node ?? '')
 const result = computed(() => task.value?.result ?? '')
 const error = computed(() => task.value?.error ?? '未知错误')
-const streamingContent = computed(() => taskStore.streamingContent)
-
-/**
- * 显示阶段：解耦 UI 状态与任务 status，避免 status 先于 result 到达导致闪烁
- * - 'waiting'：无内容，显示居中等待
- * - 'streaming'：有流式内容，显示实时渲染
- * - 'completed'：有最终结果，显示完成视图
- * - 'interrupted'：大纲确认
- * - 'failed'：失败
- */
-type DisplayPhase = 'waiting' | 'streaming' | 'completed' | 'interrupted' | 'failed'
-const displayPhase = computed<DisplayPhase>(() => {
-  if (result.value) return 'completed'
-  if (streamingContent.value) return 'streaming'
-  if (status.value === 'interrupted') return 'interrupted'
-  if (status.value === 'failed') return 'failed'
-  return 'waiting'
-})
-
-/** 渲染内容：优先用最终结果，回退到流式内容 */
-const displayContent = computed(() => result.value || streamingContent.value)
 
 const outlineItems = computed<OutlineItem[]>(() => {
   const raw = task.value?.data
@@ -103,26 +93,17 @@ watch(streamingContent, () => {
   }
 })
 
-onMounted(() => {
-  if (!task.value || task.value.task_id !== props.taskId) {
-    loadTask(props.taskId)
-  }
-})
-
+// 任务完成但无 result 时，重新获取状态
 let fetchedOnce = false
 watch(
   () => ({ status: status.value, result: result.value }),
   (val) => {
     if (val.status === 'completed' && !val.result && !fetchedOnce) {
       fetchedOnce = true
-      loadTask(props.taskId)
+      taskStore.fetchTaskStatus(props.taskId)
     }
   },
 )
-
-onUnmounted(() => {
-  stop()
-})
 </script>
 
 <template>
@@ -136,14 +117,14 @@ onUnmounted(() => {
     </div>
 
     <!-- 加载中 -->
-    <div v-if="!task && taskStore.loading" class="state-center">
+    <div v-if="!task && loading" class="state-center">
       <LoadingSpinner :size="32" label="加载任务状态..." />
     </div>
 
     <!-- 错误 -->
     <ErrorAlert
-      v-else-if="taskStore.error && !task && !isNotFound"
-      :message="taskStore.error"
+      v-else-if="taskError && !task && !isNotFound"
+      :message="taskError"
       :retryable="true"
       @retry="onRetry"
     />
