@@ -12,7 +12,6 @@
 - 不处理 HTTP 请求解析（由 Controller 层负责）
 """
 
-import json
 from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
@@ -142,7 +141,7 @@ class CreationService:
         与 _persist_and_cleanup 的区别：
         - 不清理 checkpoint（恢复时需要图状态）
         - 不从 _tasks dict 移除（恢复时需要元数据）
-        - 不存储 outline（outline 在 checkpoint 中，避免数据重复）
+        - outline 存储在 Checkpointer 中，不保存到 SQLite
         """
         task = self._tasks.get(task_id, {})
         request = task.get("request", {})
@@ -170,7 +169,6 @@ class CreationService:
         thread_id: str,
         status: str,
         result: Optional[str] = None,
-        outline_data: Optional[list] = None,
         error: Optional[str] = None,
     ) -> None:
         """将终态任务保存到 SQLite 并释放内存
@@ -180,7 +178,6 @@ class CreationService:
             thread_id: thread_id（等于 task_id）
             status: 终态（completed / failed）
             result: 最终结果文本
-            outline_data: 大纲数据（仅用于日志，不持久化到 TaskStore）
             error: 错误信息（failed 时）
         """
         task = self._tasks.get(task_id, {})
@@ -190,7 +187,6 @@ class CreationService:
         logger.info(
             f"持久化创作任务 - task_id: {task_id}, status: {status}, "
             f"result_len: {len(result) if result else 0}, "
-            f"outline_items: {len(outline_data) if outline_data else 0}, "
             f"topic: {request.get('topic')}, error: {error}"
         )
         try:
@@ -351,22 +347,12 @@ class CreationService:
             self._update_task(task_id, status="completed")
             created_at = self._tasks[task_id]["created_at"]
 
-            # 提取大纲数据用于持久化
-            outline_for_db = None
-            raw_outline = graph_state.get("outline")
-            if raw_outline:
-                outline_for_db = [
-                    {"title": item.get("title", ""), "summary": item.get("summary", "")}
-                    for item in raw_outline
-                ]
-
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
                 task_id,
                 thread_id,
                 "completed",
                 result=final_result,
-                outline_data=outline_for_db,
             )
             logger.info(f"创作任务已完成 - task_id: {task_id}")
 
@@ -456,22 +442,12 @@ class CreationService:
             graph_state = result or {}
             final_result = graph_state.get("final_draft", "")
 
-            # 提取大纲数据用于持久化
-            outline_for_db = None
-            raw_outline = graph_state.get("outline")
-            if raw_outline:
-                outline_for_db = [
-                    {"title": item.get("title", ""), "summary": item.get("summary", "")}
-                    for item in raw_outline
-                ]
-
             # 持久化到 TaskStore + 清理 checkpoint + 释放内存
             await self._persist_and_cleanup(
                 task_id,
                 thread_id,
                 "completed",
                 result=final_result,
-                outline_data=outline_for_db,
             )
             logger.info(f"创作任务恢复完成 - task_id: {task_id}")
 
@@ -521,6 +497,7 @@ class CreationService:
         """查询创作任务状态
 
         查询顺序：内存 _tasks（running/interrupted）→ TaskStore（completed/failed）
+        outline 数据统一从 Checkpointer 读取（已持久化）
 
         Args:
             task_id: 任务 ID
@@ -548,31 +525,24 @@ class CreationService:
 
             # 从 TaskStore 行构建响应
             data: dict[str, Any] = {}
-            if row.get("outline"):
-                try:
-                    data["outline"] = json.loads(row["outline"])
-                except (json.JSONDecodeError, TypeError):
-                    pass
             # 保留原始参数，用于前端重试
             if row.get("topic"):
                 data["topic"] = row["topic"]
             if row.get("description"):
                 data["description"] = row["description"]
-            if data is not None and len(data) == 0:
-                data = None
 
             # 中断任务的 awaiting 字段
             awaiting = None
             if row["status"] == "interrupted":
                 awaiting = "outline_confirmation"
 
-            return TaskStatusResponse(
+            response = TaskStatusResponse(
                 task_id=task_id,
                 status=row["status"],
                 current_node=None,
                 current_node_label=None,
                 awaiting=awaiting,
-                data=data,
+                data=data if data else None,
                 result=row.get("result"),
                 error=row.get("error"),
                 progress=row.get("progress"),
@@ -581,6 +551,25 @@ class CreationService:
                 created_at=row.get("created_at"),
                 updated_at=row.get("updated_at"),
             )
+
+            # 中断任务从 Checkpointer 读取 outline
+            if row["status"] == "interrupted":
+                try:
+                    config = self._build_config(task_id)
+                    checkpoint = await self.checkpointer.aget(config)
+                    if checkpoint and checkpoint.get("channel_values"):
+                        channel_values = checkpoint["channel_values"]
+                        raw_outline = channel_values.get("outline")
+                        if raw_outline:
+                            data["outline"] = [
+                                {"title": item.get("title", ""), "summary": item.get("summary", "")}
+                                for item in raw_outline
+                            ]
+                            response.data = data
+                except Exception as e:
+                    logger.warning(f"从 Checkpointer 读取 outline 失败 - task_id: {task_id}, error: {e}")
+
+            return response
 
         # 3. 内存中找到（running / interrupted），从 checkpoint 读取图状态
         thread_id = task["thread_id"]
@@ -594,10 +583,6 @@ class CreationService:
             data["topic"] = request["topic"]
         if request.get("description"):
             data["description"] = request["description"]
-        # 大纲数据（中断状态时）
-        outline = task.get("outline")
-        if outline:
-            data["outline"] = outline
 
         response = TaskStatusResponse(
             task_id=task_id,
@@ -629,6 +614,14 @@ class CreationService:
 
             if task["status"] == "interrupted":
                 response.awaiting = "outline_confirmation"
+                # 从图状态中提取大纲数据
+                raw_outline = graph_state.get("outline")
+                if raw_outline:
+                    data["outline"] = [
+                        {"title": item.get("title", ""), "summary": item.get("summary", "")}
+                        for item in raw_outline
+                    ]
+                    response.data = data
 
             if include_state:
                 response.state = self._serialize_state(graph_state)
@@ -823,22 +816,12 @@ class CreationService:
 
                     created_at = self._tasks[task_id]["created_at"]
 
-                    # 提取大纲数据用于持久化
-                    outline_for_db = None
-                    raw_outline = graph_state.get("outline")
-                    if raw_outline:
-                        outline_for_db = [
-                            {"title": item.get("title", ""), "summary": item.get("summary", "")}
-                            for item in raw_outline
-                        ]
-
                     # 持久化到 SQLite + 释放内存
                     await self._persist_and_cleanup(
                         task_id,
                         thread_id,
                         "completed",
                         result=result or "",
-                        outline_data=outline_for_db,
                     )
 
                     await broadcaster.broadcast_result(task_id, result or "", created_at)
@@ -1020,22 +1003,12 @@ class CreationService:
                 result = graph_state.get("final_draft", "")
                 created_at = task["created_at"]
 
-                # 提取大纲数据用于持久化
-                outline_for_db = None
-                raw_outline = graph_state.get("outline")
-                if raw_outline:
-                    outline_for_db = [
-                        {"title": item.get("title", ""), "summary": item.get("summary", "")}
-                        for item in raw_outline
-                    ]
-
                 # 持久化到 SQLite + 释放内存
                 await self._persist_and_cleanup(
                     task_id,
                     thread_id,
                     "completed",
                     result=result or "",
-                    outline_data=outline_for_db,
                 )
 
                 await broadcaster.broadcast_result(task_id, result or "", created_at)
