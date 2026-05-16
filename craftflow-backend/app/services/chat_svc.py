@@ -9,7 +9,7 @@ import json
 import time
 from collections.abc import AsyncGenerator
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from openai import (
     APIConnectionError,
     APIStatusError,
@@ -80,6 +80,12 @@ class ChatService:
         try:
             llm = await LLMFactory.create_llm(profile_id=request.profile_id, streaming=True)
             messages = self._convert_messages(request.messages)
+
+            # 注入用户自定义系统提示词
+            profile = await self.adapter.get_llm_profile(request.profile_id)
+            user_instructions = (profile or {}).get("system_prompt", "")
+            if user_instructions:
+                messages.insert(0, SystemMessage(content=user_instructions))
 
             async for chunk in llm.astream(messages):
                 content = chunk.content if isinstance(chunk.content, str) else ""

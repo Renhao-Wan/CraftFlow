@@ -158,6 +158,7 @@ class LLMFactory:
             "model": profile["model"],
             "temperature": profile.get("temperature", 0.7),
             "max_tokens": None,  # Profile 不含 max_tokens，由调用方指定
+            "user_instructions": profile.get("system_prompt", ""),
         }
 
     @staticmethod
@@ -305,3 +306,16 @@ async def get_custom_llm(
     return await LLMFactory.create_llm(
         temperature=temperature, model=model, max_tokens=max_tokens, profile_id=profile_id
     )
+
+
+async def get_user_instructions(profile_id: str | None = None) -> str:
+    """获取当前 Profile 的用户自定义系统提示词
+
+    Args:
+        profile_id: Profile ID，None 时使用默认 Profile
+
+    Returns:
+        str: 用户自定义指令，为空时返回空字符串
+    """
+    config = await LLMFactory._resolve_config(profile_id)
+    return config.get("user_instructions", "")

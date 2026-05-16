@@ -16,15 +16,15 @@ from typing import Any, Awaitable, Callable
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_factchecker_llm
+from app.graph.common.llm_factory import get_default_llm, get_factchecker_llm, get_user_instructions
 from app.graph.polishing.prompts import (
     FACT_CHECKER_HUMAN_PROMPT,
-    FACT_CHECKER_SYSTEM_PROMPT,
     FORMATTER_HUMAN_PROMPT,
-    FORMATTER_SYSTEM_PROMPT,
     ROUTER_HUMAN_PROMPT,
-    ROUTER_SYSTEM_PROMPT,
     format_fact_check_result,
+    get_fact_checker_system_prompt,
+    get_formatter_system_prompt,
+    get_router_system_prompt,
 )
 from app.graph.polishing.state import PolishingState
 from app.graph.tools.search import SEARCH_TOOLS
@@ -131,10 +131,13 @@ async def router_node(state: PolishingState) -> dict[str, Any]:
         # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_default_llm()
 
+        user_instructions = await get_user_instructions()
+        router_system_prompt = get_router_system_prompt(user_instructions)
+
         human_message = ROUTER_HUMAN_PROMPT.format(content=content[:2000])  # 限制长度
 
         messages = [
-            SystemMessage(content=ROUTER_SYSTEM_PROMPT),
+            SystemMessage(content=router_system_prompt),
             HumanMessage(content=human_message),
         ]
 
@@ -196,10 +199,13 @@ async def formatter_node(state: PolishingState) -> dict[str, Any]:
         # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_default_llm()
 
+        user_instructions = await get_user_instructions()
+        formatter_system_prompt = get_formatter_system_prompt(user_instructions)
+
         human_message = FORMATTER_HUMAN_PROMPT.format(content=content)
 
         messages = [
-            SystemMessage(content=FORMATTER_SYSTEM_PROMPT),
+            SystemMessage(content=formatter_system_prompt),
             HumanMessage(content=human_message),
         ]
 
@@ -258,10 +264,13 @@ async def fact_checker_node(state: PolishingState) -> dict[str, Any]:
         llm = await get_factchecker_llm()
         llm_with_tools = llm.bind_tools(SEARCH_TOOLS)
 
+        user_instructions = await get_user_instructions()
+        fact_checker_system_prompt = get_fact_checker_system_prompt(user_instructions)
+
         human_message = FACT_CHECKER_HUMAN_PROMPT.format(content=content)
 
         messages: list = [
-            SystemMessage(content=FACT_CHECKER_SYSTEM_PROMPT),
+            SystemMessage(content=fact_checker_system_prompt),
             HumanMessage(content=human_message),
         ]
 

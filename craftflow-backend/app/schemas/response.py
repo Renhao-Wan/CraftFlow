@@ -205,6 +205,7 @@ class LlmProfileResponse(BaseModel):
     api_base: str = Field(default="", description="API Base URL")
     model: str = Field(..., description="模型名称")
     temperature: float = Field(..., description="温度参数")
+    system_prompt: str = Field(default="", description="自定义系统提示词")
     is_default: bool = Field(..., description="是否为默认配置")
     created_at: str = Field(..., description="创建时间")
     updated_at: str = Field(..., description="更新时间")

@@ -14,13 +14,13 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_editor_llm
+from app.graph.common.llm_factory import get_default_llm, get_editor_llm, get_user_instructions
 from app.graph.polishing.debate.prompts import (
     AUTHOR_HUMAN_PROMPT,
-    AUTHOR_SYSTEM_PROMPT,
     EDITOR_HUMAN_PROMPT,
-    EDITOR_SYSTEM_PROMPT,
     format_editor_feedback,
+    get_author_system_prompt,
+    get_editor_system_prompt,
 )
 from app.graph.polishing.debate.state import DebateState
 from app.graph.polishing.state import DebateRound
@@ -137,8 +137,11 @@ async def author_node(state: DebateState) -> dict[str, Any]:
             fact_check_context=fact_check_context,
         )
 
+        user_instructions = await get_user_instructions()
+        author_system_prompt = get_author_system_prompt(user_instructions)
+
         messages = [
-            SystemMessage(content=AUTHOR_SYSTEM_PROMPT),
+            SystemMessage(content=author_system_prompt),
             HumanMessage(content=human_message),
         ]
 
@@ -190,8 +193,11 @@ async def editor_node(state: DebateState) -> dict[str, Any]:
             iteration=current_iteration,
         )
 
+        user_instructions = await get_user_instructions()
+        editor_system_prompt = get_editor_system_prompt(user_instructions)
+
         messages = [
-            SystemMessage(content=EDITOR_SYSTEM_PROMPT),
+            SystemMessage(content=editor_system_prompt),
             HumanMessage(content=human_message),
         ]
 

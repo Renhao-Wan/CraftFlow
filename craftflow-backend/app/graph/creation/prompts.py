@@ -51,14 +51,15 @@ PLANNER_SYSTEM_PROMPT_TEMPLATE = """## 任务：生成结构化大纲
 - 章节数量必须在 4 到 {max_sections} 之间（含边界值），超出此范围的输出将被视为无效"""
 
 
-def get_planner_system_prompt(max_sections: int = 8) -> str:
-    """生成 PlannerNode 的系统提示词，动态注入章节数上限"""
+def get_planner_system_prompt(max_sections: int = 8, user_instructions: str = "") -> str:
+    """生成 PlannerNode 的系统提示词，动态注入章节数上限和用户自定义指令"""
     return create_base_system_prompt(
         role=CONTENT_STRATEGIST_ROLE,
         task_description=PLANNER_SYSTEM_PROMPT_TEMPLATE.format(max_sections=max_sections),
         include_markdown_rules=False,
         include_anti_hallucination=False,
         include_quality_standards=False,
+        user_instructions=user_instructions,
     )
 
 
@@ -86,9 +87,11 @@ PLANNER_HUMAN_PROMPT = """请根据以下主题生成文章大纲：
 # WriterNode Prompt 模板
 # ============================================
 
-WRITER_SYSTEM_PROMPT = create_base_system_prompt(
-    role=PROFESSIONAL_WRITER_ROLE,
-    task_description="""## 任务：撰写章节内容
+def get_writer_system_prompt(user_instructions: str = "") -> str:
+    """生成 WriterNode 的系统提示词，支持用户自定义指令注入"""
+    return create_base_system_prompt(
+        role=PROFESSIONAL_WRITER_ROLE,
+        task_description="""## 任务：撰写章节内容
 
 你的任务是根据给定的章节标题和摘要，撰写高质量的章节内容。
 
@@ -108,10 +111,15 @@ WRITER_SYSTEM_PROMPT = create_base_system_prompt(
 ### 输出格式
 
 直接输出章节内容，使用 Markdown 格式。章节标题使用二级标题（##），小节标题使用三级标题（###）。""",
-    include_markdown_rules=True,
-    include_anti_hallucination=True,
-    include_quality_standards=True,
-)
+        include_markdown_rules=True,
+        include_anti_hallucination=True,
+        include_quality_standards=True,
+        user_instructions=user_instructions,
+    )
+
+
+# 向后兼容：默认 prompt（无 user_instructions 时使用）
+WRITER_SYSTEM_PROMPT = get_writer_system_prompt()
 
 WRITER_HUMAN_PROMPT = """请撰写以下章节的内容：
 
@@ -129,9 +137,11 @@ WRITER_HUMAN_PROMPT = """请撰写以下章节的内容：
 # ReducerNode Prompt 模板
 # ============================================
 
-REDUCER_SYSTEM_PROMPT = create_base_system_prompt(
-    role=PROFESSIONAL_EDITOR_ROLE,
-    task_description="""## 任务：合并章节并润色过渡段
+def get_reducer_system_prompt(user_instructions: str = "") -> str:
+    """生成 ReducerNode 的系统提示词，支持用户自定义指令注入"""
+    return create_base_system_prompt(
+        role=PROFESSIONAL_EDITOR_ROLE,
+        task_description="""## 任务：合并章节并润色过渡段
 
 你的任务是将多个独立撰写的章节合并成一篇完整的文章，并添加必要的过渡段落。
 
@@ -158,10 +168,15 @@ REDUCER_SYSTEM_PROMPT = create_base_system_prompt(
 - 各章节内容（二级标题）
 - 过渡段落
 - 总结段落""",
-    include_markdown_rules=True,
-    include_anti_hallucination=True,
-    include_quality_standards=True,
-)
+        include_markdown_rules=True,
+        include_anti_hallucination=True,
+        include_quality_standards=True,
+        user_instructions=user_instructions,
+    )
+
+
+# 向后兼容：默认 prompt（无 user_instructions 时使用）
+REDUCER_SYSTEM_PROMPT = get_reducer_system_prompt()
 
 REDUCER_HUMAN_PROMPT = """请将以下章节合并成一篇完整的文章：
 

@@ -122,7 +122,7 @@ class StandaloneAdapter(BusinessAdapter):
                 await self._db.execute(
                     """UPDATE llm_profiles SET
                     name = ?, api_key = ?, api_base = ?, model = ?,
-                    temperature = ?, is_default = ?, updated_at = ?
+                    temperature = ?, system_prompt = ?, is_default = ?, updated_at = ?
                     WHERE id = ?""",
                     (
                         profile["name"],
@@ -130,6 +130,7 @@ class StandaloneAdapter(BusinessAdapter):
                         profile.get("api_base", ""),
                         profile["model"],
                         profile.get("temperature", 0.7),
+                        profile.get("system_prompt", ""),
                         profile.get("is_default", 0),
                         now,
                         profile_id,
@@ -147,8 +148,8 @@ class StandaloneAdapter(BusinessAdapter):
 
                 await self._db.execute(
                     """INSERT INTO llm_profiles
-                    (id, name, api_key, api_base, model, temperature, is_default, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (id, name, api_key, api_base, model, temperature, system_prompt, is_default, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         profile_id,
                         profile["name"],
@@ -156,6 +157,7 @@ class StandaloneAdapter(BusinessAdapter):
                         profile.get("api_base", ""),
                         profile["model"],
                         profile.get("temperature", 0.7),
+                        profile.get("system_prompt", ""),
                         is_default,
                         now,
                         now,
@@ -176,8 +178,8 @@ class StandaloneAdapter(BusinessAdapter):
 
             await self._db.execute(
                 """INSERT INTO llm_profiles
-                (id, name, api_key, api_base, model, temperature, is_default, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (id, name, api_key, api_base, model, temperature, system_prompt, is_default, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     profile_id,
                     profile["name"],
@@ -185,6 +187,7 @@ class StandaloneAdapter(BusinessAdapter):
                     profile.get("api_base", ""),
                     profile["model"],
                     profile.get("temperature", 0.7),
+                    profile.get("system_prompt", ""),
                     is_default,
                     now,
                     now,

@@ -127,6 +127,9 @@ class LlmProfileRequest(BaseModel):
     api_base: str = Field(default="", description="API Base URL")
     model: str = Field(..., min_length=1, max_length=100, description="模型名称")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="温度参数")
+    system_prompt: Optional[str] = Field(
+        default="", max_length=500, description="自定义系统提示词"
+    )
     is_default: bool = Field(default=False, description="是否为默认配置")
 
 

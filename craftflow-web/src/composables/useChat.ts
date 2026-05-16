@@ -26,6 +26,16 @@ export function useChat() {
     },
   )
 
+  // 打字机缓冲区刷完后收尾（onDone 时缓冲区可能还有积压）
+  watch(
+    () => typewriter.isStreaming.value,
+    (val) => {
+      if (!val && isStreaming.value) {
+        finalize()
+      }
+    },
+  )
+
   /** 移除空的 assistant 消息 */
   function removeEmptyAssistant(): void {
     messages.value = messages.value.filter(

@@ -14,16 +14,21 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from app.core.logger import get_logger
-from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
+from app.graph.common.llm_factory import (
+    get_default_llm,
+    get_planner_llm,
+    get_user_instructions,
+    get_writer_llm,
+)
 from app.graph.creation.prompts import (
     PLANNER_HUMAN_PROMPT,
     REDUCER_HUMAN_PROMPT,
-    REDUCER_SYSTEM_PROMPT,
     WRITER_HUMAN_PROMPT,
-    WRITER_SYSTEM_PROMPT,
     format_outline_for_display,
     format_sections_for_reducer,
     get_planner_system_prompt,
+    get_reducer_system_prompt,
+    get_writer_system_prompt,
 )
 from app.graph.creation.state import (
     CreationState,
@@ -168,9 +173,10 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         # ValueError 表示配置错误（API Key 未配置等），应向上传播
         llm = await get_planner_llm()
 
-        # 构建 Prompt（动态注入章节数上限）
+        # 构建 Prompt（动态注入章节数上限和用户自定义指令）
         max_sections = state.get("max_outline_sections", 5)
-        system_prompt = get_planner_system_prompt(max_sections)
+        user_instructions = await get_user_instructions()
+        system_prompt = get_planner_system_prompt(max_sections, user_instructions)
 
         description = state.get("description", "")
         description_section = f"**补充描述**：{description}" if description else ""
@@ -294,6 +300,9 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
         llm = await get_writer_llm()
 
         # 构建 Prompt
+        user_instructions = await get_user_instructions()
+        writer_system_prompt = get_writer_system_prompt(user_instructions)
+
         human_message = WRITER_HUMAN_PROMPT.format(
             section_title=section_title,
             section_summary=section_summary,
@@ -304,7 +313,7 @@ async def writer_node(state: CreationState) -> dict[str, Any]:
 
         # 调用 LLM
         messages = [
-            SystemMessage(content=WRITER_SYSTEM_PROMPT),
+            SystemMessage(content=writer_system_prompt),
             HumanMessage(content=human_message),
         ]
 
@@ -365,6 +374,9 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
         sections_content = format_sections_for_reducer(sections)
 
         # 构建 Prompt
+        user_instructions = await get_user_instructions()
+        reducer_system_prompt = get_reducer_system_prompt(user_instructions)
+
         human_message = REDUCER_HUMAN_PROMPT.format(
             topic=topic,
             sections_content=sections_content,
@@ -372,7 +384,7 @@ async def reducer_node(state: CreationState) -> dict[str, Any]:
 
         # 调用 LLM
         messages = [
-            SystemMessage(content=REDUCER_SYSTEM_PROMPT),
+            SystemMessage(content=reducer_system_prompt),
             HumanMessage(content=human_message),
         ]
 

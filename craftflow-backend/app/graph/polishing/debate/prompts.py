@@ -14,9 +14,11 @@ from app.graph.common.prompts import (
 # AuthorNode Prompt 模板
 # ============================================
 
-AUTHOR_SYSTEM_PROMPT = create_base_system_prompt(
-    role=PROFESSIONAL_WRITER_ROLE,
-    task_description="""## 任务：深度重写与润色文章
+def get_author_system_prompt(user_instructions: str = "") -> str:
+    """生成 AuthorNode 的系统提示词，支持用户自定义指令注入"""
+    return create_base_system_prompt(
+        role=PROFESSIONAL_WRITER_ROLE,
+        task_description="""## 任务：深度重写与润色文章
 
 你的任务是根据编辑的反馈，对文章进行**深度重写**。你不是在做微调，而是在做质的提升。
 
@@ -48,10 +50,15 @@ AUTHOR_SYSTEM_PROMPT = create_base_system_prompt(
 - 优先修正报告中标注的事实错误
 - 对报告中标注"需核实"的内容进行改写或补充来源
 - 确保修正后的文章不存在已发现的事实问题""",
-    include_markdown_rules=True,
-    include_anti_hallucination=False,
-    include_quality_standards=True,
-)
+        include_markdown_rules=True,
+        include_anti_hallucination=False,
+        include_quality_standards=True,
+        user_instructions=user_instructions,
+    )
+
+
+# 向后兼容：默认 prompt（无 user_instructions 时使用）
+AUTHOR_SYSTEM_PROMPT = get_author_system_prompt()
 
 AUTHOR_HUMAN_PROMPT = """请根据以下反馈对文章进行深度重写：
 
@@ -71,7 +78,9 @@ AUTHOR_HUMAN_PROMPT = """请根据以下反馈对文章进行深度重写：
 # EditorNode Prompt 模板
 # ============================================
 
-EDITOR_SYSTEM_PROMPT = """你是一位极其严格的主编，用高标准审视文章质量，绝不轻易放过问题。
+def get_editor_system_prompt(user_instructions: str = "") -> str:
+    """生成 EditorNode 的系统提示词，支持用户自定义指令注入"""
+    base = """你是一位极其严格的主编，用高标准审视文章质量，绝不轻易放过问题。
 
 ## 核心原则
 
@@ -116,6 +125,13 @@ EDITOR_SYSTEM_PROMPT = """你是一位极其严格的主编，用高标准审视
   "improvements": ["改进1", "改进2", "改进3"]
 }
 ```"""
+    if user_instructions:
+        base += f"\n\n## 用户自定义指令\n{user_instructions}"
+    return base
+
+
+# 向后兼容：默认 prompt（无 user_instructions 时使用）
+EDITOR_SYSTEM_PROMPT = get_editor_system_prompt()
 
 EDITOR_HUMAN_PROMPT = """请对以下文章进行评估和打分：
 

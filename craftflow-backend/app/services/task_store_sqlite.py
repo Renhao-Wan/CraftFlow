@@ -52,15 +52,16 @@ CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
 
 _CREATE_LLM_PROFILES_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS llm_profiles (
-    id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL UNIQUE,
-    api_key     TEXT NOT NULL,
-    api_base    TEXT NOT NULL DEFAULT '',
-    model       TEXT NOT NULL,
-    temperature REAL NOT NULL DEFAULT 0.7,
-    is_default  INTEGER NOT NULL DEFAULT 0,
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
+    id            TEXT PRIMARY KEY,
+    name          TEXT NOT NULL UNIQUE,
+    api_key       TEXT NOT NULL,
+    api_base      TEXT NOT NULL DEFAULT '',
+    model         TEXT NOT NULL,
+    temperature   REAL NOT NULL DEFAULT 0.7,
+    is_default    INTEGER NOT NULL DEFAULT 0,
+    system_prompt TEXT NOT NULL DEFAULT '',
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
 );
 """
 

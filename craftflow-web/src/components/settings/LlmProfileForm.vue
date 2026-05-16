@@ -21,6 +21,7 @@ const form = ref<LlmProfileRequest>({
   api_base: '',
   model: '',
   temperature: 0.7,
+  system_prompt: '',
   is_default: false,
 })
 
@@ -38,6 +39,7 @@ watch(
         api_base: props.profile.api_base,
         model: props.profile.model,
         temperature: props.profile.temperature,
+        system_prompt: props.profile.system_prompt || '',
         is_default: props.profile.is_default,
       }
     } else if (val) {
@@ -47,6 +49,7 @@ watch(
         api_base: '',
         model: '',
         temperature: 0.7,
+        system_prompt: '',
         is_default: false,
       }
     }
@@ -181,6 +184,21 @@ async function handleSubmit(): Promise<void> {
             <div class="range-labels">
               <span>精确</span>
               <span>随机</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">系统提示词</label>
+            <textarea
+              v-model="form.system_prompt"
+              class="form-textarea"
+              placeholder="可选：输入自定义系统提示词，将注入到 AI 写作指令末尾"
+              rows="4"
+              maxlength="500"
+            ></textarea>
+            <div class="textarea-footer">
+              <span class="form-hint">注入到 AI 写作指令末尾，补充而非替代核心指令</span>
+              <span class="char-count">{{ (form.system_prompt || '').length }}/500</span>
             </div>
           </div>
 
@@ -342,6 +360,38 @@ async function handleSubmit(): Promise<void> {
   font-size: 11px;
   color: var(--color-text-muted);
   margin-top: var(--space-xs);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.textarea-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.char-count {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .form-checkbox {

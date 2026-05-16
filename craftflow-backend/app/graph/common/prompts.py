@@ -152,6 +152,7 @@ def create_base_system_prompt(
     include_anti_hallucination: bool = True,
     include_quality_standards: bool = True,
     additional_instructions: str = "",
+    user_instructions: str = "",
 ) -> str:
     """创建基础系统 Prompt
 
@@ -162,6 +163,7 @@ def create_base_system_prompt(
         include_anti_hallucination: 是否包含防幻觉规则
         include_quality_standards: 是否包含质量标准
         additional_instructions: 额外的指令
+        user_instructions: 用户自定义系统提示词（注入到末尾）
 
     Returns:
         str: 完整的系统 Prompt
@@ -179,6 +181,9 @@ def create_base_system_prompt(
 
     if additional_instructions:
         prompt_parts.extend(["", additional_instructions])
+
+    if user_instructions:
+        prompt_parts.extend(["", f"## 用户自定义指令\n{user_instructions}"])
 
     return "\n".join(prompt_parts)
 

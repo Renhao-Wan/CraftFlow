@@ -6,6 +6,7 @@ export interface LlmProfile {
   api_base: string
   model: string
   temperature: number
+  system_prompt: string
   is_default: boolean
   created_at: string
   updated_at: string
@@ -18,6 +19,7 @@ export interface LlmProfileRequest {
   api_base?: string
   model: string
   temperature?: number
+  system_prompt?: string
   is_default?: boolean
 }
 
