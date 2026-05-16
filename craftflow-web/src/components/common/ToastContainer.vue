@@ -31,21 +31,19 @@ function typeClass(type: string): string {
 .toast-container {
   position: fixed;
   top: var(--space-lg);
-  left: calc(var(--sidebar-width) + var(--space-lg));
-  right: var(--space-lg);
+  left: 0;
+  right: 0;
   z-index: 9999;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-sm);
-  max-width: 400px;
   pointer-events: none;
 }
 
 @media (max-width: 768px) {
   .toast-container {
     top: calc(var(--header-height) + var(--space-sm));
-    left: var(--space-md);
-    right: var(--space-md);
   }
 }
 
@@ -55,6 +53,8 @@ function typeClass(type: string): string {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
+  max-width: 400px;
+  width: max-content;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   cursor: pointer;

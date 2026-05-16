@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useToast } from '@/composables/useToast'
 
 const store = useSettingsStore()
+const toast = useToast()
 
 // 创作参数
 const maxSections = ref(5)
@@ -38,6 +40,9 @@ async function handleSave(): Promise<void> {
       task_timeout: taskTimeout.value,
       tool_call_timeout: toolCallTimeout.value,
     })
+    toast.success('写作参数保存成功')
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : '保存失败，请重试')
   } finally {
     saving.value = false
   }

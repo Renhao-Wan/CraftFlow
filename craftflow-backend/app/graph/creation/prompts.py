@@ -23,7 +23,7 @@ PLANNER_SYSTEM_PROMPT_TEMPLATE = """## 任务：生成结构化大纲
 
 ### 大纲要求
 
-1. **章节划分**：将内容划分为 4-{max_sections} 个章节，每个章节应有明确的主题
+1. **章节划分**：将内容划分为 4-{max_sections} 个章节（硬性上限：不得少于 4 章，不得多于 {max_sections} 章），每个章节应有明确的主题
 2. **逻辑顺序**：章节之间应有清晰的逻辑递进关系
 3. **平衡性**：各章节的篇幅应大致均衡，避免某些章节过于冗长或简短
 4. **完整性**：大纲应覆盖主题的所有重要方面，不遗漏关键内容
@@ -47,7 +47,8 @@ PLANNER_SYSTEM_PROMPT_TEMPLATE = """## 任务：生成结构化大纲
 - 顶层键必须是 "outline"，不能是 "sections" 或其他名称
 - 每个章节对象必须包含 "title" 和 "summary" 两个字段
 - "summary" 必须是字符串，不能是数组
-- 只输出 JSON，不要输出任何解释文字"""
+- 只输出 JSON，不要输出任何解释文字
+- 章节数量必须在 4 到 {max_sections} 之间（含边界值），超出此范围的输出将被视为无效"""
 
 
 def get_planner_system_prompt(max_sections: int = 8) -> str:

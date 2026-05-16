@@ -9,6 +9,7 @@ import operator
 from typing import Annotated, Optional, TypedDict
 
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
 
 class SectionContent(TypedDict):
@@ -24,6 +25,22 @@ class OutlineItem(TypedDict):
 
     title: str
     summary: str
+
+
+# ── Pydantic schemas for LLM structured output ──
+
+
+class OutlineItemSchema(BaseModel):
+    """大纲条目 schema（用于 LLM 结构化输出）"""
+
+    title: str = Field(description="章节标题")
+    summary: str = Field(description="本章要点概述（2-3 句话）")
+
+
+class OutlineResponse(BaseModel):
+    """大纲响应 schema（用于 LLM 结构化输出）"""
+
+    outline: list[OutlineItemSchema] = Field(description="文章大纲章节列表")
 
 
 class CreationState(TypedDict):

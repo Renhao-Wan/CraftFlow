@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel, Field
 
 from app.core.logger import get_logger
 from app.graph.common.llm_factory import get_default_llm, get_planner_llm, get_writer_llm
@@ -24,7 +25,12 @@ from app.graph.creation.prompts import (
     format_sections_for_reducer,
     get_planner_system_prompt,
 )
-from app.graph.creation.state import CreationState, OutlineItem, SectionContent
+from app.graph.creation.state import (
+    CreationState,
+    OutlineItem,
+    OutlineItemSchema,
+    SectionContent,
+)
 
 logger = get_logger(__name__)
 
@@ -120,11 +126,34 @@ def _normalize_outline(data: dict[str, Any]) -> list[OutlineItem] | None:
     return None
 
 
+def _create_outline_schema(max_sections: int) -> type[BaseModel]:
+    """创建带 max_length 约束的大纲响应 schema
+
+    动态生成 Pydantic 模型，使 JSON Schema 中的 maxItems 与运行时配置一致，
+    用于 ChatOpenAI.with_structured_output() 的结构化输出约束。
+
+    Args:
+        max_sections: 大纲章节数上限
+
+    Returns:
+        带约束的 Pydantic BaseModel 子类
+    """
+
+    class ConstrainedOutlineResponse(BaseModel):
+        outline: list[OutlineItemSchema] = Field(
+            max_length=max_sections,
+            description=f"文章大纲章节列表（最多 {max_sections} 项）",
+        )
+
+    return ConstrainedOutlineResponse
+
+
 async def planner_node(state: CreationState) -> dict[str, Any]:
     """PlannerNode: 生成结构化大纲
 
     根据用户提供的主题和描述，调用 LLM 生成文章大纲。
-    支持绑定搜索工具获取最新信息。
+    优先使用结构化输出（with_structured_output）约束 LLM 返回格式和章节数上限，
+    不支持时回退到手动 JSON 解析，最终以截断作为安全兜底。
 
     Args:
         state: 当前图状态，包含 topic 和 description
@@ -140,7 +169,7 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
         llm = await get_planner_llm()
 
         # 构建 Prompt（动态注入章节数上限）
-        max_sections = state.get("max_outline_sections", 8)
+        max_sections = state.get("max_outline_sections", 5)
         system_prompt = get_planner_system_prompt(max_sections)
 
         description = state.get("description", "")
@@ -157,46 +186,73 @@ async def planner_node(state: CreationState) -> dict[str, Any]:
             HumanMessage(content=human_message),
         ]
 
-        response = await llm.ainvoke(messages)
-        response_content = (
-            response.content if isinstance(response.content, str) else str(response.content)
-        )
-
-        # 解析大纲（支持多种 JSON 结构）
-        outline_data = _extract_json_from_response(response_content)
         outline: list[OutlineItem] | None = None
 
-        if outline_data:
-            outline = _normalize_outline(outline_data)
-            if not outline:
-                logger.warning(f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}")
+        # 方案 B：结构化输出优先（约束 LLM 返回格式和章节数上限）
+        try:
+            schema = _create_outline_schema(max_sections)
+            structured_llm = llm.with_structured_output(schema)
+            result = await structured_llm.ainvoke(messages)
+            raw_items = result.outline if hasattr(result, "outline") else []
+            outline = [{"title": item.title, "summary": item.summary} for item in raw_items]
+            logger.info(f"结构化输出解析成功，共 {len(outline)} 个章节")
+        except Exception as e:
+            logger.warning(f"结构化输出失败，回退到手动解析: {e}")
 
-        if outline:
-            logger.info(f"大纲生成成功，共 {len(outline)} 个章节")
+        # 回退路径：原有手动 JSON 解析
+        if not outline:
+            response = await llm.ainvoke(messages)
+            response_content = (
+                response.content
+                if isinstance(response.content, str)
+                else str(response.content)
+            )
 
-            # 返回状态更新
-            return {
-                "outline": outline,
-                "messages": [
-                    AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")
-                ],
-                "current_node": "PlannerNode",
-            }
-        else:
-            # 解析失败，使用默认大纲
-            logger.warning(f"大纲 JSON 解析失败，原始响应前 500 字: {response_content[:500]}")
-            default_outline: list[OutlineItem] = [
-                {"title": "引言", "summary": "介绍主题背景和核心概念"},
-                {"title": "核心内容", "summary": "详细阐述主题的关键要点"},
-                {"title": "实践应用", "summary": "讨论实际应用场景和案例"},
-                {"title": "总结", "summary": "归纳核心观点和未来展望"},
-            ]
+            outline_data = _extract_json_from_response(response_content)
 
-            return {
-                "outline": default_outline,
-                "messages": [AIMessage(content="大纲生成遇到解析问题，已使用默认大纲结构")],
-                "current_node": "PlannerNode",
-            }
+            if outline_data:
+                outline = _normalize_outline(outline_data)
+                if not outline:
+                    logger.warning(
+                        f"大纲 JSON 结构无法识别，keys: {list(outline_data.keys())}"
+                    )
+
+            if outline:
+                logger.info(f"手动解析大纲成功，共 {len(outline)} 个章节")
+            else:
+                # 解析失败，使用默认大纲
+                logger.warning(
+                    f"大纲 JSON 解析失败，原始响应前 500 字: {response_content[:500]}"
+                )
+                default_outline: list[OutlineItem] = [
+                    {"title": "引言", "summary": "介绍主题背景和核心概念"},
+                    {"title": "核心内容", "summary": "详细阐述主题的关键要点"},
+                    {"title": "实践应用", "summary": "讨论实际应用场景和案例"},
+                    {"title": "总结", "summary": "归纳核心观点和未来展望"},
+                ]
+
+                return {
+                    "outline": default_outline,
+                    "messages": [
+                        AIMessage(content="大纲生成遇到解析问题，已使用默认大纲结构")
+                    ],
+                    "current_node": "PlannerNode",
+                }
+
+        # 方案 A：截断兜底（确保不超过 max_sections）
+        if len(outline) > max_sections:
+            logger.warning(
+                f"大纲章节数 {len(outline)} 超过上限 {max_sections}，已截断"
+            )
+            outline = outline[:max_sections]
+
+        return {
+            "outline": outline,
+            "messages": [
+                AIMessage(content=f"已生成大纲：\n\n{format_outline_for_display(outline)}")
+            ],
+            "current_node": "PlannerNode",
+        }
 
     except Exception as e:
         logger.error(f"PlannerNode 执行失败: {str(e)}")
