@@ -306,6 +306,10 @@ function off(type: string, handler: MessageHandler): void {
   handlers.get(type)?.delete(handler)
 }
 
+function clearTypeHandlers(type: string): void {
+  handlers.delete(type)
+}
+
 function emit(type: string, message?: WsMessage): void {
   const typeHandlers = handlers.get(type)
   if (!typeHandlers) return
@@ -338,4 +342,5 @@ export const wsClient = {
   // 事件
   on,
   off,
+  clearTypeHandlers,
 } as const

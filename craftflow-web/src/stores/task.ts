@@ -127,7 +127,8 @@ export const useTaskStore = defineStore('task', () => {
   function handleTaskToken(message: WsMessage): void {
     const taskId = message.taskId as string
     if (!taskId || !currentTask.value || currentTask.value.task_id !== taskId) return
-    streamingContent.value += (message.content as string) ?? ''
+    const content = (message.content as string) ?? ''
+    streamingContent.value += content
   }
 
   /** 处理 WS task_result 推送 */

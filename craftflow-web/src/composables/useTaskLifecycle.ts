@@ -29,6 +29,12 @@ function ensureGlobalListeners(): void {
 
   const taskStore = useTaskStore()
 
+  // 清除旧处理器，防止 HMR 重新执行模块后监听器累积导致 token 重复
+  const eventTypes = ['task_update', 'task_result', 'task_token', 'task_error'] as const
+  for (const type of eventTypes) {
+    wsClient.clearTypeHandlers(type)
+  }
+
   wsClient.on('task_update', (msg: WsMessage) => {
     taskStore.handleTaskUpdate(msg)
   })

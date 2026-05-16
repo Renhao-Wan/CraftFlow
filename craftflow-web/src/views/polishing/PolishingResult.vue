@@ -309,7 +309,7 @@ onUnmounted(() => {
 
 <style scoped>
 .polishing-result-page {
-  max-width: 960px;
+  max-width: 800px;
   margin: 0 auto;
   padding-top: var(--space-lg);
   padding-bottom: var(--space-xl);
