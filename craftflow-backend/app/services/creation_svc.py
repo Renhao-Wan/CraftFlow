@@ -98,9 +98,19 @@ class CreationService:
         self._tasks[task_id].update(kwargs)
         self._tasks[task_id]["updated_at"] = datetime.now()
 
-    def _build_config(self, thread_id: str) -> dict:
-        """构建 LangGraph 执行配置"""
-        return {"configurable": {"thread_id": thread_id}}
+    def _build_config(
+        self, thread_id: str, max_concurrency: Optional[int] = None
+    ) -> dict:
+        """构建 LangGraph 执行配置
+
+        Args:
+            thread_id: 线程 ID
+            max_concurrency: 最大并发数（控制 Send 扇出的并发度）
+        """
+        config: dict[str, Any] = {"configurable": {"thread_id": thread_id}}
+        if max_concurrency is not None:
+            config["max_concurrency"] = max_concurrency
+        return config
 
     async def _ensure_default_llm(self) -> None:
         """检查是否存在默认 LLM Profile 且 API Key 有效，否则抛出 ValidationError"""
@@ -308,7 +318,7 @@ class CreationService:
             "max_concurrent_writers": max_concurrent_writers,
         }
 
-        config = self._build_config(thread_id)
+        config = self._build_config(thread_id, max_concurrent_writers)
         graph = self._get_graph()
 
         try:
@@ -425,7 +435,10 @@ class CreationService:
             raise TaskNotFoundError(task_id=task_id)
 
         thread_id = task["thread_id"]
-        config = self._build_config(thread_id)
+        # 从数据库读取当前写作参数（恢复时也需限制并发度）
+        params = await self.adapter.get_writing_params()
+        max_concurrent_writers = int(params.get("max_concurrent_writers", 3))
+        config = self._build_config(thread_id, max_concurrent_writers)
         graph = self._get_graph()
 
         logger.info(f"恢复创作任务 - task_id: {task_id}, action: {action}")
@@ -690,7 +703,7 @@ class CreationService:
             "max_concurrent_writers": max_concurrent_writers,
         }
 
-        config = self._build_config(thread_id)
+        config = self._build_config(thread_id, max_concurrent_writers)
         graph = self._get_graph()
 
         try:
@@ -897,7 +910,10 @@ class CreationService:
             return
 
         thread_id = task["thread_id"]
-        config = self._build_config(thread_id)
+        # 从数据库读取当前写作参数（恢复时也需限制并发度）
+        params = await self.adapter.get_writing_params()
+        max_concurrent_writers = int(params.get("max_concurrent_writers", 3))
+        config = self._build_config(thread_id, max_concurrent_writers)
         graph = self._get_graph()
 
         # 自动订阅
